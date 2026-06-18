@@ -1,0 +1,52 @@
+{% set name = "pyfao56" %}
+{% set version_match = load_file_regex(
+  load_file="src/pyfao56/__version__.py",
+  regex_pattern='^__version__ = "(.+)"') %}
+{% set version = version_match[1] %}
+
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/pyfao56-{{ version }}.tar.gz
+  sha256: e04b6ba07c34311c0ea13039abdb5f17796a78bdd5e5d0b7587f1694adbf2b16
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - pip
+    - setuptools
+    - python {{ python_min }}
+  run:
+    - matplotlib
+    - numpy
+    - pandas
+    - python >=(( python_min }}
+    - requests
+    - urllib3
+
+test:
+  imports:
+    - pyfao56
+  commands:
+    - pip check
+  requires:
+    - pip
+    - python {{ python_min }}
+
+about:
+  home: http://github.com/kthorp/pyfao56
+  summary: FAO-56 Evapotranspiration in Python
+  dev_url: http://github.com/kthorp/pyfao56
+  license: Unlicense
+  license_file: LICENSE.md
+
+extra:
+  recipe-maintainers:
+    - kthorp
