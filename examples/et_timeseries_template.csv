@@ -1,0 +1,4 @@
+date,site_id,openet_et_mm,eto_mm,ndvi,measured_et_mm
+2024-06-01,field_001,5.2,5.8,0.71,
+2024-06-02,field_001,5.5,6.1,0.73,
+2024-06-03,field_001,5.1,5.6,0.74,
