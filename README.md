@@ -155,3 +155,25 @@ Keep new work reproducible and auditable:
 This README summarizes the project direction from the "Forecasting Soil
 Moisture" project brief by Marco Trotta and aligns it with the repository's
 current scaffold.
+
+## Phase 1: ET time-series validation
+
+The first MLET-owned component is a local, zero-dependency validator for daily,
+site-keyed evapotranspiration CSV files. It checks structure and types and
+reports contents honestly; it does not train, score, or make scientific claims.
+
+Install and run:
+
+```bash
+python3 -m pip install -e .
+mlet validate-csv examples/et_timeseries_template.csv
+# or:
+python3 -m mlet validate-csv examples/et_timeseries_template.csv
+```
+
+The expected CSV columns are `date` (YYYY-MM-DD), `site_id`, `openet_et_mm`
+(required), and optional `eto_mm`, `ndvi`, `measured_et_mm`. A file with no
+measured ET validates structurally but reports `has_measured_labels: false`.
+
+See `docs/superpowers/specs/2026-06-28-mlet-phase1-et-csv-validator-design.md`
+for the full data contract and design.
