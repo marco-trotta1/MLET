@@ -13,9 +13,11 @@
 - **Dependencies:** zero third-party install dependencies; standard library only.
 - **Python floor:** `requires-python = ">=3.9"`.
 - **Packaging:** top-level PEP 621 `pyproject.toml`, setuptools backend, src layout (`where = ["src"]`). Do not touch `vendor/pyfao56/`.
+- **Encoding:** open files with `encoding="utf-8-sig"` so an Excel-exported UTF-8 BOM is stripped transparently (BOM is not whitespace, so it would otherwise corrupt the first header name).
 - **Date format:** strict ISO `YYYY-MM-DD`, parsed with `datetime.strptime(value, "%Y-%m-%d")`.
 - **`openet_et_mm` rule:** the column must exist; individual values may be blank (counted against "OpenET completeness"); any non-blank value must parse as a float.
-- **Strictness (Phase 1):** structure + type + duplicate `(site_id, date)` only. No domain-range checks (e.g. ET ≥ 0, NDVI ∈ [-1, 1]).
+- **Numeric values:** non-blank numeric cells must parse as a float AND be finite — `nan`/`inf`/`-inf` are rejected with row context (they are never valid ET data).
+- **Strictness (Phase 1):** structure + type + finiteness + duplicate `(site_id, date)` only. No domain-range checks (e.g. ET ≥ 0, NDVI ∈ [-1, 1]). Ragged rows (wrong column count) stay lenient: missing trailing cells read as blank.
 - **CLI exit codes:** `0` valid · `1` invalid content · `2` usage/IO error.
 - **Style:** stdlib idioms, 4-space indent, double-quoted strings, `from __future__ import annotations` at the top of modules using PEP 585/604 annotations.
 
@@ -391,6 +393,28 @@ def test_non_numeric_optional_columns_fail(tmp_path):
     assert any("measured_et_mm" in e for e in result.errors)
 
 
+def test_non_finite_numeric_fails(tmp_path):
+    content = HEADER + "2024-06-01,field_001,nan,5.8,0.71,\n"
+    result = validate_csv(write_csv(tmp_path, content))
+    assert not result.is_valid
+    assert any("row 2" in e and "non-finite" in e and "openet_et_mm" in e for e in result.errors)
+
+
+def test_inf_numeric_fails(tmp_path):
+    content = HEADER + "2024-06-01,field_001,inf,5.8,0.71,\n"
+    result = validate_csv(write_csv(tmp_path, content))
+    assert not result.is_valid
+    assert any("non-finite" in e for e in result.errors)
+
+
+def test_utf8_bom_header_is_handled(tmp_path):
+    # Excel prepends a UTF-8 BOM; it must not become part of the first header name.
+    content = "\ufeff" + HEADER + "2024-06-01,field_001,5.2,5.8,0.71,\n"
+    result = validate_csv(write_csv(tmp_path, content))
+    assert result.is_valid
+    assert result.report.row_count == 1
+
+
 def test_empty_file_fails(tmp_path):
     result = validate_csv(write_csv(tmp_path, ""))
     assert not result.is_valid
@@ -473,6 +497,7 @@ Create `src/mlet/validator.py`:
 from __future__ import annotations
 
 import csv
+import math
 from datetime import datetime
 
 from mlet import schema
@@ -490,7 +515,8 @@ def validate_csv(path):
 
     Raises OSError only when the file cannot be opened.
     """
-    with open(path, newline="", encoding="utf-8") as f:
+    # utf-8-sig transparently strips an Excel-exported BOM; behaves like utf-8 otherwise.
+    with open(path, newline="", encoding="utf-8-sig") as f:
         rows = list(csv.reader(f))
 
     if not rows:
@@ -542,9 +568,12 @@ def validate_csv(path):
             if raw == "":
                 continue
             try:
-                float(raw)
+                value = float(raw)
             except ValueError:
                 errors.append(f"row {line_no}: non-numeric {name} {raw!r}")
+                continue
+            if not math.isfinite(value):
+                errors.append(f"row {line_no}: non-finite {name} {raw!r}")
 
         if date_ok:
             key = (site_val, date_val)
@@ -600,7 +629,7 @@ Note on the date-range comparison: it runs only after a successful `strptime`, s
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `python3 -m pytest tests/test_validator.py -q`
-Expected: PASS (12 passed).
+Expected: PASS (15 passed).
 
 - [ ] **Step 6: Commit**
 
@@ -666,6 +695,15 @@ def test_file_not_found_returns_2(tmp_path, capsys):
     code = main(["validate-csv", str(tmp_path / "missing.csv")])
     assert code == 2
     assert "cannot read" in capsys.readouterr().err
+
+
+def test_error_display_is_capped(tmp_path, capsys):
+    # 25 rows with an invalid date -> 25 errors, more than MAX_DISPLAYED_ERRORS (20).
+    bad_rows = "bad-date,field_001,5.2,5.8,0.71,\n" * 25
+    code = main(["validate-csv", write_csv(tmp_path, HEADER + bad_rows)])
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "... and 5 more" in err
 
 
 def test_module_entrypoint_matches_main(tmp_path):
@@ -750,7 +788,7 @@ if __name__ == "__main__":
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `python3 -m pytest tests/test_cli.py -q`
-Expected: PASS (5 passed). (The `python -m mlet` subprocess test relies on the editable install from Task 1.)
+Expected: PASS (6 passed). (The `python -m mlet` subprocess test relies on the editable install from Task 1.)
 
 - [ ] **Step 5: Commit**
 
@@ -804,7 +842,7 @@ Run each command and confirm the expected result:
 
 ```bash
 python3 -m compileall -q src tests        # expect: no output, exit 0
-python3 -m pytest -q                        # expect: 25 passed
+python3 -m pytest -q                        # expect: 29 passed
 mlet validate-csv examples/et_timeseries_template.csv   # expect: report printed, label_ready: false, exit 0
 ```
 
@@ -838,4 +876,75 @@ git commit -m "docs(mlet): document Phase 1 ET CSV validation usage"
 
 **3. Type consistency** — names match across tasks: `ValidationResult(is_valid, errors, report)`, `ValidationReport(row_count, site_count, sites, openet_present, eto_present, ndvi_present, measured_present, label_ready)`, `SiteSummary(site_id, row_count, first_date, last_date)`, `validate_csv(path) -> ValidationResult`, `cli.main(argv) -> int`. Schema constant names (`REQUIRED_COLUMNS`, `NUMERIC_COLUMNS`, `DATE_COLUMN`, …) are used identically in `validator.py`.
 
-Total expected test count across the suite: 5 (package) + 3 (report) + 12 (validator) + 5 (cli) = 25.
+Total expected test count across the suite: 5 (package) + 3 (report) + 15 (validator) + 6 (cli) = 29.
+
+### Post-review additions (from /plan-eng-review)
+- `encoding="utf-8-sig"` so Excel BOM does not corrupt the header (Task 3) — test `test_utf8_bom_header_is_handled`.
+- Reject non-finite numerics via `math.isfinite` (Task 3) — tests `test_non_finite_numeric_fails`, `test_inf_numeric_fails`.
+- Cover the CLI error-display cap branch (Task 4) — test `test_error_display_is_capped`.
+- Ragged rows reviewed and intentionally left lenient (Global Constraints).
+
+---
+
+## NOT in scope (considered and deferred)
+
+- **Streaming / chunked CSV reading** — Phase 1 files are template-scale; `list(csv.reader(f))` is fine. Revisit when field-season-scale data arrives.
+- **Domain-range checks** (ET ≥ 0, NDVI ∈ [-1, 1], future-dated rows) — deferred; better added later as non-fatal warnings than baked-in hard fails now.
+- **Ragged-row rejection** — reviewed; intentionally lenient (missing trailing cells read as blank).
+- **Alternate delimiters** (`;` for EU Excel locales), alternate date formats, `--json` output — YAGNI for Phase 1; the contract is comma-delimited ISO CSV.
+- **pandas / numpy** — deferred to modeling phases per the approved spec.
+
+## What already exists
+
+- **`vendor/pyfao56`** — FAO-56 water balance math. Unrelated to CSV validation; correctly **not reused** and left untouched.
+- **`README.md`** — broader project direction. Task 5 appends a Phase 1 usage note; existing sections untouched.
+- **No prior MLET package / CSV schema / validator** — confirmed greenfield. Nothing is rebuilt.
+
+## Failure modes
+
+| Codepath | Failure | Test | Error handling | User sees |
+|----------|---------|------|----------------|-----------|
+| `open()` | file missing/locked | ✓ | ✓ OSError→exit 2 | clear "cannot read" |
+| header parse | Excel BOM | ✓ (added) | ✓ utf-8-sig | **now correct** (was critical gap) |
+| numeric parse | `nan`/`inf` | ✓ (added) | ✓ isfinite | row-context error |
+| numeric parse | non-numeric string | ✓ | ✓ | row-context error |
+| row width | truncated row | — | lenient (by decision) | counts as incomplete |
+
+No remaining critical gaps: the one critical gap (BOM, silent misleading error) is now closed.
+
+## Worktree parallelization strategy
+
+| Step | Modules touched | Depends on |
+|------|-----------------|------------|
+| Task 1 scaffold + schema | `pyproject.toml`, `src/mlet/` | — |
+| Task 2 report | `src/mlet/report.py` | Task 1 |
+| Task 3 validator + template | `src/mlet/validator.py`, `examples/` | Tasks 1, 2 |
+| Task 4 cli | `src/mlet/cli.py`, `src/mlet/__main__.py` | Task 3 |
+| Task 5 readme + verify | `README.md` | Task 4 |
+
+**Sequential implementation, no meaningful parallelization opportunity** — every task shares the `src/mlet/` module and builds on the prior task's types (report ← validator ← cli). Worktree isolation would add overhead with no wall-clock gain.
+
+## Implementation Tasks (synthesized from review)
+
+All three review findings are folded directly into the plan tasks above — no separate follow-up work:
+
+- [ ] **T1 (P1, human ~20m / CC ~5m)** — validator — utf-8-sig encoding + BOM test. Surfaced by: Architecture review (BOM blind spot). Files: `src/mlet/validator.py`, `tests/test_validator.py`. Verify: `pytest tests/test_validator.py::test_utf8_bom_header_is_handled`.
+- [ ] **T2 (P2, human ~15m / CC ~5m)** — validator — `math.isfinite` guard + nan/inf tests. Surfaced by: Code quality (float accepts nan/inf). Files: `src/mlet/validator.py`, `tests/test_validator.py`. Verify: `pytest tests/test_validator.py -k non_finite or inf`.
+- [ ] **T3 (P2, human ~10m / CC ~3m)** — cli — cover error-display cap branch. Surfaced by: Test review (untested `if remaining > 0`). Files: `tests/test_cli.py`. Verify: `pytest tests/test_cli.py::test_error_display_is_capped`.
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | not run |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | not run |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR | 4 issues (1 P1, 2 P2, 1 P3-noted); 1 critical gap closed |
+| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | n/a (no UI) |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | not run |
+
+- **Scope:** accepted as-is (no reduction needed; new-package multi-file layout is appropriate).
+- **Decisions:** BOM → utf-8-sig (accepted); nan/inf → reject (accepted); ragged rows → keep lenient (accepted).
+- **UNRESOLVED:** none.
+- **Critical gaps:** 0 remaining (BOM gap closed).
+- **Outside voice:** not run (small, self-authored stdlib plan; offer stands if you want a Codex second opinion).
+- **VERDICT:** ENG CLEARED — ready to implement.
