@@ -1,7 +1,7 @@
 # MLET Phase 1 — ET time-series CSV validator (design)
 
 Date: 2026-06-28
-Status: Approved (design); pending implementation plan
+Status: Approved; reviewed (engineering + grilling passes); ready to implement
 Source plan: `MLETP1.md`
 
 ## Purpose
@@ -34,32 +34,65 @@ measured-ET availability is reported honestly — all covered by tests.
 - Web app, dashboard, or interactive UI.
 - Helios integration, soil-water deficit, or irrigation logic.
 - Manuscript results or scientific claims.
-- Domain-range value checks (e.g. ET ≥ 0, NDVI ∈ [-1, 1]). Deferred; may later
-  be added as **non-fatal warnings**.
+- Agronomic range checks (typical NDVI ranges, sane ET ceilings, future dates)
+  and an upper ET corruption ceiling (to catch positive sentinels like `9999`).
+  Deferred; may later be added as **non-fatal warnings**. (Physical-impossibility
+  bounds — ET ≥ 0, NDVI ∈ [-1, 1] — **are** in scope as hard errors; see Decisions.)
+- Provenance / latency field (`as_of` / `source`, à la pyfao56 `MorP`). Reserved
+  as the named first schema extension; introduced when assimilation work begins.
+- Canonical loader / typed record types. Phase 1 ships only the internal
+  `_read_rows` parse seam; the loader is built when the adapter/modeling phase
+  has a real consumer.
+- Batch / multi-file CLI, `--json` output, `--na-value` declaration, alternate
+  delimiters. Deferred — Phase 1 is single-file, text output, comma CSV.
 
 ## Decisions
 
 These were confirmed with the project owner before implementation:
 
 1. **Dependencies:** pure Python standard library only (`csv`, `datetime`,
-   `argparse`). No third-party install dependencies. pandas/numpy are deferred
-   to later phases when modeling begins.
-2. **Validation strictness (Phase 1):** structure + type + duplicate detection
-   only. Domain/range plausibility checks are explicitly out of scope for now.
+   `argparse`, `math`). No third-party install dependencies. pandas/numpy are
+   deferred to later phases when modeling begins.
+2. **Validation strictness (Phase 1):** structure + type + finiteness + physical
+   validity + duplicate detection. Physical-impossibility bounds (`ET ≥ 0`,
+   `NDVI ∈ [-1, 1]`) are hard errors; agronomic plausibility ranges remain out of
+   scope.
 3. **Packaging:** top-level PEP 621 `pyproject.toml` (not the older `setup.cfg`
    style used by the vendored `pyfao56`), because the plan calls for
    `pyproject.toml` to hold metadata, the console script, and pytest config.
+4. **Format role:** the contract is an **interchange/validation format** between
+   raw source exports (OpenET, flux) and pyfao56's internal model — it matches
+   neither directly (`eto_mm` ⇄ pyfao56 `ETref`). An **adapter/normalization
+   layer** is the planned next piece; the validator stays simple.
+5. **Validation-only with a clean seam:** Phase 1 validates; it does not build a
+   loader or record types. The row read/parse lives in one internal helper
+   (`_read_rows`) and `schema.py` is the single source of truth, so the future
+   adapter reuses the parse without a rewrite.
+6. **Encoding:** read with `encoding="utf-8-sig"` so an Excel-exported BOM is
+   stripped (a BOM is not whitespace and would otherwise corrupt the first
+   header name).
+7. **Labels:** the report carries `has_measured_labels` (presence), not
+   `label_ready` — a single stray label is not training-readiness, and the
+   project principle is to make no such claim. A coverage-gated `label_ready`
+   returns in a later phase.
+8. **Temporal density:** the report includes per-site density (calendar-day span
+   vs row count), non-fatal — surfaces gappy series without rejecting them.
+9. **CLI surface / output:** single-file CLI and human-readable text for Phase 1.
+   Batch and `--json` are thin, non-churning additions deferred until needed.
 
 ### Resolved ambiguities
 - **`openet_et_mm` "required":** the *column* is required to exist in the
   header. Individual *values* may be blank; blanks are permitted but counted
   against the reported "OpenET completeness" metric. Any non-blank value must be
-  numeric. This keeps "OpenET completeness" a meaningful metric and matches the
-  project's "report honestly" principle. (If every row should instead be forced
-  to carry a value, that becomes a hard-fail rule — not adopted here.)
+  numeric and finite. This keeps "OpenET completeness" a meaningful metric and
+  matches the project's "report honestly" principle.
 - **Date format:** strict ISO `YYYY-MM-DD` only, matching the template. Parsed
   with `datetime.strptime(value, "%Y-%m-%d")` for version-independent
   strictness. Any other format fails with row context.
+- **Nodata sentinels:** caught by physics, not a guessed list — a `-9999` ET
+  trips `ET ≥ 0` and a `-9999`/`9999` NDVI trips `[-1, 1]`. A *positive* ET
+  sentinel (`9999`) is a known, documented gap (no upper ET ceiling yet); the
+  adapter normalizes source fills to blank meanwhile.
 
 ## CSV contract
 
@@ -75,10 +108,14 @@ date,site_id,openet_et_mm,eto_mm,ndvi,measured_et_mm
 | ---------------- | -------- | --------------- | ------------------------------------------------ |
 | `date`           | yes      | `YYYY-MM-DD`    | Daily date.                                       |
 | `site_id`        | yes      | string          | Field/site/tower/location identifier.            |
-| `openet_et_mm`   | yes (col)| number ≥ blank  | Historical OpenET ET (mm). Blanks reduce completeness; non-blank must be numeric. |
-| `eto_mm`         | no       | number or blank | Reference ET (mm).                                |
-| `ndvi`           | no       | number or blank | Vegetation index.                                 |
-| `measured_et_mm` | no       | number or blank | Independent measured ET label.                    |
+| `openet_et_mm`   | yes (col)| number ≥ 0 or blank | Historical OpenET ET (mm). Blanks reduce completeness; non-blank must be finite and ≥ 0. |
+| `eto_mm`         | no       | number ≥ 0 or blank | Reference ET (mm). Maps to pyfao56 `ETref`.       |
+| `ndvi`           | no       | number ∈ [-1, 1] or blank | Vegetation index (mathematically bounded).  |
+| `measured_et_mm` | no       | number ≥ 0 or blank | Independent measured ET label.                    |
+
+Source-specific nodata fill values (e.g. `-9999`) must already be normalized to
+blank by the adapter before a file reaches this contract; negative fills are also
+caught as physical-validity errors.
 
 ## Architecture
 
@@ -90,9 +127,9 @@ narrow interface.
 pyproject.toml                          # PEP 621 metadata, console script, pytest config
 src/mlet/__init__.py                    # __version__ = "0.1.0"
 src/mlet/__main__.py                    # enables `python -m mlet ...`
-src/mlet/schema.py                      # column names, required/optional sets, DATE_FORMAT
-src/mlet/validator.py                   # validate_csv(path) -> ValidationResult
-src/mlet/report.py                      # ValidationResult + ValidationReport dataclasses + text rendering
+src/mlet/schema.py                      # column names, required/numeric/non-negative sets, NDVI bounds, DATE_FORMAT
+src/mlet/validator.py                   # _read_rows seam + validate_csv(path) -> ValidationResult
+src/mlet/report.py                      # ValidationResult + ValidationReport + SiteSummary dataclasses + text rendering
 src/mlet/cli.py                         # argparse, main(argv) -> exit code
 examples/et_timeseries_template.csv     # OpenET-only template (no measured ET)
 tests/test_validator.py                 # unit coverage of every validator branch
@@ -104,16 +141,19 @@ dependencies and does not import `pyfao56`.
 
 ### Module responsibilities
 
-- **`schema.py`** — the data contract as constants: `DATE_COLUMN`,
-  `SITE_COLUMN`, required column list, optional numeric column list, the full
-  ordered column list, and `DATE_FORMAT = "%Y-%m-%d"`. No logic.
-- **`validator.py`** — `validate_csv(path) -> ValidationResult`. Reads the CSV
-  with the stdlib `csv` module, accumulates errors, and (when valid) computes a
-  `ValidationReport`. Raises only on I/O failure (e.g. file unreadable); the
-  caller handles that.
-- **`report.py`** — `ValidationResult` (is_valid, errors, report) and
-  `ValidationReport` (the stats) dataclasses, plus a `to_text()` renderer.
-  Keeping the report as structured data makes a future `--json` flag trivial.
+- **`schema.py`** — the data contract as constants: column names,
+  `REQUIRED_COLUMNS`, `NUMERIC_COLUMNS`, `NONNEGATIVE_COLUMNS`, `NDVI_MIN`/
+  `NDVI_MAX`, `ALL_COLUMNS`, and `DATE_FORMAT = "%Y-%m-%d"`. The single source of
+  truth the validator and the future adapter both import. No logic.
+- **`validator.py`** — `_read_rows(path)` (the shared parse seam: open with
+  `utf-8-sig`, headerize, return data rows) plus
+  `validate_csv(path) -> ValidationResult`. Accumulates errors (structure, type,
+  finiteness, physical bounds, duplicates) and, when valid, computes a
+  `ValidationReport` including per-site `span_days`. Raises only on I/O failure.
+- **`report.py`** — `ValidationResult` (is_valid, errors, report),
+  `ValidationReport` (stats + `has_measured_labels`), and `SiteSummary`
+  (per-site span/density) dataclasses, plus a `to_text()` renderer. Keeping the
+  report as structured data makes a future `--json` flag trivial.
 - **`cli.py`** — `main(argv=None) -> int`. argparse with a `validate-csv`
   subcommand taking a path. Catches I/O errors, prints results, returns the
   exit code.
@@ -146,14 +186,16 @@ unreadable file) raise and are caught by the CLI.
 4. **Header but zero data rows** → invalid: `"no usable time-series rows"`.
 5. **Per data row** (1-based row numbers, header = row 1):
    - `date` parses as strict `YYYY-MM-DD`, else error with row context.
-   - `openet_et_mm`: if non-blank, must be numeric (blank allowed, counted as
-     incomplete).
-   - `eto_mm`, `ndvi`, `measured_et_mm`: if non-blank, must be numeric.
+   - Each numeric column, if non-blank, must parse as a float, be finite
+     (`nan`/`inf` rejected), and satisfy physical validity: ET columns
+     (`openet_et_mm`, `eto_mm`, `measured_et_mm`) `≥ 0`; `ndvi` ∈ `[-1, 1]`.
+     Blanks are allowed and counted as incomplete.
    - `(site_id, date)` must be unique; a repeat is a duplicate error with row
      context.
-6. If any row/duplicate errors accumulated → invalid (display capped, with a
-   "… and N more" note when exceeded; full count retained in the result).
-7. If valid → compute and return the report.
+6. If any row/duplicate errors accumulated → invalid (display capped at the CLI,
+   with a "… and N more" note when exceeded; full count retained in the result).
+7. If valid → compute the report, including per-site `span_days` (from parsed
+   `date` objects) for temporal density, and return it.
 
 ## Validation report (valid files)
 
@@ -161,13 +203,15 @@ Rendered to stdout via `ValidationReport.to_text()`:
 
 - Row count (data rows).
 - Site count.
-- Per-site date range and row count: `field_001: 2024-06-01 → 2024-06-30 (30 rows)`.
+- Per-site date range, row count, and temporal density:
+  `field_001: 2024-06-01 -> 2024-06-30 (30-day span, 28 rows, 93% dense)`.
 - OpenET completeness: `n/N (pct)` non-blank `openet_et_mm`.
 - ETo availability: `n/N (pct)` non-blank `eto_mm`.
 - NDVI availability: `n/N (pct)` non-blank `ndvi`.
 - Measured-ET availability: `n/N (pct)` non-blank `measured_et_mm`.
-- `label_ready`: `true` **iff** at least one usable (non-blank, numeric)
-  `measured_et_mm` value exists; otherwise `false`.
+- `has_measured_labels`: `true` **iff** at least one usable (non-blank, numeric)
+  `measured_et_mm` value exists; otherwise `false`. (Presence, not training-
+  readiness.)
 
 ## Data flow
 
@@ -222,26 +266,35 @@ pytest, with `tmp_path` fixtures writing CSV inputs. One assertion-bearing test
 per branch:
 
 **Validator (`tests/test_validator.py`)**
-- Valid OpenET-only template → valid, `label_ready=false`.
-- Valid file with measured ET → valid, `label_ready=true`.
+- Valid OpenET-only template → valid, `has_measured_labels=false`.
+- Valid file with measured ET → valid, `has_measured_labels=true`.
+- Blank `openet_et_mm` value → valid, lowers OpenET completeness.
 - Missing `date` / `site_id` / `openet_et_mm` → invalid, names the missing
   column(s).
 - Non-numeric `openet_et_mm` / `eto_mm` / `ndvi` / `measured_et_mm` → invalid
   with row context.
+- Non-finite (`nan`, `inf`) numeric → invalid with row context.
+- Negative ET / `-9999` nodata sentinel → invalid (`>= 0`).
+- NDVI outside `[-1, 1]` → invalid.
+- Positive ET sentinel (`9999`) → currently valid (documents the known gap).
+- UTF-8 BOM header → still validates.
 - Empty file → invalid, clear message.
 - Header-only file → invalid, "no usable time-series rows".
 - Duplicate `(site_id, date)` → invalid with row context.
 - Invalid date format → invalid with row context.
-- Report stats (row/site counts, per-site date range, completeness/availability)
-  on a known small file.
+- Report stats (counts, per-site date range, completeness/availability) and
+  per-site temporal density (gappy site → span > rows) on known small files.
 
 **CLI (`tests/test_cli.py`)**
 - `validate-csv` on the template → exit 0.
 - `validate-csv` on an invalid file → exit 1.
+- Long error list → capped output with a "… and N more" note.
 - Missing argument → exit 2.
 - File-not-found → exit 2.
 - Both `mlet validate-csv …` and `python -m mlet validate-csv …` exercise the
   same validator path (same outcome on the same input).
+
+Total: ~35 tests (6 package, 3 report, 20 validator, 6 CLI).
 
 ### Verification commands
 ```bash
@@ -254,8 +307,10 @@ mlet validate-csv examples/et_timeseries_template.csv
 
 - Repo installs locally as a small Python package (`pip install -e .`).
 - One command validates an ET time-series CSV.
-- Invalid CSVs fail with clear, named messages and a nonzero exit code.
-- Valid OpenET-history files pass and report `label_ready=false`.
-- Measured-ET availability is reported honestly.
+- Invalid CSVs fail with clear, row-referenced messages and a nonzero exit code.
+- Valid OpenET-history files pass and report `has_measured_labels=false`.
+- Measured-ET availability and per-site temporal density are reported honestly.
+- Spreadsheet exports (UTF-8 BOM) and physically-impossible values / negative
+  nodata sentinels (`-9999`) are handled.
 - Every validator and CLI branch is covered by a test.
 - No synthetic data; no scientific claims.

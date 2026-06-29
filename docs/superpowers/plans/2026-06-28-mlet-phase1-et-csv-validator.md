@@ -17,7 +17,11 @@
 - **Date format:** strict ISO `YYYY-MM-DD`, parsed with `datetime.strptime(value, "%Y-%m-%d")`.
 - **`openet_et_mm` rule:** the column must exist; individual values may be blank (counted against "OpenET completeness"); any non-blank value must parse as a float.
 - **Numeric values:** non-blank numeric cells must parse as a float AND be finite — `nan`/`inf`/`-inf` are rejected with row context (they are never valid ET data).
-- **Strictness (Phase 1):** structure + type + finiteness + duplicate `(site_id, date)` only. No domain-range checks (e.g. ET ≥ 0, NDVI ∈ [-1, 1]). Ragged rows (wrong column count) stay lenient: missing trailing cells read as blank.
+- **Physical validity:** ET columns (`openet_et_mm`, `eto_mm`, `measured_et_mm`) must be `>= 0`; `ndvi` must be in `[-1, 1]`. Violations are hard errors — this catches negative nodata sentinels (e.g. `-9999`) by physics, not by a guessed sentinel list. Positive ET sentinels (e.g. `9999`) and agronomic plausibility ranges are deferred.
+- **Strictness (Phase 1):** structure + type + finiteness + physical validity + duplicate `(site_id, date)`. No agronomic range checks yet. Ragged rows (wrong column count) stay lenient: missing trailing cells read as blank.
+- **Labels:** the report carries a presence flag `has_measured_labels` (true iff any usable `measured_et_mm` value exists). A coverage-gated `label_ready` is deferred to a later phase.
+- **Temporal density:** the report includes per-site density (calendar-day span vs row count), non-fatal — surfaces gappy series without rejecting them.
+- **Format role:** the contract is an interchange/validation format sitting between raw source exports and pyfao56's internal model (`eto_mm` maps to pyfao56 `ETref`). An adapter/normalization layer and a provenance/latency field (à la pyfao56 `MorP`) are the planned next extensions, not Phase 1. `validate_csv` shares a `_read_rows` seam and uses `schema.py` as the single source of truth so the future adapter can reuse the parse.
 - **CLI exit codes:** `0` valid · `1` invalid content · `2` usage/IO error.
 - **Style:** stdlib idioms, 4-space indent, double-quoted strings, `from __future__ import annotations` at the top of modules using PEP 585/604 annotations.
 
@@ -35,7 +39,7 @@
 - Consumes: nothing.
 - Produces:
   - `mlet.__version__: str`
-  - `mlet.schema` constants: `DATE_COLUMN`, `SITE_COLUMN`, `OPENET_COLUMN`, `ETO_COLUMN`, `NDVI_COLUMN`, `MEASURED_COLUMN` (all `str`); `REQUIRED_COLUMNS: tuple[str, ...]` = `("date", "site_id", "openet_et_mm")`; `NUMERIC_COLUMNS: tuple[str, ...]` = `("openet_et_mm", "eto_mm", "ndvi", "measured_et_mm")`; `ALL_COLUMNS: tuple[str, ...]` (full ordered header); `DATE_FORMAT: str` = `"%Y-%m-%d"`.
+  - `mlet.schema` constants: `DATE_COLUMN`, `SITE_COLUMN`, `OPENET_COLUMN`, `ETO_COLUMN`, `NDVI_COLUMN`, `MEASURED_COLUMN` (all `str`); `REQUIRED_COLUMNS: tuple[str, ...]` = `("date", "site_id", "openet_et_mm")`; `NUMERIC_COLUMNS: tuple[str, ...]` = `("openet_et_mm", "eto_mm", "ndvi", "measured_et_mm")`; `NONNEGATIVE_COLUMNS: tuple[str, ...]` = `("openet_et_mm", "eto_mm", "measured_et_mm")`; `NDVI_MIN: float` = `-1.0`; `NDVI_MAX: float` = `1.0`; `ALL_COLUMNS: tuple[str, ...]` (full ordered header); `DATE_FORMAT: str` = `"%Y-%m-%d"`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -77,6 +81,11 @@ def test_all_columns_order():
 
 def test_date_format_is_strict_iso():
     assert schema.DATE_FORMAT == "%Y-%m-%d"
+
+
+def test_physical_bounds_contract():
+    assert schema.NONNEGATIVE_COLUMNS == ("openet_et_mm", "eto_mm", "measured_et_mm")
+    assert (schema.NDVI_MIN, schema.NDVI_MAX) == (-1.0, 1.0)
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -137,6 +146,13 @@ REQUIRED_COLUMNS = (DATE_COLUMN, SITE_COLUMN, OPENET_COLUMN)
 # Columns whose non-blank values must parse as floats.
 NUMERIC_COLUMNS = (OPENET_COLUMN, ETO_COLUMN, NDVI_COLUMN, MEASURED_COLUMN)
 
+# ET columns (mm) are physically non-negative.
+NONNEGATIVE_COLUMNS = (OPENET_COLUMN, ETO_COLUMN, MEASURED_COLUMN)
+
+# NDVI is a normalized ratio, mathematically bounded to [-1, 1].
+NDVI_MIN = -1.0
+NDVI_MAX = 1.0
+
 # Full ordered contract, used for the example template.
 ALL_COLUMNS = (
     DATE_COLUMN,
@@ -159,7 +175,7 @@ Expected: `Successfully installed mlet-0.1.0`.
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `python3 -m pytest tests/test_package.py -q`
-Expected: PASS (5 passed).
+Expected: PASS (6 passed).
 
 - [ ] **Step 6: Commit**
 
@@ -179,8 +195,8 @@ git commit -m "feat(mlet): scaffold package and ET CSV schema contract"
 **Interfaces:**
 - Consumes: nothing (pure dataclasses).
 - Produces:
-  - `SiteSummary(site_id: str, row_count: int, first_date: str, last_date: str)`
-  - `ValidationReport(row_count: int, site_count: int, sites: list[SiteSummary], openet_present: int, eto_present: int, ndvi_present: int, measured_present: int, label_ready: bool)` with method `to_text() -> str`.
+  - `SiteSummary(site_id: str, row_count: int, first_date: str, last_date: str, span_days: int)`
+  - `ValidationReport(row_count: int, site_count: int, sites: list[SiteSummary], openet_present: int, eto_present: int, ndvi_present: int, measured_present: int, has_measured_labels: bool)` with method `to_text() -> str`. The per-site line reports temporal density (span vs rows).
   - `ValidationResult(is_valid: bool, errors: list[str] = [], report: ValidationReport | None = None)`.
 
 - [ ] **Step 1: Write the failing test**
@@ -195,12 +211,12 @@ def make_report():
     return ValidationReport(
         row_count=2,
         site_count=1,
-        sites=[SiteSummary("field_001", 2, "2024-06-01", "2024-06-02")],
+        sites=[SiteSummary("field_001", 2, "2024-06-01", "2024-06-02", span_days=2)],
         openet_present=2,
         eto_present=2,
         ndvi_present=2,
         measured_present=0,
-        label_ready=False,
+        has_measured_labels=False,
     )
 
 
@@ -208,11 +224,11 @@ def test_report_to_text_contains_key_lines():
     text = make_report().to_text()
     assert "rows: 2" in text
     assert "sites: 1" in text
-    assert "field_001: 2024-06-01 -> 2024-06-02 (2 rows)" in text
+    assert "field_001: 2024-06-01 -> 2024-06-02 (2-day span, 2 rows, 100% dense)" in text
     assert "OpenET completeness: 2/2 (100.0%)" in text
     assert "ETo availability: 2/2 (100.0%)" in text
     assert "measured ET availability: 0/2 (0.0%)" in text
-    assert "label_ready: false" in text
+    assert "has_measured_labels: false" in text
 
 
 def test_ratio_handles_zero_rows():
@@ -224,7 +240,7 @@ def test_ratio_handles_zero_rows():
         eto_present=0,
         ndvi_present=0,
         measured_present=0,
-        label_ready=False,
+        has_measured_labels=False,
     )
     assert "OpenET completeness: 0/0 (0.0%)" in report.to_text()
 
@@ -258,6 +274,7 @@ class SiteSummary:
     row_count: int
     first_date: str
     last_date: str
+    span_days: int
 
 
 @dataclass
@@ -269,7 +286,7 @@ class ValidationReport:
     eto_present: int
     ndvi_present: int
     measured_present: int
-    label_ready: bool
+    has_measured_labels: bool
 
     def to_text(self) -> str:
         lines = [
@@ -277,8 +294,10 @@ class ValidationReport:
             f"sites: {self.site_count}",
         ]
         for s in self.sites:
+            density = (s.row_count / s.span_days * 100) if s.span_days else 0.0
             lines.append(
-                f"  {s.site_id}: {s.first_date} -> {s.last_date} ({s.row_count} rows)"
+                f"  {s.site_id}: {s.first_date} -> {s.last_date} "
+                f"({s.span_days}-day span, {s.row_count} rows, {density:.0f}% dense)"
             )
         lines.append(f"OpenET completeness: {_ratio(self.openet_present, self.row_count)}")
         lines.append(f"ETo availability: {_ratio(self.eto_present, self.row_count)}")
@@ -286,7 +305,7 @@ class ValidationReport:
         lines.append(
             f"measured ET availability: {_ratio(self.measured_present, self.row_count)}"
         )
-        lines.append(f"label_ready: {str(self.label_ready).lower()}")
+        lines.append(f"has_measured_labels: {str(self.has_measured_labels).lower()}")
         return "\n".join(lines)
 
 
@@ -324,8 +343,8 @@ git commit -m "feat(mlet): add validation result and report types"
 - Test: `tests/test_validator.py`
 
 **Interfaces:**
-- Consumes: `mlet.schema` constants; `mlet.report.SiteSummary`, `ValidationReport`, `ValidationResult`.
-- Produces: `validate_csv(path: str | os.PathLike) -> ValidationResult`. Returns `is_valid=False` with `errors` for structural/type/duplicate problems; returns `is_valid=True` with a populated `report` otherwise. Raises `OSError` only when the file cannot be opened.
+- Consumes: `mlet.schema` constants (names + `NONNEGATIVE_COLUMNS` / `NDVI_MIN` / `NDVI_MAX` bounds); `mlet.report.SiteSummary`, `ValidationReport`, `ValidationResult`.
+- Produces: `validate_csv(path: str | os.PathLike) -> ValidationResult`. Returns `is_valid=False` with `errors` for structural/type/finiteness/physical-validity/duplicate problems; returns `is_valid=True` with a populated `report` (including per-site `span_days`) otherwise. Raises `OSError` only when the file cannot be opened. Internal `_read_rows(path)` is the shared parse seam for the future adapter.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -346,19 +365,19 @@ def write_csv(tmp_path: Path, content: str) -> str:
     return str(p)
 
 
-def test_valid_openet_only_template_is_valid_and_not_label_ready(tmp_path):
+def test_valid_openet_only_template_has_no_measured_labels(tmp_path):
     result = validate_csv(write_csv(tmp_path, TEMPLATE))
     assert result.is_valid
-    assert result.report.label_ready is False
+    assert result.report.has_measured_labels is False
     assert result.report.row_count == 2
     assert result.report.site_count == 1
 
 
-def test_measured_et_present_is_label_ready(tmp_path):
+def test_measured_et_present_sets_has_measured_labels(tmp_path):
     content = HEADER + "2024-06-01,field_001,5.2,5.8,0.71,5.0\n"
     result = validate_csv(write_csv(tmp_path, content))
     assert result.is_valid
-    assert result.report.label_ready is True
+    assert result.report.has_measured_labels is True
     assert result.report.measured_present == 1
 
 
@@ -391,6 +410,46 @@ def test_non_numeric_optional_columns_fail(tmp_path):
     assert any("eto_mm" in e for e in result.errors)
     assert any("ndvi" in e for e in result.errors)
     assert any("measured_et_mm" in e for e in result.errors)
+
+
+def test_negative_et_fails(tmp_path):
+    content = HEADER + "2024-06-01,field_001,-1.0,5.8,0.71,\n"
+    result = validate_csv(write_csv(tmp_path, content))
+    assert not result.is_valid
+    assert any("row 2" in e and "openet_et_mm" in e and ">= 0" in e for e in result.errors)
+
+
+def test_negative_nodata_sentinel_fails(tmp_path):
+    # -9999 is a common nodata fill value; it is physically impossible ET.
+    content = HEADER + "2024-06-01,field_001,-9999,5.8,0.71,\n"
+    result = validate_csv(write_csv(tmp_path, content))
+    assert not result.is_valid
+    assert any(">= 0" in e for e in result.errors)
+
+
+def test_ndvi_out_of_range_fails(tmp_path):
+    content = HEADER + "2024-06-01,field_001,5.2,5.8,1.5,\n"
+    result = validate_csv(write_csv(tmp_path, content))
+    assert not result.is_valid
+    assert any("row 2" in e and "ndvi" in e and "[-1, 1]" in e for e in result.errors)
+
+
+def test_positive_et_sentinel_not_yet_caught(tmp_path):
+    # Documents a known Phase 1 limitation: a positive nodata sentinel (e.g. 9999)
+    # passes the >= 0 check. An upper ET ceiling is deferred to a later phase.
+    content = HEADER + "2024-06-01,field_001,9999,5.8,0.71,\n"
+    result = validate_csv(write_csv(tmp_path, content))
+    assert result.is_valid
+
+
+def test_density_reported_for_gappy_site(tmp_path):
+    # Two rows spanning 10 calendar days -> 10-day span, 2 rows, 20% dense.
+    content = HEADER + "2024-06-01,field_001,5.2,5.8,0.71,\n2024-06-10,field_001,5.5,6.1,0.73,\n"
+    result = validate_csv(write_csv(tmp_path, content))
+    assert result.is_valid
+    site = result.report.sites[0]
+    assert site.span_days == 10
+    assert site.row_count == 2
 
 
 def test_non_finite_numeric_fails(tmp_path):
@@ -464,11 +523,11 @@ def test_report_stats_and_date_range(tmp_path):
     assert by_id["field_002"].row_count == 1
 
 
-def test_shipped_template_validates_and_is_not_label_ready():
+def test_shipped_template_validates_and_has_no_measured_labels():
     repo_root = Path(__file__).resolve().parents[1]
     result = validate_csv(str(repo_root / "examples" / "et_timeseries_template.csv"))
     assert result.is_valid
-    assert result.report.label_ready is False
+    assert result.report.has_measured_labels is False
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -510,19 +569,33 @@ def _cell(row, header_index, name):
     return row[i].strip() if i < len(row) else ""
 
 
+def _read_rows(path):
+    """Read a CSV into (header, header_index, data_rows).
+
+    Shared read seam: a future source adapter reuses this to parse the
+    interchange format without re-implementing CSV reading. `utf-8-sig`
+    transparently strips an Excel-exported BOM. Raises OSError on I/O failure.
+    Returns (None, None, None) for an empty file.
+    """
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        rows = list(csv.reader(f))
+    if not rows:
+        return None, None, None
+    header = [c.strip() for c in rows[0]]
+    header_index = {name: header.index(name) for name in header}
+    return header, header_index, rows[1:]
+
+
 def validate_csv(path):
     """Validate an ET time-series CSV. Returns a ValidationResult.
 
     Raises OSError only when the file cannot be opened.
     """
-    # utf-8-sig transparently strips an Excel-exported BOM; behaves like utf-8 otherwise.
-    with open(path, newline="", encoding="utf-8-sig") as f:
-        rows = list(csv.reader(f))
+    header, header_index, data_rows = _read_rows(path)
 
-    if not rows:
+    if header is None:
         return ValidationResult(is_valid=False, errors=["file is empty"])
 
-    header = [c.strip() for c in rows[0]]
     missing = [c for c in schema.REQUIRED_COLUMNS if c not in header]
     if missing:
         return ValidationResult(
@@ -530,18 +603,16 @@ def validate_csv(path):
             errors=[f"missing required column(s): {', '.join(missing)}"],
         )
 
-    data_rows = rows[1:]
     if not data_rows:
         return ValidationResult(is_valid=False, errors=["no usable time-series rows"])
 
-    header_index = {name: header.index(name) for name in header}
     errors = []
     seen_keys = set()
 
     site_order = []
     site_rows = {}
-    site_first = {}
-    site_last = {}
+    site_min = {}
+    site_max = {}
 
     openet_present = 0
     eto_present = 0
@@ -554,11 +625,10 @@ def validate_csv(path):
         date_val = _cell(row, header_index, schema.DATE_COLUMN)
         site_val = _cell(row, header_index, schema.SITE_COLUMN)
 
-        date_ok = True
+        parsed_date = None
         try:
-            datetime.strptime(date_val, schema.DATE_FORMAT)
+            parsed_date = datetime.strptime(date_val, schema.DATE_FORMAT).date()
         except ValueError:
-            date_ok = False
             errors.append(
                 f"row {line_no}: invalid date {date_val!r} (expected YYYY-MM-DD)"
             )
@@ -574,8 +644,17 @@ def validate_csv(path):
                 continue
             if not math.isfinite(value):
                 errors.append(f"row {line_no}: non-finite {name} {raw!r}")
+                continue
+            # Physical/mathematical validity. Catches negative nodata sentinels
+            # (e.g. -9999) by physics rather than a guessed sentinel list.
+            if name in schema.NONNEGATIVE_COLUMNS and value < 0:
+                errors.append(f"row {line_no}: {name} must be >= 0, got {value}")
+            elif name == schema.NDVI_COLUMN and not (
+                schema.NDVI_MIN <= value <= schema.NDVI_MAX
+            ):
+                errors.append(f"row {line_no}: ndvi must be in [-1, 1], got {value}")
 
-        if date_ok:
+        if parsed_date is not None:
             key = (site_val, date_val)
             if key in seen_keys:
                 errors.append(
@@ -593,24 +672,33 @@ def validate_csv(path):
         if _cell(row, header_index, schema.MEASURED_COLUMN) != "":
             measured_present += 1
 
-        if date_ok:
+        if parsed_date is not None:
             if site_val not in site_rows:
                 site_order.append(site_val)
                 site_rows[site_val] = 0
-                site_first[site_val] = date_val
-                site_last[site_val] = date_val
+                site_min[site_val] = parsed_date
+                site_max[site_val] = parsed_date
             site_rows[site_val] += 1
-            if date_val < site_first[site_val]:
-                site_first[site_val] = date_val
-            if date_val > site_last[site_val]:
-                site_last[site_val] = date_val
+            if parsed_date < site_min[site_val]:
+                site_min[site_val] = parsed_date
+            if parsed_date > site_max[site_val]:
+                site_max[site_val] = parsed_date
 
     if errors:
         return ValidationResult(is_valid=False, errors=errors)
 
-    sites = [
-        SiteSummary(s, site_rows[s], site_first[s], site_last[s]) for s in site_order
-    ]
+    sites = []
+    for s in site_order:
+        span_days = (site_max[s] - site_min[s]).days + 1
+        sites.append(
+            SiteSummary(
+                site_id=s,
+                row_count=site_rows[s],
+                first_date=site_min[s].isoformat(),
+                last_date=site_max[s].isoformat(),
+                span_days=span_days,
+            )
+        )
     report = ValidationReport(
         row_count=len(data_rows),
         site_count=len(site_order),
@@ -619,17 +707,19 @@ def validate_csv(path):
         eto_present=eto_present,
         ndvi_present=ndvi_present,
         measured_present=measured_present,
-        label_ready=measured_present > 0,
+        has_measured_labels=measured_present > 0,
     )
     return ValidationResult(is_valid=True, report=report)
 ```
 
-Note on the date-range comparison: it runs only after a successful `strptime`, so `date_val` is a well-formed `YYYY-MM-DD` string, which sorts chronologically — string comparison is correct here.
+Notes:
+- **`_read_rows` is the shared parse seam** — the future source adapter reuses it to read the interchange format without re-implementing CSV handling; `schema.py` is the single source of truth for column names and bounds.
+- Per-site date range tracks parsed `date` objects (not strings), so `span_days = (last - first).days + 1` gives temporal density directly.
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `python3 -m pytest tests/test_validator.py -q`
-Expected: PASS (15 passed).
+Expected: PASS (20 passed).
 
 - [ ] **Step 6: Commit**
 
@@ -676,7 +766,7 @@ def write_csv(tmp_path: Path, content: str) -> str:
 def test_validate_valid_file_returns_0(tmp_path, capsys):
     code = main(["validate-csv", write_csv(tmp_path, HEADER + "2024-06-01,field_001,5.2,5.8,0.71,\n")])
     assert code == 0
-    assert "label_ready: false" in capsys.readouterr().out
+    assert "has_measured_labels: false" in capsys.readouterr().out
 
 
 def test_validate_invalid_file_returns_1(tmp_path, capsys):
@@ -714,7 +804,7 @@ def test_module_entrypoint_matches_main(tmp_path):
         text=True,
     )
     assert proc.returncode == 0
-    assert "label_ready: false" in proc.stdout
+    assert "has_measured_labels: false" in proc.stdout
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -830,7 +920,7 @@ python3 -m mlet validate-csv examples/et_timeseries_template.csv
 
 The expected CSV columns are `date` (YYYY-MM-DD), `site_id`, `openet_et_mm`
 (required), and optional `eto_mm`, `ndvi`, `measured_et_mm`. A file with no
-measured ET validates structurally but reports `label_ready: false`.
+measured ET validates structurally but reports `has_measured_labels: false`.
 
 See `docs/superpowers/specs/2026-06-28-mlet-phase1-et-csv-validator-design.md`
 for the full data contract and design.
@@ -842,8 +932,8 @@ Run each command and confirm the expected result:
 
 ```bash
 python3 -m compileall -q src tests        # expect: no output, exit 0
-python3 -m pytest -q                        # expect: 29 passed
-mlet validate-csv examples/et_timeseries_template.csv   # expect: report printed, label_ready: false, exit 0
+python3 -m pytest -q                        # expect: 35 passed
+mlet validate-csv examples/et_timeseries_template.csv   # expect: report printed, has_measured_labels: false, exit 0
 ```
 
 - [ ] **Step 3: Confirm the broader repo still compiles**
@@ -866,7 +956,7 @@ git commit -m "docs(mlet): document Phase 1 ET CSV validation usage"
 - CSV contract / schema constants → Task 1 (`schema.py`).
 - Result/report types + text rendering → Task 2 (`report.py`).
 - Validation algorithm (empty, missing columns, header-only, date, numeric, duplicate, blank-OpenET completeness) → Task 3 (`validator.py`) with one test per branch.
-- Report fields (row/site counts, per-site date range, completeness/availability, `label_ready`) → Task 2 rendering + Task 3 computation, asserted in `test_report_stats_and_date_range`.
+- Report fields (row/site counts, per-site date range + temporal density, completeness/availability, `has_measured_labels`) → Task 2 rendering + Task 3 computation, asserted in `test_report_stats_and_date_range` and `test_density_reported_for_gappy_site`.
 - CLI subcommand, both invocation paths, exit codes 0/1/2 → Task 4 (`cli.py`, `__main__.py`).
 - Example template + "shipped template validates" → Task 3.
 - Packaging (PEP 621, src layout, console script, pytest config, zero deps, `>=3.9`) → Task 1 `pyproject.toml`.
@@ -874,9 +964,9 @@ git commit -m "docs(mlet): document Phase 1 ET CSV validation usage"
 
 **2. Placeholder scan** — no TBD/TODO; every code step shows complete file content; every test step shows real assertions.
 
-**3. Type consistency** — names match across tasks: `ValidationResult(is_valid, errors, report)`, `ValidationReport(row_count, site_count, sites, openet_present, eto_present, ndvi_present, measured_present, label_ready)`, `SiteSummary(site_id, row_count, first_date, last_date)`, `validate_csv(path) -> ValidationResult`, `cli.main(argv) -> int`. Schema constant names (`REQUIRED_COLUMNS`, `NUMERIC_COLUMNS`, `DATE_COLUMN`, …) are used identically in `validator.py`.
+**3. Type consistency** — names match across tasks: `ValidationResult(is_valid, errors, report)`, `ValidationReport(row_count, site_count, sites, openet_present, eto_present, ndvi_present, measured_present, has_measured_labels)`, `SiteSummary(site_id, row_count, first_date, last_date, span_days)`, `validate_csv(path) -> ValidationResult`, `cli.main(argv) -> int`. Schema constant names (`REQUIRED_COLUMNS`, `NUMERIC_COLUMNS`, `NONNEGATIVE_COLUMNS`, `NDVI_MIN`, `NDVI_MAX`, `DATE_COLUMN`, …) are used identically in `validator.py`.
 
-Total expected test count across the suite: 5 (package) + 3 (report) + 15 (validator) + 6 (cli) = 29.
+Total expected test count across the suite: 6 (package) + 3 (report) + 20 (validator) + 6 (cli) = 35.
 
 ### Post-review additions (from /plan-eng-review)
 - `encoding="utf-8-sig"` so Excel BOM does not corrupt the header (Task 3) — test `test_utf8_bom_header_is_handled`.
@@ -889,9 +979,14 @@ Total expected test count across the suite: 5 (package) + 3 (report) + 15 (valid
 ## NOT in scope (considered and deferred)
 
 - **Streaming / chunked CSV reading** — Phase 1 files are template-scale; `list(csv.reader(f))` is fine. Revisit when field-season-scale data arrives.
-- **Domain-range checks** (ET ≥ 0, NDVI ∈ [-1, 1], future-dated rows) — deferred; better added later as non-fatal warnings than baked-in hard fails now.
+- **Physical-validity checks** (ET ≥ 0, NDVI ∈ [-1, 1]) — **now in scope** as hard errors (catch negative nodata sentinels by physics).
+- **Agronomic range checks** (typical NDVI ranges, future-dated rows) and an **upper ET corruption ceiling** (e.g. `ET ≤ 50` to catch positive sentinels like `9999`) — deferred; better added later as non-fatal warnings.
+- **Explicit `--na-value`** declaration of source fill values — deferred until a real source needs sentinel-as-missing; the adapter normalizes fills to blank meanwhile.
+- **Provenance / latency** (an `as_of` / `source` field, à la pyfao56 `MorP`) — reserved as the named first schema extension; introduced when assimilation work begins.
+- **Canonical loader / record types** — Phase 1 ships only the internal `_read_rows` parse seam; a typed loader is built when the adapter/modeling phase has a real consumer.
+- **Batch / multi-file CLI** — single-file only; batch is a thin CLI loop over the reusable `validate_csv()` later.
 - **Ragged-row rejection** — reviewed; intentionally lenient (missing trailing cells read as blank).
-- **Alternate delimiters** (`;` for EU Excel locales), alternate date formats, `--json` output — YAGNI for Phase 1; the contract is comma-delimited ISO CSV.
+- **Alternate delimiters** (`;` for EU Excel locales), alternate date formats, `--json` output — YAGNI for Phase 1; the contract is comma-delimited ISO CSV with a structured report object ready for a later `--json`.
 - **pandas / numpy** — deferred to modeling phases per the approved spec.
 
 ## What already exists
@@ -905,12 +1000,15 @@ Total expected test count across the suite: 5 (package) + 3 (report) + 15 (valid
 | Codepath | Failure | Test | Error handling | User sees |
 |----------|---------|------|----------------|-----------|
 | `open()` | file missing/locked | ✓ | ✓ OSError→exit 2 | clear "cannot read" |
-| header parse | Excel BOM | ✓ (added) | ✓ utf-8-sig | **now correct** (was critical gap) |
-| numeric parse | `nan`/`inf` | ✓ (added) | ✓ isfinite | row-context error |
+| header parse | Excel BOM | ✓ | ✓ utf-8-sig | **correct** (was critical gap) |
+| numeric parse | `nan`/`inf` | ✓ | ✓ isfinite | row-context error |
 | numeric parse | non-numeric string | ✓ | ✓ | row-context error |
+| numeric value | negative ET / `-9999` sentinel | ✓ | ✓ `>= 0` check | row-context error |
+| numeric value | NDVI outside `[-1,1]` / sentinel | ✓ | ✓ bounds check | row-context error |
+| numeric value | positive ET sentinel (`9999`) | ✓ (documents gap) | ✗ deferred | **passes** — known Phase-1 limitation |
 | row width | truncated row | — | lenient (by decision) | counts as incomplete |
 
-No remaining critical gaps: the one critical gap (BOM, silent misleading error) is now closed.
+No remaining critical gaps. The one documented residual is the positive-ET sentinel (`9999`), intentionally deferred to a later ET corruption-ceiling / `--na-value`; a test pins the current behavior so it surfaces loudly when that lands.
 
 ## Worktree parallelization strategy
 
@@ -931,6 +1029,21 @@ All three review findings are folded directly into the plan tasks above — no s
 - [ ] **T1 (P1, human ~20m / CC ~5m)** — validator — utf-8-sig encoding + BOM test. Surfaced by: Architecture review (BOM blind spot). Files: `src/mlet/validator.py`, `tests/test_validator.py`. Verify: `pytest tests/test_validator.py::test_utf8_bom_header_is_handled`.
 - [ ] **T2 (P2, human ~15m / CC ~5m)** — validator — `math.isfinite` guard + nan/inf tests. Surfaced by: Code quality (float accepts nan/inf). Files: `src/mlet/validator.py`, `tests/test_validator.py`. Verify: `pytest tests/test_validator.py -k non_finite or inf`.
 - [ ] **T3 (P2, human ~10m / CC ~3m)** — cli — cover error-display cap branch. Surfaced by: Test review (untested `if remaining > 0`). Files: `tests/test_cli.py`. Verify: `pytest tests/test_cli.py::test_error_display_is_capped`.
+
+## Post-grilling refinements
+
+A `/grill-me` pass walked the design tree and folded nine decisions into the plan above. All are reflected in the task code/tests; no separate follow-up tasks.
+
+1. **Interchange format + adapter** — the contract is explicitly an interchange/validation format between raw source exports and pyfao56 (`eto_mm` ⇄ `ETref`); an adapter layer is the planned next piece.
+2. **Validation-only, clean parse seam** — `_read_rows` is the shared seam; `schema.py` is the single source of truth. No loader/record types yet.
+3. **Provenance/latency deferred but reserved** — named first schema extension (à la pyfao56 `MorP` / an `as_of` field).
+4. **`label_ready` → `has_measured_labels`** — presence flag, honest about what Phase 1 can assert; coverage-gated `label_ready` returns later.
+5. **Per-site temporal density** — span vs rows, non-fatal, surfaces gappy series.
+6+7. **Sentinels caught by physics** — `ET ≥ 0`, `NDVI ∈ [-1,1]` as hard errors. Reverses the earlier blanket "defer domain ranges" for the impossible-value subset only; agronomic ranges + positive-ET ceiling + `--na-value` stay deferred (positive-ET sentinel gap documented + pinned by a test).
+8. **CLI stays single-file** — batch deferred.
+9. **Text output now** — `--json` deferred; the report dataclass makes it a trivial later add.
+
+Net effect on tests: **29 → 35** (package 5→6, validator 15→20; renames in cli/report).
 
 ## GSTACK REVIEW REPORT
 
