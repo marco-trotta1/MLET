@@ -32,3 +32,7 @@ ALL_COLUMNS = (
 
 # Strict ISO date format (YYYY-MM-DD).
 DATE_FORMAT = "%Y-%m-%d"
+
+# --- Phase 2 additions ---
+LANDCOVER_CROPLAND = "Croplands"
+MIN_LABELED_DAYS = 30
