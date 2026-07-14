@@ -130,14 +130,23 @@ Present contents:
 
 - top-level project README;
 - vendored `pyfao56` source snapshot;
-- upstream provenance for the vendored dependency.
+- upstream provenance for the vendored dependency;
+- reproducible public OpenET/flux/gridMET ingestion and checksum verification;
+- a typed ET loader, transparent baselines, leakage-controlled evaluation, and
+  a pre-registered Phase 2 daily-ET comparison;
+- [data provenance and coverage notes](docs/data/DATA_CARD.md),
+  [the frozen evaluation design](docs/evaluation/PREREGISTRATION.md), and
+  [generated Phase 2 results](docs/results/phase2_openet_value.md).
+
+Phase 2 finds that, on the 85-station weather-complete public subset, the
+OpenET-inclusive model reduced field-withheld daily-ET MAE by 43.4% relative to
+the best OpenET-free baseline (95% CI 0.399–0.911 mm); this is daily-ET evidence
+only, not validation of soil-moisture forecasts or irrigation decisions.
 
 Not yet present:
 
-- ingestion pipelines;
 - model-training code;
-- OpenET assimilation experiments;
-- pre-registered evaluation artifacts;
+- OpenET assimilation into a soil-moisture water balance;
 - dashboard or forecast output files.
 
 ## Development Notes

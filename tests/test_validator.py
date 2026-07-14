@@ -91,6 +91,13 @@ def test_negative_et_fails(tmp_path):
     )
 
 
+def test_negative_measured_et_is_allowed_for_ebc_tower_labels(tmp_path):
+    content = HEADER + "2024-06-01,field_001,5.2,5.8,0.71,-0.08\n"
+    result = validate_csv(write_csv(tmp_path, content))
+    assert result.is_valid
+    assert result.report.measured_present == 1
+
+
 def test_negative_nodata_sentinel_fails(tmp_path):
     content = HEADER + "2024-06-01,field_001,-9999,5.8,0.71,\n"
     result = validate_csv(write_csv(tmp_path, content))

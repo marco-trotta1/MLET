@@ -36,5 +36,5 @@ def test_date_format_is_strict_iso():
 
 
 def test_physical_bounds_contract():
-    assert schema.NONNEGATIVE_COLUMNS == ("openet_et_mm", "eto_mm", "measured_et_mm")
+    assert schema.NONNEGATIVE_COLUMNS == ("openet_et_mm", "eto_mm")
     assert (schema.NDVI_MIN, schema.NDVI_MAX) == (-1.0, 1.0)

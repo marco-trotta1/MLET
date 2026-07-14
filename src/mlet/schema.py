@@ -13,8 +13,11 @@ REQUIRED_COLUMNS = (DATE_COLUMN, SITE_COLUMN, OPENET_COLUMN)
 # Columns whose non-blank values must parse as floats.
 NUMERIC_COLUMNS = (OPENET_COLUMN, ETO_COLUMN, NDVI_COLUMN, MEASURED_COLUMN)
 
-# ET columns (mm) are physically non-negative.
-NONNEGATIVE_COLUMNS = (OPENET_COLUMN, ETO_COLUMN, MEASURED_COLUMN)
+# Satellite and reference ET are physically non-negative.  Measured labels are
+# intentionally excluded: energy-balance-corrected flux-tower ET can be slightly
+# negative because it is an instrument-derived observation, and Phase 2 preserves
+# those published values rather than censoring its ground-truth dataset.
+NONNEGATIVE_COLUMNS = (OPENET_COLUMN, ETO_COLUMN)
 
 # NDVI is a normalized ratio, mathematically bounded to [-1, 1].
 NDVI_MIN = -1.0
@@ -32,3 +35,7 @@ ALL_COLUMNS = (
 
 # Strict ISO date format (YYYY-MM-DD).
 DATE_FORMAT = "%Y-%m-%d"
+
+# --- Phase 2 additions ---
+LANDCOVER_CROPLAND = "Croplands"
+MIN_LABELED_DAYS = 30
