@@ -10,6 +10,8 @@ import ssl
 import sys
 import urllib.error
 import urllib.request
+import zipfile
+from pathlib import Path
 
 import certifi
 
@@ -31,6 +33,18 @@ def verify_file(path: str, expected_md5: str) -> bool:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest() == expected_md5
+
+
+def extract_zip(archive: str, destination: str) -> None:
+    """Extract a verified source archive without allowing path traversal."""
+    root = Path(destination).resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive) as source:
+        for member in source.infolist():
+            target = (root / member.filename).resolve()
+            if not target.is_relative_to(root):
+                raise ValueError(f"unsafe archive member: {member.filename}")
+        source.extractall(root)
 
 
 def _download(url: str, destination: str) -> None:
@@ -84,11 +98,19 @@ def main(argv: list[str] | None = None) -> int:
     sources = manifest["sources"]
 
     verified = True
+    extraction_dirs = {
+        "openet_model_et": os.path.join(RAW, "openet_phase2"),
+        "flux_benchmark": os.path.join(RAW, "flux_et"),
+    }
     for key in ("openet_model_et", "flux_benchmark"):
         source = sources[key]
-        verified = _ensure(
+        archive = os.path.join(RAW, source["filename"])
+        source_verified = _ensure(
             source["url"], os.path.join(RAW, source["filename"]), source["md5"], args.check_only
-        ) and verified
+        )
+        verified = source_verified and verified
+        if source_verified and not args.check_only:
+            extract_zip(archive, extraction_dirs[key])
     gridmet = sources["gridmet_pet"]
     for filename, md5 in gridmet["files"].items():
         verified = _ensure(

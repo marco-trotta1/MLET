@@ -3,6 +3,7 @@ import importlib.util
 import io
 import pathlib
 import urllib.error
+import zipfile
 
 
 _SPEC = importlib.util.spec_from_file_location(
@@ -132,3 +133,12 @@ def test_download_restarts_after_range_not_satisfiable(tmp_path, monkeypatch):
     fetch_data._download("https://example.test/archive", str(destination))
     assert calls == 2
     assert destination.read_bytes() == b"complete"
+
+
+def test_extract_zip_unpacks_verified_archive_into_destination(tmp_path):
+    archive = tmp_path / "source.zip"
+    with zipfile.ZipFile(archive, "w") as handle:
+        handle.writestr("dataset/daily_data.dat", "daily values")
+    destination = tmp_path / "raw"
+    fetch_data.extract_zip(str(archive), str(destination))
+    assert (destination / "dataset" / "daily_data.dat").read_text() == "daily values"
