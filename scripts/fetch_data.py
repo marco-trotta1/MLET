@@ -14,6 +14,7 @@ import certifi
 
 RAW = os.path.join("data", "raw")
 GRIDMET = os.path.join(RAW, "gridmet")
+DOWNLOAD_ATTEMPTS = 3
 
 
 def load_manifest(path: str) -> dict:
@@ -33,10 +34,12 @@ def verify_file(path: str, expected_md5: str) -> bool:
 
 def _download(url: str, destination: str) -> None:
     os.makedirs(os.path.dirname(destination), exist_ok=True)
-    print(f"downloading {url} -> {destination}")
+    temporary = f"{destination}.part"
+    print(f"downloading {url} -> {destination}", flush=True)
     context = ssl.create_default_context(cafile=certifi.where())
-    with urllib.request.urlopen(url, context=context) as response, open(destination, "wb") as handle:  # noqa: S310
+    with urllib.request.urlopen(url, context=context) as response, open(temporary, "wb") as handle:  # noqa: S310
         shutil.copyfileobj(response, handle)
+    os.replace(temporary, destination)
 
 
 def _ensure(url: str, destination: str, expected_md5: str, check_only: bool) -> bool:
@@ -44,9 +47,13 @@ def _ensure(url: str, destination: str, expected_md5: str, check_only: bool) -> 
         if check_only:
             print(f"MISSING/BAD: {destination}")
             return False
-        _download(url, destination)
+        for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+            _download(url, destination)
+            if verify_file(destination, expected_md5):
+                break
+            print(f"checksum mismatch after attempt {attempt}/{DOWNLOAD_ATTEMPTS}: {destination}", flush=True)
     verified = verify_file(destination, expected_md5)
-    print(f"OK {destination}" if verified else f"BAD {destination}")
+    print(f"OK {destination}" if verified else f"BAD {destination}", flush=True)
     return verified
 
 

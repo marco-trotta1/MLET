@@ -48,3 +48,18 @@ def test_download_uses_certified_urlopen_and_writes_destination(tmp_path, monkey
     monkeypatch.setattr(fetch_data.urllib.request, "urlopen", lambda url, context: Response(b"public data"))
     fetch_data._download("https://example.test/data", str(destination))
     assert destination.read_bytes() == b"public data"
+
+
+def test_ensure_retries_checksum_mismatch(tmp_path, monkeypatch):
+    destination = tmp_path / "archive.zip"
+    expected = hashlib.md5(b"complete").hexdigest()
+    attempts = 0
+
+    def partial_then_complete(url, path):
+        nonlocal attempts
+        attempts += 1
+        pathlib.Path(path).write_bytes(b"partial" if attempts == 1 else b"complete")
+
+    monkeypatch.setattr(fetch_data, "_download", partial_then_complete)
+    assert fetch_data._ensure("https://example.test/archive", str(destination), expected, False) is True
+    assert attempts == 2
