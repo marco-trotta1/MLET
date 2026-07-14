@@ -5,8 +5,12 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
+import ssl
 import sys
 import urllib.request
+
+import certifi
 
 RAW = os.path.join("data", "raw")
 GRIDMET = os.path.join(RAW, "gridmet")
@@ -30,7 +34,9 @@ def verify_file(path: str, expected_md5: str) -> bool:
 def _download(url: str, destination: str) -> None:
     os.makedirs(os.path.dirname(destination), exist_ok=True)
     print(f"downloading {url} -> {destination}")
-    urllib.request.urlretrieve(url, destination)  # noqa: S310
+    context = ssl.create_default_context(cafile=certifi.where())
+    with urllib.request.urlopen(url, context=context) as response, open(destination, "wb") as handle:  # noqa: S310
+        shutil.copyfileobj(response, handle)
 
 
 def _ensure(url: str, destination: str, expected_md5: str, check_only: bool) -> bool:

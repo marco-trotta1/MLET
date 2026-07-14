@@ -1,5 +1,6 @@
 import hashlib
 import importlib.util
+import io
 import pathlib
 
 
@@ -28,3 +29,22 @@ def test_manifest_loads_and_has_three_sources():
         "flux_benchmark",
         "gridmet_pet",
     }
+
+
+def test_download_uses_certified_urlopen_and_writes_destination(tmp_path, monkeypatch):
+    destination = tmp_path / "download.bin"
+
+    def no_urlretrieve(*args, **kwargs):
+        raise AssertionError("urlretrieve does not receive the explicit certificate context")
+
+    class Response(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+    monkeypatch.setattr(fetch_data.urllib.request, "urlretrieve", no_urlretrieve)
+    monkeypatch.setattr(fetch_data.urllib.request, "urlopen", lambda url, context: Response(b"public data"))
+    fetch_data._download("https://example.test/data", str(destination))
+    assert destination.read_bytes() == b"public data"
