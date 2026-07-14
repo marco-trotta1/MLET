@@ -8,6 +8,7 @@ import os
 import shutil
 import ssl
 import sys
+import urllib.error
 import urllib.request
 
 import certifi
@@ -43,12 +44,19 @@ def _download(url: str, destination: str) -> None:
     action = "resuming" if offset else "downloading"
     print(f"{action} {url} -> {destination}", flush=True)
     context = ssl.create_default_context(cafile=certifi.where())
-    with urllib.request.urlopen(request, context=context) as response:  # noqa: S310
-        response_code = response.getcode() if hasattr(response, "getcode") else 206
-        if offset and response_code != 206:
-            mode = "wb"
-        with open(temporary, mode) as handle:
-            shutil.copyfileobj(response, handle)
+    try:
+        with urllib.request.urlopen(request, context=context) as response:  # noqa: S310
+            response_code = response.getcode() if hasattr(response, "getcode") else 206
+            if offset and response_code != 206:
+                mode = "wb"
+            with open(temporary, mode) as handle:
+                shutil.copyfileobj(response, handle)
+    except urllib.error.HTTPError as exc:
+        if exc.code != 416 or not offset:
+            raise
+        os.remove(temporary)
+        _download(url, destination)
+        return
     os.replace(temporary, destination)
 
 
