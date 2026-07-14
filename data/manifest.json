@@ -1,0 +1,41 @@
+{
+  "created": "2026-07-13",
+  "seed": 20260713,
+  "license_note": "All primary sources are CC-BY-4.0; attribute Volk et al. and gridMET/Abatzoglou.",
+  "sources": {
+    "openet_model_et": {
+      "zenodo_record": "10119477",
+      "doi": "10.5281/zenodo.10119477",
+      "url": "https://zenodo.org/api/records/10119477/files/OpenET_PhaseII_model_ET_dataset.zip/content",
+      "filename": "OpenET_PhaseII_model_ET_dataset.zip",
+      "md5": "26b2af882c21dc56c634ac9f77a2ba6e",
+      "license": "CC-BY-4.0",
+      "citation": "Volk, J.M. et al. (2024) Nature Water. OpenET Phase II model ET at flux stations."
+    },
+    "flux_benchmark": {
+      "zenodo_record": "7636781",
+      "doi": "10.5281/zenodo.7636781",
+      "url": "https://zenodo.org/api/records/7636781/files/flux_ET_dataset.zip/content",
+      "filename": "flux_ET_dataset.zip",
+      "bytes": 183188565,
+      "md5": "99f6668ca439e9bae48c4e7e08b5405d",
+      "license": "CC-BY-4.0",
+      "citation": "Volk, J.M. et al. (2023) Post-processed CONUS eddy-flux ET dataset."
+    },
+    "gridmet_pet": {
+      "base_url": "https://www.northwestknowledge.net/metdata/data/",
+      "variable": "potential_evapotranspiration",
+      "years": [2016, 2017, 2018, 2019, 2020, 2021],
+      "files": {
+        "pet_2016.nc": "349b91bd0239acb97b7a864b6832ef22",
+        "pet_2017.nc": "db3b471167f3f838d3699d0bea77f7b4",
+        "pet_2018.nc": "13af2236e5f88562f796b33f268a6227",
+        "pet_2019.nc": "e3b3721102e504a774fa7653db802d9d",
+        "pet_2020.nc": "6be62c1a0dc8b94241b32dda96eaacc3",
+        "pet_2021.nc": "070e4b96618a56e5b8dc8f56cd07b2ca"
+      },
+      "license": "Public domain (U. Idaho / Abatzoglou 2013)",
+      "role": "QC cross-check and Phase 3 operational reference-ET seam; NOT required to build the labeled dataset."
+    }
+  }
+}
