@@ -63,3 +63,24 @@ def test_ensure_retries_checksum_mismatch(tmp_path, monkeypatch):
     monkeypatch.setattr(fetch_data, "_download", partial_then_complete)
     assert fetch_data._ensure("https://example.test/archive", str(destination), expected, False) is True
     assert attempts == 2
+
+
+def test_download_resumes_partial_file_with_http_range(tmp_path, monkeypatch):
+    destination = tmp_path / "archive.zip"
+    partial = tmp_path / "archive.zip.part"
+    partial.write_bytes(b"prefix")
+
+    class Response(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+    def open_resumed(request, context):
+        assert request.get_header("Range") == "bytes=6-"
+        return Response(b"suffix")
+
+    monkeypatch.setattr(fetch_data.urllib.request, "urlopen", open_resumed)
+    fetch_data._download("https://example.test/archive", str(destination))
+    assert destination.read_bytes() == b"prefixsuffix"

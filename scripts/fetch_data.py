@@ -35,10 +35,19 @@ def verify_file(path: str, expected_md5: str) -> bool:
 def _download(url: str, destination: str) -> None:
     os.makedirs(os.path.dirname(destination), exist_ok=True)
     temporary = f"{destination}.part"
-    print(f"downloading {url} -> {destination}", flush=True)
+    offset = os.path.getsize(temporary) if os.path.exists(temporary) else 0
+    mode = "ab" if offset else "wb"
+    request = urllib.request.Request(url)
+    if offset:
+        request.add_header("Range", f"bytes={offset}-")
+    action = "resuming" if offset else "downloading"
+    print(f"{action} {url} -> {destination}", flush=True)
     context = ssl.create_default_context(cafile=certifi.where())
-    with urllib.request.urlopen(url, context=context) as response, open(temporary, "wb") as handle:  # noqa: S310
-        shutil.copyfileobj(response, handle)
+    with urllib.request.urlopen(request, context=context) as response:  # noqa: S310
+        if offset and getattr(response, "status", 206) != 206:
+            mode = "wb"
+        with open(temporary, mode) as handle:
+            shutil.copyfileobj(response, handle)
     os.replace(temporary, destination)
 
 
