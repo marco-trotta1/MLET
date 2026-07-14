@@ -90,3 +90,30 @@ def test_time_withheld_models_do_not_fit_post_cutoff_targets(tmp_path):
     models = time["models"]
     assert isinstance(models, dict)
     assert float(models["B1_CropCoefficient"]["mae"]) > 400.0
+
+
+def test_field_withheld_report_keeps_signed_model_bias(tmp_path):
+    interim = tmp_path / "interim"
+    interim.mkdir()
+    weather: dict[str, dict[str, dict[str, float]]] = {}
+    for station in ("S1", "S2"):
+        (interim / f"{station}.csv").write_text(
+            "date,site_id,openet_et_mm,eto_mm,ndvi,measured_et_mm\n"
+            f"2018-06-01,{station},5.0,5.0,,3.0\n"
+            f"2018-06-02,{station},5.0,5.0,,3.0\n"
+        )
+        weather[station] = {
+            "2018-06-01": {"t_avg": 20.0, "vpd": 1.5, "ws": 2.0, "ppt": 0.0},
+            "2018-06-02": {"t_avg": 20.0, "vpd": 1.5, "ws": 2.0, "ppt": 0.0},
+        }
+    (interim / "_weather.json").write_text(json.dumps(weather))
+    landcover = interim / "_landcover.json"
+    landcover.write_text(json.dumps({"S1": "Croplands", "S2": "Grasslands"}))
+
+    result = run(str(interim), str(landcover))
+
+    field = result["field_withheld"]
+    assert isinstance(field, dict)
+    models = field["models"]
+    assert isinstance(models, dict)
+    assert float(models["M1_OpenETDirect"]["bias"]) == 2.0
