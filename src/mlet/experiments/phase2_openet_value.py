@@ -47,7 +47,11 @@ def _load_observations(interim_dir: str) -> dict[str, list[Observation]]:
         for record in series.labeled():
             covariates = weather.get(series.site_id, {}).get(record.date.isoformat(), {})
             values = (covariates.get("t_avg"), covariates.get("vpd"), covariates.get("ws"))
-            if record.openet_et_mm is None or record.eto_mm is None or any(value is None for value in values):
+            if (
+                record.openet_et_mm is None
+                or record.eto_mm is None
+                or any(value is None or not math.isfinite(float(value)) for value in values)
+            ):
                 continue
             day_of_year = record.date.timetuple().tm_yday
             observations.append(Observation(

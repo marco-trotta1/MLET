@@ -1,5 +1,6 @@
 import datetime
 import json
+import math
 
 import numpy as np
 import xarray as xr
@@ -117,3 +118,22 @@ def test_field_withheld_report_keeps_signed_model_bias(tmp_path):
     models = field["models"]
     assert isinstance(models, dict)
     assert float(models["M1_OpenETDirect"]["bias"]) == 2.0
+
+
+def test_evaluation_excludes_nonfinite_weather_covariates(tmp_path):
+    interim = tmp_path / "interim"
+    interim.mkdir()
+    _write_interim(interim)
+    weather_path = interim / "_weather.json"
+    weather = json.loads(weather_path.read_text())
+    weather["S1"]["2018-12-15"]["vpd"] = float("inf")
+    weather_path.write_text(json.dumps(weather))
+
+    result = run(str(interim), str(interim / "_landcover.json"))
+
+    field = result["field_withheld"]
+    assert isinstance(field, dict)
+    models = field["models"]
+    assert isinstance(models, dict)
+    assert math.isfinite(float(models["B2_WeatherRidge"]["mae"]))
+    assert math.isfinite(float(models["M3_OpenETRidge"]["mae"]))
