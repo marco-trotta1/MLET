@@ -84,3 +84,22 @@ def test_download_resumes_partial_file_with_http_range(tmp_path, monkeypatch):
     monkeypatch.setattr(fetch_data.urllib.request, "urlopen", open_resumed)
     fetch_data._download("https://example.test/archive", str(destination))
     assert destination.read_bytes() == b"prefixsuffix"
+
+
+def test_download_restarts_when_server_ignores_http_range(tmp_path, monkeypatch):
+    destination = tmp_path / "archive.zip"
+    (tmp_path / "archive.zip.part").write_bytes(b"prefix")
+
+    class Response(io.BytesIO):
+        def getcode(self):
+            return 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+    monkeypatch.setattr(fetch_data.urllib.request, "urlopen", lambda request, context: Response(b"complete"))
+    fetch_data._download("https://example.test/archive", str(destination))
+    assert destination.read_bytes() == b"complete"

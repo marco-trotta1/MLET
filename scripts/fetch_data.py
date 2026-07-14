@@ -44,7 +44,8 @@ def _download(url: str, destination: str) -> None:
     print(f"{action} {url} -> {destination}", flush=True)
     context = ssl.create_default_context(cafile=certifi.where())
     with urllib.request.urlopen(request, context=context) as response:  # noqa: S310
-        if offset and getattr(response, "status", 206) != 206:
+        response_code = response.getcode() if hasattr(response, "getcode") else 206
+        if offset and response_code != 206:
             mode = "wb"
         with open(temporary, mode) as handle:
             shutil.copyfileobj(response, handle)
