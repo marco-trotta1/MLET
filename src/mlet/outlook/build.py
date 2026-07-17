@@ -166,6 +166,7 @@ def build_outlook(
         },
     )
     days = _calculate_outlook_days(inputs, crop_path)
+    grid_references = _weather_grid_coordinates(inputs.weather)
     _validate_days(days, inputs.issued_at)
     output_root = _open_output_root(out_dir, create=True)
     private_generation: _PinnedDirectory | None = None
@@ -179,7 +180,7 @@ def build_outlook(
         _write_new_bytes_at(
             private_generation.fd,
             "outlook.json",
-            serialize_serve_contract(days, manifest),
+            serialize_serve_contract(days, manifest, grid_references=grid_references),
         )
         _write_new_json_at(
             private_generation.fd, "summary.json", _summary_payload(days, manifest)
@@ -833,6 +834,19 @@ def _calculate_outlook_days(inputs: _FixtureInputs, crop_path: Path) -> tuple[Ou
             )
         )
     return tuple(result)
+
+
+def _weather_grid_coordinates(
+    weather: Sequence[WeatherMember],
+) -> dict[str, tuple[float, float]]:
+    """Return one exact source-grid reference point per stable grid identifier."""
+    coordinates: dict[str, tuple[float, float]] = {}
+    for member in weather:
+        current = (member.latitude, member.longitude)
+        prior = coordinates.setdefault(member.grid_id, current)
+        if prior != current:
+            raise ValueError("weather-grid coordinates must be consistent for each grid_id")
+    return coordinates
 
 
 def _fixture_analyses(

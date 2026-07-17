@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import date, datetime, timedelta, timezone
 import json
 import math
@@ -18,7 +18,11 @@ _SPATIAL_RESOLUTION = "native_weather_grid"
 
 
 def write_serve_contract(
-    days: Sequence[OutlookDay], manifest: RunManifest, destination: Path
+    days: Sequence[OutlookDay],
+    manifest: RunManifest,
+    destination: Path,
+    *,
+    grid_references: Mapping[str, tuple[float, float]] | None = None,
 ) -> None:
     """Write the one stable artifact a future Helios adapter may read.
 
@@ -26,11 +30,17 @@ def write_serve_contract(
     It serializes named physical/conditional layers only; a delayed ETa analysis
     is never represented as a future actual-ET forecast.
     """
-    _write_new_bytes(Path(destination), serialize_serve_contract(days, manifest))
+    _write_new_bytes(
+        Path(destination),
+        serialize_serve_contract(days, manifest, grid_references=grid_references),
+    )
 
 
 def serialize_serve_contract(
-    days: Sequence[OutlookDay], manifest: RunManifest
+    days: Sequence[OutlookDay],
+    manifest: RunManifest,
+    *,
+    grid_references: Mapping[str, tuple[float, float]] | None = None,
 ) -> bytes:
     """Return the canonical serving-contract bytes without touching a path.
 
@@ -42,14 +52,19 @@ def serialize_serve_contract(
     if not isinstance(manifest, RunManifest):
         raise ValueError("serve contract requires a RunManifest")
     manifest.to_json()
-    payload = _contract_payload(days, manifest)
+    payload = _contract_payload(days, manifest, grid_references=grid_references)
     return (
         json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
         + "\n"
     ).encode("utf-8")
 
 
-def _contract_payload(days: Sequence[OutlookDay], manifest: RunManifest) -> dict[str, object]:
+def _contract_payload(
+    days: Sequence[OutlookDay],
+    manifest: RunManifest,
+    *,
+    grid_references: Mapping[str, tuple[float, float]] | None,
+) -> dict[str, object]:
     if not days or any(not isinstance(item, OutlookDay) for item in days):
         raise ValueError("serve contract requires at least one OutlookDay record")
     sorted_days = sorted(days, key=lambda item: (item.valid_date, item.grid_id))
@@ -93,10 +108,11 @@ def _contract_payload(days: Sequence[OutlookDay], manifest: RunManifest) -> dict
     if any(item.eta_analysis_date is None for item in sorted_days if item.eta_analysis_mm is not None):
         raise ValueError("ETa analysis date and value must be present together")
 
+    references = _grid_reference_payload(grid_references, set(dates_by_grid))
     collections: list[dict[str, object]] = []
     for lead_day, valid_date in enumerate(expected_dates, start=1):
         features = [
-            _feature(day, lead_day, issue_time)
+            _feature(day, lead_day, issue_time, references.get(day.grid_id))
             for day in sorted(by_date[valid_date], key=lambda item: item.grid_id)
         ]
         collections.append(
@@ -123,17 +139,28 @@ def _contract_payload(days: Sequence[OutlookDay], manifest: RunManifest) -> dict
         "spatial_resolution": _SPATIAL_RESOLUTION,
         "observation_latency_days": max(latencies) if latencies else None,
         "layers": _layer_definitions(),
+        "grid_references": references,
         "feature_collections": collections,
     }
 
 
-def _feature(day: OutlookDay, lead_day: int, issued_at: datetime) -> dict[str, object]:
+def _feature(
+    day: OutlookDay,
+    lead_day: int,
+    issued_at: datetime,
+    grid_reference: dict[str, object] | None,
+) -> dict[str, object]:
     eta_analysis = _analysis_record(day, issued_at)
     return {
         "type": "Feature",
-        "geometry": None,
+        "geometry": grid_reference,
         "properties": {
             "grid_id": day.grid_id,
+            "geometry_representation": (
+                "weather_grid_reference_point"
+                if grid_reference is not None
+                else "grid_identifier_only"
+            ),
             "valid_date": day.valid_date.isoformat(),
             "lead_day": lead_day,
             "layers": {
@@ -154,6 +181,25 @@ def _feature(day: OutlookDay, lead_day: int, issued_at: datetime) -> dict[str, o
             "eta_analysis": eta_analysis,
         },
     }
+
+
+def _grid_reference_payload(
+    values: Mapping[str, tuple[float, float]] | None, grid_ids: set[str]
+) -> dict[str, dict[str, object]]:
+    """Serialize source-grid points without inventing a cell boundary."""
+    if values is None:
+        return {}
+    if set(values) != grid_ids:
+        raise ValueError("weather-grid references must name exactly the contract grids")
+    result: dict[str, dict[str, object]] = {}
+    for grid_id in sorted(values):
+        coordinates = values[grid_id]
+        if not isinstance(coordinates, tuple) or len(coordinates) != 2:
+            raise ValueError("weather-grid references must contain latitude and longitude")
+        latitude = _finite_coordinate(coordinates[0], "weather-grid latitude", -90.0, 90.0)
+        longitude = _finite_coordinate(coordinates[1], "weather-grid longitude", -180.0, 180.0)
+        result[grid_id] = {"type": "Point", "coordinates": [longitude, latitude]}
+    return result
 
 
 def _analysis_record(day: OutlookDay, issued_at: datetime) -> dict[str, object]:
@@ -228,6 +274,15 @@ def _finite_nonnegative(value: object, label: str) -> float:
     result = float(value)
     if not math.isfinite(result) or result < 0.0:
         raise ValueError(f"{label} must be a finite non-negative number")
+    return result
+
+
+def _finite_coordinate(value: object, label: str, lower: float, upper: float) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{label} must be a finite number")
+    result = float(value)
+    if not math.isfinite(result) or not lower <= result <= upper:
+        raise ValueError(f"{label} must be within its geographic range")
     return result
 
 

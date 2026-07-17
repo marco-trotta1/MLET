@@ -21,6 +21,7 @@ from mlet.outlook.hindcast import (
     write_hindcast_validation,
     write_release_authority_request,
 )
+from mlet.outlook.publish import publish_outlook
 from mlet.sources.gridmet import extract_eto
 from mlet.sources.gefs import fetch_gefs
 from mlet.sources.stations import load_station_metadata
@@ -67,6 +68,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     hindcast.add_argument("--cases", required=True)
     hindcast.add_argument("--out", required=True)
+    publish = subparsers.add_parser(
+        "publish-outlook",
+        help="Render a standalone, non-promotable Idaho outlook map candidate.",
+    )
+    publish.add_argument("--run", required=True, help="Published OUTPUT_ROOT/RUN_ID handle.")
+    publish.add_argument(
+        "--out",
+        help="New candidate directory; defaults beside the immutable run handle.",
+    )
     args = parser.parse_args(argv)
     if args.command == "validate-csv":
         return _run_validate(args.path)
@@ -81,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_build_outlook(args.weather, args.state, args.crop, args.out)
     if args.command == "hindcast-outlook":
         return _run_hindcast_outlook(args.cases, args.out)
+    if args.command == "publish-outlook":
+        return _run_publish_outlook(args.run, args.out)
     result = phase2_openet_value.run(args.interim, args.landcover)
     _write_report(args.out, result)
     print(f"decision: {result['decision']}")
@@ -138,6 +150,24 @@ def _run_hindcast_outlook(cases_path: str, destination: str) -> int:
     print(f"validation: {report_path.parent / 'validation.json'}")
     print(f"authority request: {report_path.parent / 'authority_request.json'}")
     print("promotion: false")
+    return 1
+
+
+def _run_publish_outlook(run: str, destination: str | None) -> int:
+    """Render a research candidate and preserve the external-authority gate."""
+    try:
+        result = publish_outlook(
+            Path(run), out_dir=Path(destination) if destination is not None else None
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot publish outlook candidate: {exc}", file=sys.stderr)
+        return 2
+    print(f"index: {result.index_path}")
+    print(f"geojson: {result.geojson_path}")
+    print(f"serve_contract: {result.serve_contract_path}")
+    print(f"run_id: {result.run_id}")
+    print("promotion: false")
+    print("validation: pending")
     return 1
 
 

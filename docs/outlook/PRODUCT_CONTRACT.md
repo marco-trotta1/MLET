@@ -168,3 +168,21 @@ validated only after the preregistered gate in
 Until then, it is an implementation or research artifact—not evidence of
 forecast skill. Phase 2's OpenET result is evidence about retrospective
 daily-ET prediction only; it is not validation of this 20-day outlook.
+
+### Static research-candidate rendering
+
+The optional `mlet publish-outlook --run OUTPUT_ROOT/RUN_ID` renderer consumes
+only descriptor-verified immutable run bytes and writes a separate,
+non-overwriting candidate directory. Its `serve-contract.json`,
+`outlook.geojson`, `summary.json`, and standalone `index.html` are all marked
+`promotion: false`, `promotion_status: not_promoted`, and
+`validation_status: validation_pending`. The renderer is not an external
+release authority and must not make a validated, promoted, or operational
+claim—even if a mutable sibling receipt says otherwise.
+
+The map may show a source weather-grid reference point. A point is not an
+inferred cell boundary, field geometry, or irrigation-management zone. The
+current contract does not carry source-grid cell areas, so the candidate summary
+must call its daily aggregation an equal-cell descriptive mean; it must not
+claim an area-weighted statewide value. A fixture candidate is conspicuously
+non-scientific and never a forecast claim.

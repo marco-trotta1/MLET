@@ -189,3 +189,24 @@ the external release system publish the promoted product together with both
 artifacts. A local qualifying archive exits with code 1 as a release candidate;
 fixtures also exit with code 1 but remain permanently non-scientific and are
 not eligible for external release review.
+
+## Static research-candidate rendering
+
+`python3 -m mlet publish-outlook --run OUTPUT_ROOT/RUN_ID` renders a
+self-contained `index.html`, `outlook.geojson`, `summary.json`, and
+`serve-contract.json` from descriptor-verified immutable run bytes. The
+renderer is inside the same evaluator threat boundary and always writes
+`promotion: false`, `promotion_status: "not_promoted"`, and
+`validation_status: "validation_pending"`; a source receipt, sibling
+`validation.json`, environment value, or caller mutation cannot make its output
+state promoted or validated. It returns exit code 1 after writing a readable
+research candidate, or 2 when the run cannot be read.
+
+The static interface exposes the five named layers, issue time, ETa observation
+date, p10/p50/p90 uncertainty, source run ID, and the regional—not field-level
+warning. It uses source weather-grid reference points only when the serving
+contract carries them; it never invents field boundaries or grid-cell polygons.
+Until source-grid areas are included in the serving contract, `summary.json`
+contains an explicitly labelled equal-cell descriptive mean rather than a
+statewide area-weighted claim. Fixture rendering is visibly non-scientific and
+is never a forecast claim or a scientific result.

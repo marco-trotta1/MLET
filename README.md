@@ -171,8 +171,37 @@ Not yet present:
 
 - a reproducible operational outlook build;
 - preregistered 20-day hindcast results;
-- a public map or generated forecast output files;
+- a promoted or validated public forecast map;
 - model-training code or OpenET assimilation into a soil-moisture water balance.
+
+## Static research-candidate map
+
+`mlet publish-outlook` renders a standalone `index.html`, `outlook.geojson`,
+`summary.json`, and `serve-contract.json` from a verified immutable
+`OUTPUT_ROOT/RUN_ID` handle. It is intentionally useful for inspecting the
+native weather-grid quantities and their uncertainty without a web-service or
+package setup, but it always returns exit code `1`: the output is a **research
+candidate**, with `promotion: false` and `validation_status:
+"validation_pending"`.
+
+```bash
+python3 -m mlet publish-outlook --run OUTPUT_ROOT/RUN_ID
+```
+
+The renderer reads input only through the descriptor-anchored run reader and
+does not alter the immutable generation. It writes a new sibling candidate
+directory and never overwrites one. Its map labels keep ETo outlook, potential
+crop ET, the dated ETa analysis, and the two conditional ETa scenarios
+separate. A weather-grid reference point, when included by the source contract,
+is not a field boundary. The candidate summary uses an explicitly labelled
+equal-cell descriptive mean—not a statewide area-weighted statistic—until
+source-grid cell areas are carried in the serving contract.
+
+Fixture input produces a conspicuous non-scientific software-fixture map. It is
+never a forecast claim or scientific evidence. For qualifying archived data,
+only the separately trusted external release authority described in the outlook
+preregistration may publish a promoted product; the MLET evaluator and map
+renderer have no local promotion or validation path.
 
 ## Development Notes
 
