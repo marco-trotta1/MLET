@@ -7,6 +7,7 @@ from datetime import date, datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Mapping
 
 from mlet.outlook.contracts import SourceRecord
@@ -26,6 +27,9 @@ _MANIFEST_FIELDS = frozenset(
 _SOURCE_FIELDS = frozenset(
     {"name", "uri", "retrieved_at", "sha256", "observed_through"}
 )
+_UTC_TIMESTAMP_PATTERN = re.compile(
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{6})?Z"
+)
 
 
 def _normalize_zulu_timestamp(value: str) -> str:
@@ -35,7 +39,7 @@ def _normalize_zulu_timestamp(value: str) -> str:
 
 def _parse_utc_timestamp(value: str) -> datetime:
     """Parse a caller-supplied UTC timestamp without consulting a clock."""
-    if not isinstance(value, str) or not value.endswith("Z"):
+    if not isinstance(value, str) or _UTC_TIMESTAMP_PATTERN.fullmatch(value) is None:
         raise ValueError("timestamps must be explicit UTC ISO-8601 values ending in Z")
     try:
         parsed = datetime.fromisoformat(_normalize_zulu_timestamp(value))
@@ -43,7 +47,10 @@ def _parse_utc_timestamp(value: str) -> datetime:
         raise ValueError("timestamps must be explicit UTC ISO-8601 values ending in Z") from error
     if parsed.tzinfo is None or parsed.utcoffset() != timezone.utc.utcoffset(parsed):
         raise ValueError("timestamps must be explicit UTC ISO-8601 values ending in Z")
-    return parsed.astimezone(timezone.utc)
+    parsed_utc = parsed.astimezone(timezone.utc)
+    if _format_utc_timestamp(parsed_utc) != value:
+        raise ValueError("timestamps must be explicit UTC ISO-8601 values ending in Z")
+    return parsed_utc
 
 
 def _format_utc_timestamp(value: datetime) -> str:
@@ -92,6 +99,7 @@ class RunManifest:
 
     def to_json(self) -> str:
         """Return canonical JSON suitable for an immutable run receipt."""
+        _require_strictly_sorted_sources(self.sources)
         payload = self._payload_without_run_id()
         payload["run_id"] = self.run_id
         return _canonical_json(payload)
@@ -100,9 +108,11 @@ class RunManifest:
     def from_json(cls, value: str) -> RunManifest:
         """Restore and validate a receipt without deriving any system time."""
         try:
-            payload = json.loads(value)
+            payload = json.loads(value, object_pairs_hook=_reject_duplicate_object_keys)
         except json.JSONDecodeError as error:
             raise ValueError("manifest must be valid JSON") from error
+        except ValueError as error:
+            raise ValueError("manifest JSON must not contain duplicate object keys") from error
         if not isinstance(payload, dict):
             raise ValueError("manifest must be a JSON object")
 
@@ -126,11 +136,7 @@ class RunManifest:
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError("manifest does not satisfy the run receipt schema") from error
 
-        source_names = [source.name for source in sources]
-        if source_names != sorted(source_names) or len(source_names) != len(
-            set(source_names)
-        ):
-            raise ValueError("manifest sources must be strictly sorted by name")
+        _require_strictly_sorted_sources(sources)
         expected_run_id = _run_id(manifest._payload_without_run_id())
         if manifest.run_id != expected_run_id:
             raise ValueError("manifest run_id does not match its canonical content")
@@ -223,6 +229,26 @@ def _require_exact_fields(
             f"{label} fields must match the schema exactly; "
             f"missing={missing_fields}, unknown={unknown_fields}"
         )
+
+
+def _reject_duplicate_object_keys(
+    pairs: list[tuple[str, object]],
+) -> dict[str, object]:
+    """Decode a JSON object while preserving the fact that a key was repeated."""
+    result: dict[str, object] = {}
+    for key, item in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON object key: {key}")
+        result[key] = item
+    return result
+
+
+def _require_strictly_sorted_sources(sources: tuple[SourceRecord, ...]) -> None:
+    source_names = [source.name for source in sources]
+    if source_names != sorted(source_names) or len(source_names) != len(
+        set(source_names)
+    ):
+        raise ValueError("manifest sources must be strictly sorted by name")
 
 
 def _run_id(payload_without_run_id: Mapping[str, object]) -> str:

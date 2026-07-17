@@ -111,6 +111,47 @@ def test_manifest_round_trip_preserves_explicit_utc_timestamps(tmp_path: Path) -
     assert '"retrieved_at":"2026-07-16T00:05:00Z"' in manifest.to_json()
 
 
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        "2026-07-16 00:00:00Z",
+        "2026-07-16X00:00:00Z",
+        "2026-07-16T00:00:00,1Z",
+        "2026-07-16T00:00:00.1Z",
+        "2026-07-16T00:00:00.1234567Z",
+    ],
+)
+def test_build_manifest_rejects_noncanonical_utc_timestamp_grammar(
+    tmp_path: Path, timestamp: str
+) -> None:
+    source = tmp_path / "weather.jsonl"
+    source.write_text('{"fixture": true, "non_scientific": true}\n')
+
+    with pytest.raises(ValueError, match="UTC ISO-8601"):
+        build_manifest(timestamp, {"weather": source}, "abc123", timestamp)
+
+
+def test_manifest_from_json_rejects_noncanonical_utc_timestamp_grammar(
+    tmp_path: Path,
+) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    payload = json.loads(manifest.to_json())
+    payload["issued_at"] = "2026-07-16X00:00:00Z"
+
+    with pytest.raises(ValueError, match="run receipt schema"):
+        RunManifest.from_json(_manifest_json_with_valid_run_id(payload))
+
+
+def test_manifest_from_json_rejects_duplicate_known_top_level_key(tmp_path: Path) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    duplicate_schema_version = manifest.to_json().replace(
+        '"schema_version":1', '"schema_version":1,"schema_version":1'
+    )
+
+    with pytest.raises(ValueError, match="duplicate"):
+        RunManifest.from_json(duplicate_schema_version)
+
+
 def test_manifest_rejects_unknown_top_level_json_field(tmp_path: Path) -> None:
     manifest = _two_source_manifest(tmp_path)
     payload = json.loads(manifest.to_json())
@@ -166,6 +207,40 @@ def test_manifest_rejects_duplicate_serialized_sources(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="strictly sorted"):
         RunManifest.from_json(_manifest_json_with_valid_run_id(payload))
+
+
+def test_manifest_to_json_rejects_directly_constructed_unsorted_sources(
+    tmp_path: Path,
+) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    unsorted_manifest = RunManifest(
+        schema_version=manifest.schema_version,
+        run_id=manifest.run_id,
+        issued_at=manifest.issued_at,
+        retrieved_at=manifest.retrieved_at,
+        git_revision=manifest.git_revision,
+        sources=tuple(reversed(manifest.sources)),
+    )
+
+    with pytest.raises(ValueError, match="strictly sorted"):
+        unsorted_manifest.to_json()
+
+
+def test_manifest_to_json_rejects_directly_constructed_duplicate_sources(
+    tmp_path: Path,
+) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    duplicate_manifest = RunManifest(
+        schema_version=manifest.schema_version,
+        run_id=manifest.run_id,
+        issued_at=manifest.issued_at,
+        retrieved_at=manifest.retrieved_at,
+        git_revision=manifest.git_revision,
+        sources=(manifest.sources[0], manifest.sources[0]),
+    )
+
+    with pytest.raises(ValueError, match="strictly sorted"):
+        duplicate_manifest.to_json()
 
 
 @pytest.mark.parametrize(
