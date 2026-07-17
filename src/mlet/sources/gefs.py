@@ -302,12 +302,23 @@ def _validate_daily_artifact(
 
 
 def _prepare_cache_directory(pointer_parent: Path) -> Path:
-    """Create the controlled cache directory without accepting symlink roots."""
+    """Create and durably link the controlled cache directory hierarchy.
+
+    A freshly created directory is not safe to reference through a durable
+    pointer until both its own metadata and its entry in its parent have been
+    flushed.  Create one level at a time so that this ordering is explicit.
+    """
     cache_directory = pointer_parent / _CACHE_RELATIVE_DIRECTORY
     _reject_symlink_ancestors(cache_directory)
-    cache_directory.mkdir(parents=True, exist_ok=True)
-    _require_safe_directory(cache_directory, "GEFS cache directory")
-    return cache_directory
+    current_directory = pointer_parent
+    for component in _CACHE_RELATIVE_DIRECTORY.parts:
+        next_directory = current_directory / component
+        if _create_directory_if_absent(next_directory):
+            _fsync_directory(next_directory)
+            _fsync_directory(current_directory)
+        _require_safe_directory(next_directory, "GEFS cache directory")
+        current_directory = next_directory
+    return current_directory
 
 
 def _publish_generation(
@@ -431,7 +442,40 @@ def _write_new_file(path: Path, contents: bytes) -> None:
             os.fsync(handle.fileno())
     finally:
         os.close(descriptor)
+    _set_read_only(path)
+    _fsync_file(path)
+
+
+def _create_directory_if_absent(path: Path) -> bool:
+    """Create one directory and report whether this invocation created it."""
+    try:
+        path.mkdir()
+    except FileExistsError:
+        return False
+    return True
+
+
+def _set_read_only(path: Path) -> None:
+    """Make one staged member immutable and verify it has no write bits."""
     os.chmod(path, 0o444)
+    mode = os.stat(path, follow_symlinks=False).st_mode
+    if mode & (stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH):
+        raise ValueError(f"GEFS staged member must be non-writable: {path}")
+
+
+def _fsync_file(path: Path) -> None:
+    """Persist one regular, non-writable artifact member after its final chmod."""
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags)
+    try:
+        mode = os.fstat(descriptor).st_mode
+        if not stat.S_ISREG(mode):
+            raise ValueError(f"GEFS staged member must be a regular file: {path}")
+        if mode & (stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH):
+            raise ValueError(f"GEFS staged member must be non-writable: {path}")
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def _read_regular_file(path: Path, label: str) -> bytes:
@@ -447,6 +491,8 @@ def _read_regular_file(path: Path, label: str) -> bytes:
         mode = os.fstat(descriptor).st_mode
         if not stat.S_ISREG(mode):
             raise ValueError(f"{label} must be a regular file")
+        if mode & (stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH):
+            raise ValueError(f"{label} must be non-writable")
         with os.fdopen(descriptor, "rb", closefd=False) as handle:
             return handle.read()
     finally:

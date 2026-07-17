@@ -8,6 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 import socket
+import stat
 
 import pytest
 
@@ -206,6 +207,173 @@ def test_imported_daily_artifact_caches_exact_parsed_bytes_and_publishes_hashes(
         "version": "1",
     }
     assert output.raw_path.read_bytes() == artifact_bytes
+    for member_path in (
+        output.raw_path,
+        output.normalized_path,
+        output.receipt_path,
+    ):
+        assert stat.S_IMODE(member_path.stat().st_mode) & (
+            stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+        ) == 0
+
+
+def test_new_cache_hierarchy_is_durably_linked_bottom_up_before_publish(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact_path = tmp_path / "fixture.daily-artifact.json"
+    _write_daily_artifact(artifact_path, _gefs_rows())
+    pointer = tmp_path / "weather_members.gefs"
+
+    from mlet.sources import gefs
+
+    original_fsync_directory = gefs._fsync_directory
+    fsynced_directories: list[Path] = []
+
+    def record_fsync(directory: Path) -> None:
+        fsynced_directories.append(directory)
+        original_fsync_directory(directory)
+
+    monkeypatch.setattr("mlet.sources.gefs._fsync_directory", record_fsync)
+
+    materialize_gefs_daily_artifact(artifact_path, pointer)
+
+    cache_root = tmp_path / "data" / "cache" / "gefs-daily-artifacts"
+    assert fsynced_directories[:6] == [
+        tmp_path / "data",
+        tmp_path,
+        tmp_path / "data" / "cache",
+        tmp_path / "data",
+        cache_root,
+        tmp_path / "data" / "cache",
+    ]
+
+
+@pytest.mark.parametrize(
+    "durability_root",
+    (Path("data"), Path("data") / "cache"),
+)
+def test_new_cache_root_fsync_failure_prevents_generation_and_pointer_publish(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    durability_root: Path,
+) -> None:
+    artifact_path = tmp_path / "fixture.daily-artifact.json"
+    _write_daily_artifact(artifact_path, _gefs_rows())
+    pointer = tmp_path / "weather_members.gefs"
+
+    from mlet.sources import gefs
+
+    original_fsync_directory = gefs._fsync_directory
+    failed = False
+
+    def fail_new_root_fsync(directory: Path) -> None:
+        nonlocal failed
+        if directory == tmp_path / durability_root and not failed:
+            failed = True
+            raise OSError("injected cache-root fsync failure")
+        original_fsync_directory(directory)
+
+    monkeypatch.setattr("mlet.sources.gefs._fsync_directory", fail_new_root_fsync)
+
+    with pytest.raises(OSError, match="cache-root fsync failure"):
+        materialize_gefs_daily_artifact(artifact_path, pointer)
+
+    assert failed is True
+    assert pointer.is_symlink() is False
+    assert not (tmp_path / "data" / "cache" / "gefs-daily-artifacts").exists()
+
+
+def test_preexisting_cache_hierarchy_requires_no_creation_fsync(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache_root = tmp_path / "data" / "cache" / "gefs-daily-artifacts"
+    cache_root.mkdir(parents=True)
+
+    from mlet.sources import gefs
+
+    fsynced_directories: list[Path] = []
+
+    def record_fsync(directory: Path) -> None:
+        fsynced_directories.append(directory)
+
+    monkeypatch.setattr("mlet.sources.gefs._fsync_directory", record_fsync)
+
+    assert gefs._prepare_cache_directory(tmp_path) == cache_root
+    assert fsynced_directories == []
+
+
+def test_read_only_member_metadata_is_fsynced_before_staging_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact_path = tmp_path / "fixture.daily-artifact.json"
+    _write_daily_artifact(artifact_path, _gefs_rows())
+    pointer = tmp_path / "weather_members.gefs"
+
+    from mlet.sources import gefs
+
+    original_set_read_only = gefs._set_read_only
+    original_fsync_file = gefs._fsync_file
+    original_fsync_directory = gefs._fsync_directory
+    events: list[tuple[str, str]] = []
+    member_names = {
+        "canonical-artifact.json",
+        "weather_members.jsonl",
+        "receipt.json",
+    }
+
+    def record_set_read_only(path: Path) -> None:
+        events.append(("chmod", path.name))
+        original_set_read_only(path)
+
+    def record_fsync_file(path: Path) -> None:
+        events.append(("fsync-file", path.name))
+        original_fsync_file(path)
+
+    def record_fsync_directory(directory: Path) -> None:
+        if directory.name.startswith(".gefs-"):
+            events.append(("fsync-directory", "staging"))
+        original_fsync_directory(directory)
+
+    monkeypatch.setattr("mlet.sources.gefs._set_read_only", record_set_read_only)
+    monkeypatch.setattr("mlet.sources.gefs._fsync_file", record_fsync_file)
+    monkeypatch.setattr("mlet.sources.gefs._fsync_directory", record_fsync_directory)
+
+    materialize_gefs_daily_artifact(artifact_path, pointer)
+
+    staging_fsync_index = events.index(("fsync-directory", "staging"))
+    for member_name in member_names:
+        chmod_index = events.index(("chmod", member_name))
+        file_fsync_index = events.index(("fsync-file", member_name))
+        assert chmod_index < file_fsync_index < staging_fsync_index
+
+
+def test_member_fsync_failure_after_read_only_mode_prevents_pointer_publish(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact_path = tmp_path / "fixture.daily-artifact.json"
+    _write_daily_artifact(artifact_path, _gefs_rows())
+    pointer = tmp_path / "weather_members.gefs"
+
+    from mlet.sources import gefs
+
+    original_fsync_file = gefs._fsync_file
+    failed = False
+
+    def fail_receipt_fsync(path: Path) -> None:
+        nonlocal failed
+        if path.name == "receipt.json" and not failed:
+            failed = True
+            raise OSError("injected member fsync failure")
+        original_fsync_file(path)
+
+    monkeypatch.setattr("mlet.sources.gefs._fsync_file", fail_receipt_fsync)
+
+    with pytest.raises(OSError, match="member fsync failure"):
+        materialize_gefs_daily_artifact(artifact_path, pointer)
+
+    assert failed is True
+    assert pointer.is_symlink() is False
+    assert not list((tmp_path / "data" / "cache" / "gefs-daily-artifacts").iterdir())
 
 
 def test_imported_daily_artifact_rejects_mismatched_declared_normalized_hash(

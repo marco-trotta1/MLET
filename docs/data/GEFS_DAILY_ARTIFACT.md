@@ -75,9 +75,14 @@ it is **not** a normalized JSONL file. Consumers must call
 and receipt paths together. There are no mutable normalized-file and receipt
 sidecars at the pointer location.
 
-The importer writes and fsyncs all three staged members, fsyncs the staged
-generation directory, and atomically renames that directory into the cache.
-Only then does it atomically replace the single pointer and fsync its parent.
+When the cache hierarchy is new, the importer creates `data/`, `cache/`, and
+`gefs-daily-artifacts/` one level at a time.  For each new level it fsyncs the
+new directory and then its parent before moving to the next level.  It writes
+and fsyncs all three staged members, changes each member to mode `0444`, and
+fsyncs that member again after the final mode change.  It then changes the
+staged generation directory to mode `0555`, fsyncs that directory, and
+atomically renames the directory into the cache.  Only then does it atomically
+replace the single pointer and fsync its parent.
 Thus, an interruption before pointer replacement leaves the previous complete
 generation visible; an interruption after replacement selects the new complete
 generation. A newly completed but unpointed generation may remain in the cache
