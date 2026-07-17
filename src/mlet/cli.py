@@ -13,6 +13,11 @@ import numpy as np
 
 from mlet.build_dataset import build_dataset
 from mlet.experiments import phase2_openet_value
+from mlet.experiments.idaho_outlook_residual import (
+    evaluate_residual_evidence,
+    write_residual_authority_request,
+    write_residual_markdown,
+)
 from mlet.loader import load_site_series
 from mlet.outlook.build import build_outlook
 from mlet.outlook.hindcast import (
@@ -68,6 +73,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     hindcast.add_argument("--cases", required=True)
     hindcast.add_argument("--out", required=True)
+    residual = subparsers.add_parser(
+        "evaluate-outlook-residual",
+        help="Run the frozen, non-serving Idaho outlook residual-model experiment.",
+    )
+    residual.add_argument("--cases", required=True)
+    residual.add_argument("--out", required=True)
     publish = subparsers.add_parser(
         "publish-outlook",
         help="Render a standalone, non-promotable Idaho outlook map candidate.",
@@ -91,6 +102,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_build_outlook(args.weather, args.state, args.crop, args.out)
     if args.command == "hindcast-outlook":
         return _run_hindcast_outlook(args.cases, args.out)
+    if args.command == "evaluate-outlook-residual":
+        return _run_outlook_residual(args.cases, args.out)
     if args.command == "publish-outlook":
         return _run_publish_outlook(args.run, args.out)
     result = phase2_openet_value.run(args.interim, args.landcover)
@@ -150,6 +163,28 @@ def _run_hindcast_outlook(cases_path: str, destination: str) -> int:
     print(f"validation: {report_path.parent / 'validation.json'}")
     print(f"authority request: {report_path.parent / 'authority_request.json'}")
     print("promotion: false")
+    return 1
+
+
+def _run_outlook_residual(cases_path: str, destination: str) -> int:
+    """Write a permanently non-promotable ML research candidate."""
+    try:
+        report_path = _trusted_hindcast_output(Path(destination))
+        report, receipt = evaluate_residual_evidence(Path(cases_path))
+        authority_path = report_path.with_name(
+            f"{report_path.stem}.authority_request.json"
+        )
+        if authority_path.exists() or authority_path.is_symlink():
+            raise ValueError("residual authority request destination already exists")
+        write_residual_markdown(report, report_path)
+        write_residual_authority_request(receipt, authority_path)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot evaluate outlook residual experiment: {exc}", file=sys.stderr)
+        return 2
+    print(f"report: {report_path}")
+    print(f"authority request: {authority_path}")
+    print("promotion: false")
+    print("status: non-serving research candidate")
     return 1
 
 

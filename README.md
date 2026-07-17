@@ -174,6 +174,26 @@ Not yet present:
 - a promoted or validated public forecast map;
 - model-training code or OpenET assimilation into a soil-moisture water balance.
 
+## Non-serving residual-model experiment
+
+The [frozen residual-model protocol](docs/evaluation/OUTLOOK_RESIDUAL_MODEL_PROTOCOL.md)
+adds a deliberately isolated advanced-ML proving ground. It trains quantile
+residuals only beside the physical well-watered ETa scenario, using frozen
+geographic-and-seasonal holdouts, issue-time feature availability, separate
+training/calibration/test partitions, and recorded package/seed/data hashes.
+It cannot change the outlook artifact, map, Helios, or Irrigant input, and it
+always writes `promotion: false` for separately trusted external review.
+
+```bash
+python3 -m mlet evaluate-outlook-residual \
+  --cases examples/outlook/hindcast_cases.json \
+  --out /private/tmp/idaho_outlook_residual.md
+```
+
+That bundled input is a visibly non-scientific software fixture. Real residual
+evidence must bind to a checksummed Task 8 hindcast archive; software tests and
+good experimental metrics alone are never a validated or production ML claim.
+
 ## Static research-candidate map
 
 `mlet publish-outlook` renders a standalone `index.html`, `outlook.geojson`,
