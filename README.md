@@ -189,8 +189,9 @@ python3 -m mlet publish-outlook --run OUTPUT_ROOT/RUN_ID
 ```
 
 The renderer reads input only through the descriptor-anchored run reader and
-does not alter the immutable generation. It writes a new sibling candidate
-directory and never overwrites one. Its map labels keep ETo outlook, potential
+does not alter the immutable generation. It stages candidate artifacts below a
+trusted output root and atomically exposes a new sibling candidate directory;
+it never overwrites one. Its map labels keep ETo outlook, potential
 crop ET, the dated ETa analysis, and the two conditional ETa scenarios
 separate. A weather-grid reference point, when included by the source contract,
 is not a field boundary. The candidate summary uses an explicitly labelled

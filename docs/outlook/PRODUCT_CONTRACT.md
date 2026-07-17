@@ -173,7 +173,10 @@ daily-ET prediction only; it is not validation of this 20-day outlook.
 
 The optional `mlet publish-outlook --run OUTPUT_ROOT/RUN_ID` renderer consumes
 only descriptor-verified immutable run bytes and writes a separate,
-non-overwriting candidate directory. Its `serve-contract.json`,
+non-overwriting candidate directory. It writes and fsyncs a private generation
+below the trusted output root before atomically exposing the completed public
+candidate handle, so no reader can observe a file-by-file partial candidate.
+Its `serve-contract.json`,
 `outlook.geojson`, `summary.json`, and standalone `index.html` are all marked
 `promotion: false`, `promotion_status: not_promoted`, and
 `validation_status: validation_pending`. The renderer is not an external

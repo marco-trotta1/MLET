@@ -165,6 +165,7 @@ def _run_publish_outlook(run: str, destination: str | None) -> int:
     print(f"index: {result.index_path}")
     print(f"geojson: {result.geojson_path}")
     print(f"serve_contract: {result.serve_contract_path}")
+    print(f"schema_version: {result.schema_version}")
     print(f"run_id: {result.run_id}")
     print("promotion: false")
     print("validation: pending")

@@ -18,7 +18,16 @@ import math
 from pathlib import Path
 from typing import Mapping
 
-from mlet.outlook.build import PublishedRun, read_published_run
+from mlet.outlook.build import (
+    PublishedRun,
+    _close_descriptor,
+    _create_private_generation,
+    _fsync_directory_fd,
+    _open_output_root,
+    _publish_private_artifact,
+    _write_new_bytes_at,
+    read_published_run,
+)
 
 
 _SCHEMA_VERSION = 1
@@ -43,6 +52,7 @@ class PublishResult:
     summary_path: Path
     serve_contract_path: Path
     fixture_non_scientific: bool
+    schema_version: int
 
 
 def publish_outlook(run: Path, *, out_dir: Path | None = None) -> PublishResult:
@@ -61,16 +71,19 @@ def publish_outlook(run: Path, *, out_dir: Path | None = None) -> PublishResult:
         if out_dir is not None
         else Path(run).parent / f"{source.run_id}-research-candidate"
     )
-    _create_output_directory(destination)
-
     candidate_contract = _candidate_contract(source, contract)
     geojson = _geojson_payload(candidate_contract)
     summary = _summary_payload(candidate_contract)
     index = _render_index(candidate_contract, geojson, summary)
-    _write_new_json(destination / "serve-contract.json", candidate_contract)
-    _write_new_json(destination / "outlook.geojson", geojson)
-    _write_new_json(destination / "summary.json", summary)
-    _write_new_text(destination / "index.html", index)
+    _publish_candidate_directory(
+        destination,
+        {
+            "serve-contract.json": _json_bytes(candidate_contract),
+            "outlook.geojson": _json_bytes(geojson),
+            "summary.json": _json_bytes(summary),
+            "index.html": index.encode("utf-8"),
+        },
+    )
     return PublishResult(
         run_id=source.run_id,
         output_dir=destination,
@@ -79,6 +92,7 @@ def publish_outlook(run: Path, *, out_dir: Path | None = None) -> PublishResult:
         summary_path=destination / "summary.json",
         serve_contract_path=destination / "serve-contract.json",
         fixture_non_scientific=bool(candidate_contract["fixture_non_scientific"]),
+        schema_version=_SCHEMA_VERSION,
     )
 
 
@@ -191,6 +205,8 @@ def _geojson_payload(candidate: Mapping[str, object]) -> dict[str, object]:
                         "layers": layers,
                         "eta_analysis": properties.get("eta_analysis"),
                         "fixture_non_scientific": candidate["fixture_non_scientific"],
+                        "promotion": False,
+                        "promotion_status": "not_promoted",
                         "validation_status": "validation_pending",
                     },
                 }
@@ -203,6 +219,7 @@ def _geojson_payload(candidate: Mapping[str, object]) -> dict[str, object]:
         "fixture_non_scientific": candidate["fixture_non_scientific"],
         "production_status": "research_candidate",
         "promotion": False,
+        "promotion_status": "not_promoted",
         "validation_status": "validation_pending",
         "spatial_resolution": "native_weather_grid",
         "regional_warning": _REGIONAL_WARNING,
@@ -229,6 +246,7 @@ def _summary_payload(candidate: Mapping[str, object]) -> dict[str, object]:
         "fixture_non_scientific": candidate["fixture_non_scientific"],
         "production_status": "research_candidate",
         "promotion": False,
+        "promotion_status": "not_promoted",
         "validation_status": "validation_pending",
         "not_field_scale": True,
         "spatial_resolution": "native_weather_grid",
@@ -315,7 +333,7 @@ def _render_index(
         if fixture
         else "RESEARCH CANDIDATE — validation pending; this is not a validated or operational product."
     )
-    data = json.dumps({"geojson": geojson, "summary": summary}, sort_keys=True, separators=(",", ":"))
+    data = _script_safe_json({"geojson": geojson, "summary": summary})
     options = "".join(
         f'<option value="{html.escape(key)}">{html.escape(label)}</option>'
         for key, label in _LAYER_LABELS.items()
@@ -336,31 +354,55 @@ body{{font-family:system-ui,sans-serif;margin:0;color:#15231b;background:#f7faf7
 <svg id="map" viewBox="0 0 900 430" role="img" aria-label="Native weather-grid reference-point map"></svg><div id="detail"></div>
 <h2>Layer definitions</h2><ul><li>ETo outlook: weather-driven ASCE short-reference ET ensemble quantiles.</li><li>Potential crop ET (well-watered): Kc × ETo under ample-water conditions.</li><li>Latest ETa analysis: dated historical observation; never a future actual-ET forecast.</li><li>ETa scenario: well-watered: conditional on crop water not limiting.</li><li>ETa scenario: no further irrigation: conditional on no irrigation after issue time.</li></ul>
 <p><small>Publication status: research candidate; promotion false; validation pending. A separately trusted external release authority is required before any promoted product may be published.</small></p>
-<script>const DATA={data};const features=DATA.geojson.features;const date=document.querySelector('#date'),layer=document.querySelector('#layer'),quantile=document.querySelector('#quantile'),map=document.querySelector('#map'),detail=document.querySelector('#detail');const dates=[...new Set(features.map(f=>f.properties.valid_date))];date.innerHTML=dates.map(d=>`<option>${{d}}</option>`).join('');function value(f){{const p=f.properties;if(layer.value==='eta_analysis_mm')return p.eta_analysis&&p.eta_analysis.eta_analysis_mm;const q=p.layers[layer.value];return q&&q[quantile.value];}}function draw(){{const shown=features.filter(f=>f.properties.valid_date===date.value);const points=shown.map(f=>f.geometry&&f.geometry.type==='Point'?f.geometry.coordinates:null).filter(Boolean);let xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);let minx=Math.min(...xs,-117),maxx=Math.max(...xs,-116),miny=Math.min(...ys,43),maxy=Math.max(...ys,44);if(minx===maxx){{minx-=.25;maxx+=.25}}if(miny===maxy){{miny-=.25;maxy+=.25}}map.innerHTML='';shown.forEach(f=>{{if(!f.geometry||f.geometry.type!=='Point')return;const [x,y]=f.geometry.coordinates;const sx=50+(x-minx)/(maxx-minx)*800,sy=390-(y-miny)/(maxy-miny)*350,v=value(f),color=v==null?'#777':`hsl(${{Math.max(0,210-Math.min(180,v*35))}},70%,45%)`;map.innerHTML+=`<circle class="dot" cx="${{sx}}" cy="${{sy}}" r="12" fill="${{color}}"><title>${{f.properties.grid_id}}: ${{v==null?'unavailable':v.toFixed(2)+' mm/day'}}</title></circle>`;}});const samples=shown.map(value).filter(v=>v!=null);detail.textContent=`${{layer.options[layer.selectedIndex].text}} — ${{date.value}} — ${{layer.value==='eta_analysis_mm'?'dated analysis':' '+quantile.value}}: ${{samples.length?samples.map(v=>v.toFixed(2)+' mm/day').join(', '):'unavailable'}}. ${{DATA.geojson.regional_warning}}`;}}[date,layer,quantile].forEach(x=>x.addEventListener('change',draw));draw();</script>
+<script>const DATA={data};const features=DATA.geojson.features;const date=document.querySelector('#date'),layer=document.querySelector('#layer'),quantile=document.querySelector('#quantile'),map=document.querySelector('#map'),detail=document.querySelector('#detail');const svgNamespace='http://www.w3.org/2000/svg';const dates=[...new Set(features.map(f=>f.properties.valid_date))];dates.forEach(d=>{{const option=document.createElement('option');option.value=d;option.textContent=d;date.append(option);}});function value(f){{const p=f.properties;if(layer.value==='eta_analysis_mm')return p.eta_analysis&&p.eta_analysis.eta_analysis_mm;const q=p.layers[layer.value];return q&&q[quantile.value];}}function etaObservationDates(shown){{return [...new Set(shown.map(f=>f.properties.eta_analysis&&f.properties.eta_analysis.eta_analysis_date).filter(d=>typeof d==='string'))];}}function draw(){{const shown=features.filter(f=>f.properties.valid_date===date.value);const points=shown.map(f=>f.geometry&&f.geometry.type==='Point'?f.geometry.coordinates:null).filter(Boolean);let xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);let minx=Math.min(...xs,-117),maxx=Math.max(...xs,-116),miny=Math.min(...ys,43),maxy=Math.max(...ys,44);if(minx===maxx){{minx-=.25;maxx+=.25}}if(miny===maxy){{miny-=.25;maxy+=.25}}map.replaceChildren();shown.forEach(f=>{{if(!f.geometry||f.geometry.type!=='Point')return;const [x,y]=f.geometry.coordinates;const sx=50+(x-minx)/(maxx-minx)*800,sy=390-(y-miny)/(maxy-miny)*350,v=value(f),color=v==null?'#777':`hsl(${{Math.max(0,210-Math.min(180,v*35))}},70%,45%)`;const circle=document.createElementNS(svgNamespace,'circle');circle.setAttribute('class','dot');circle.setAttribute('cx',String(sx));circle.setAttribute('cy',String(sy));circle.setAttribute('r','12');circle.setAttribute('fill',color);const title=document.createElementNS(svgNamespace,'title');title.textContent=`${{f.properties.grid_id}}: ${{v==null?'unavailable':v.toFixed(2)+' mm/day'}}`;circle.append(title);map.append(circle);}});const samples=shown.map(value).filter(v=>v!=null);const analysisDate=etaObservationDates(shown);const analysisDetail=layer.value==='eta_analysis_mm'?` ETa observation date: ${{analysisDate.length?analysisDate.join(', '):'unavailable'}}.`:` ${{quantile.value}}.`;detail.textContent=`${{layer.options[layer.selectedIndex].text}} — ${{date.value}}:${{analysisDetail}} Values: ${{samples.length?samples.map(v=>v.toFixed(2)+' mm/day').join(', '):'unavailable'}}. ${{DATA.geojson.regional_warning}}`;}}[date,layer,quantile].forEach(x=>x.addEventListener('change',draw));draw();</script>
 </main></body></html>"""
 
 
-def _create_output_directory(destination: Path) -> None:
-    if destination.is_symlink() or destination.exists():
-        raise ValueError("map candidate destination must not already exist")
-    if destination.parent.is_symlink() or not destination.parent.is_dir():
-        raise ValueError("map candidate destination parent must be a real directory")
+def _publish_candidate_directory(destination: Path, artifacts: Mapping[str, bytes]) -> None:
+    """Atomically expose a complete map candidate below a trusted output root.
+
+    The final candidate name is an exclusive relative symlink to a private,
+    fsynced generation.  This intentionally mirrors immutable outlook-run
+    publication: readers cannot observe a file-by-file partial candidate, and
+    no retry can replace another publisher's final name.
+    """
+    destination = Path(destination)
+    if not destination.name or destination.name in {".", ".."}:
+        raise ValueError("map candidate destination must identify a safe basename")
+    if destination != destination.parent / destination.name:
+        raise ValueError("map candidate destination must identify a safe basename")
+    output_root = _open_output_root(destination.parent, create=False)
+    private_generation = None
     try:
-        destination.mkdir(mode=0o700)
-    except OSError as error:
-        raise ValueError(f"cannot create map candidate destination: {destination}") from error
+        private_generation = _create_private_generation(output_root.fd, destination.name)
+        for filename, contents in artifacts.items():
+            _write_new_bytes_at(private_generation.fd, filename, contents)
+        _fsync_directory_fd(private_generation.fd)
+        _publish_private_artifact(
+            output_root.fd, private_generation, destination.name
+        )
+    finally:
+        if private_generation is not None:
+            _close_descriptor(private_generation.fd)
+        _close_descriptor(output_root.fd)
 
 
-def _write_new_json(destination: Path, payload: Mapping[str, object]) -> None:
-    _write_new_text(destination, json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n")
+def _json_bytes(payload: Mapping[str, object]) -> bytes:
+    return (
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
+    ).encode("utf-8")
 
 
-def _write_new_text(destination: Path, text: str) -> None:
-    try:
-        with destination.open("x", encoding="utf-8") as handle:
-            handle.write(text)
-    except OSError as error:
-        raise ValueError(f"cannot write map candidate artifact: {destination.name}") from error
+def _script_safe_json(payload: Mapping[str, object]) -> str:
+    """Serialize data without allowing a source string to terminate ``script``."""
+    return (
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
 
 
 def _reject_duplicate_object_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:

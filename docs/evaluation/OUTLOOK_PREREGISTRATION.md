@@ -202,6 +202,11 @@ renderer is inside the same evaluator threat boundary and always writes
 state promoted or validated. It returns exit code 1 after writing a readable
 research candidate, or 2 when the run cannot be read.
 
+The renderer writes its four artifacts into a private, fsynced generation under
+the trusted output root and atomically exposes the completed candidate handle.
+An interrupted write therefore cannot leave a public partial candidate; a
+subsequent attempt may publish the previously unclaimed final name.
+
 The static interface exposes the five named layers, issue time, ETa observation
 date, p10/p50/p90 uncertainty, source run ID, and the regional—not field-level
 warning. It uses source weather-grid reference points only when the serving
