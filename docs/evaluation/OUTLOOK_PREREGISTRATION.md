@@ -104,18 +104,34 @@ python3 -m mlet hindcast-outlook \
   --out docs/results/idaho_outlook_hindcast.md
 ```
 
-Each archived case records a strict-UTC `issue_time`, immutable input receipts
-(`name`, `available_at`, `source_version`, `sha256`, and `uri`), and scored
-rows. A row names exactly one layer, lead day, valid date, spatial block,
-`p10`/`p50`/`p90`, a later verification target, its availability timestamp,
-and its target kind. The evaluator only selects inputs with `available_at <=
-issue_time`; any later source receipt is retained in the audit and blocks
-promotion. An offset, naive, or otherwise ambiguous timestamp is invalid.
+The input is a version-2 **evidence bundle**, not a table of caller-supplied
+scores. It declares `evidence_classification` as either `real_archived` or
+`software_fixture`, plus a versioned, checksummed provenance receipt. Every
+case names a strict-UTC `issue_time`; the exact forecast `run_id`; bytes and
+SHA-256 digests for its `manifest.json` and `outlook.json`; and a separate
+target-artifact path, URI, version, checksum, and availability timestamp. The
+target artifact embeds the same URI/version/availability receipt inside its
+hashed bytes, so changing a receipt time in the bundle cannot recast a target
+as historically available. The
+evaluator verifies the manifest/run/artifact identity, then reconstructs
+quantiles from `outlook.json` and truth from the target bytes. Inline `rows`,
+even if perfect, are rejected and can never promote a release.
+
+Each case also contains source receipts bound by name/URI/hash to the verified
+run manifest, all selected as of the issue time; fold assignment, training and
+calibration cutoffs, held-out season, and training folds/seasons; and
+checksummed water, crop, precipitation, and soil assumption receipts. A late
+source, target, assumption, fold/season overlap, or cutoff reaching a held-out
+target blocks promotion. The release gate requires all five spatial folds and
+all four calendar seasons, as well as lead-day coverage. An offset, naive, or
+otherwise ambiguous timestamp is invalid.
 
 The report contains sample count, MAE, RMSE, bias, empirical closed-interval
 coverage, and interval width by layer/lead, month, season, and spatial block.
-It writes an adjacent `validation.json` with the authoritative `promotion`
-boolean and every blocking reason. Promotion requires nonzero sample count and
+It writes an adjacent `validation.json` from an internally issued,
+hash-bound evaluation receipt (not a public report object) with the
+authoritative `promotion` boolean and every blocking reason. Promotion requires
+nonzero sample count and
 recorded coverage for leads 1–20 of ETo, the well-watered ETa scenario, and
 the no-irrigation ETa scenario. Conditional ETa targets must use their named
 scenario target kinds; they cannot be recast as observed actual ET.

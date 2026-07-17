@@ -16,8 +16,7 @@ from mlet.experiments import phase2_openet_value
 from mlet.loader import load_site_series
 from mlet.outlook.build import build_outlook
 from mlet.outlook.hindcast import (
-    load_hindcast_cases,
-    run_hindcast,
+    evaluate_hindcast_evidence,
     write_hindcast_markdown,
     write_hindcast_validation,
 )
@@ -127,9 +126,8 @@ def _run_hindcast_outlook(cases_path: str, destination: str) -> int:
     """Write the auditable hindcast report and return its release-gate status."""
     try:
         report_path = _trusted_hindcast_output(Path(destination))
-        cases, fixture_reason = load_hindcast_cases(Path(cases_path))
-        report = run_hindcast(cases, fixture_reason=fixture_reason)
-        write_hindcast_validation(report, report_path.parent / "validation.json")
+        report, receipt = evaluate_hindcast_evidence(Path(cases_path))
+        write_hindcast_validation(receipt, report_path.parent / "validation.json")
         write_hindcast_markdown(report, report_path)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"error: cannot run outlook hindcast: {exc}", file=sys.stderr)

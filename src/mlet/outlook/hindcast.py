@@ -12,11 +12,14 @@ from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
+import hashlib
 import json
 import math
 import os
 from pathlib import Path
 from urllib.parse import urlparse
+
+from mlet.outlook.manifest import RunManifest
 
 
 PUBLISHED_LAYERS = (
@@ -67,7 +70,7 @@ class AvailableRecord:
         except ValueError as error:
             raise ValueError("source sha256 must be a 64-character hexadecimal digest") from error
         parsed = urlparse(self.uri)
-        if not isinstance(self.uri, str) or not parsed.scheme or not parsed.netloc:
+        if not isinstance(self.uri, str) or not parsed.scheme or (not parsed.netloc and parsed.scheme != "file"):
             raise ValueError("source uri must be an absolute URI")
 
 
@@ -193,7 +196,14 @@ class CaseInputAudit:
 
 @dataclass(frozen=True)
 class HindcastReport:
-    """Immutable evaluation results and the only promotion decision surface."""
+    """Aggregate statistics only.
+
+    This public value deliberately is *not* a publication authority.  It is
+    useful for exploratory summaries and tests, but a caller can construct it
+    (or rows feeding it), so :func:`write_hindcast_validation` refuses it.
+    Only the private, hash-bound receipt made by
+    :func:`evaluate_hindcast_evidence` may assert a promotion decision.
+    """
 
     metrics: tuple[HindcastMetric, ...]
     source_latency: tuple[SourceLatencySummary, ...]
@@ -201,11 +211,15 @@ class HindcastReport:
     case_count: int
     fixture_non_scientific: bool
     fixture_reason: str | None
-    promotion: bool
     promotion_blockers: tuple[str, ...]
 
+    @property
+    def promotion(self) -> bool:
+        """Diagnostic status derived from blockers, never publication authority."""
+        return not self.promotion_blockers
+
     def validation_record(self) -> dict[str, object]:
-        """Return the machine-readable release receipt consumed by publishers."""
+        """Return a non-authoritative diagnostic record, never a release receipt."""
         return {
             "schema_version": 1,
             "kind": "idaho_outlook_hindcast_validation",
@@ -251,6 +265,19 @@ class HindcastReport:
         }
 
 
+@dataclass(frozen=True)
+class _EvaluationReceipt:
+    """Opaque, content-bound release authority made only by this module."""
+
+    _authority: object
+    report: HindcastReport
+    evidence_sha256: str
+    case_sha256: tuple[str, ...]
+
+
+_RECEIPT_AUTHORITY = object()
+
+
 def select_inputs_as_of(
     records: Sequence[AvailableRecord], *, issue_time: datetime
 ) -> list[AvailableRecord]:
@@ -264,7 +291,20 @@ def select_inputs_as_of(
 def run_hindcast(
     cases: Sequence[HindcastCase], *, fixture_reason: str | None = None
 ) -> HindcastReport:
-    """Evaluate archived cases without converting a test fixture into evidence."""
+    """Aggregate typed rows without granting a publication decision.
+
+    This helper intentionally cannot promote.  Promotable rows must be parsed
+    from byte-verified forecast and target artifacts by
+    :func:`evaluate_hindcast_evidence`; accepting caller supplied rows here
+    would make a perfect inline table indistinguishable from a real hindcast.
+    """
+    return _aggregate_hindcast(cases, fixture_reason=fixture_reason, verified=False)
+
+
+def _aggregate_hindcast(
+    cases: Sequence[HindcastCase], *, fixture_reason: str | None, verified: bool
+) -> HindcastReport:
+    """Aggregate rows after the caller's evidence boundary has been selected."""
     if any(not isinstance(case, HindcastCase) for case in cases):
         raise ValueError("cases must contain HindcastCase values")
     fixture = fixture_reason is not None
@@ -318,6 +358,11 @@ def run_hindcast(
         blockers.append("no historical forecast issues were supplied")
     if fixture:
         blockers.insert(0, f"software fixture is non-scientific: {fixture_reason}")
+    if not verified:
+        blockers.insert(
+            0,
+            "standalone hindcast rows are aggregation-only; no verified evidence receipt was supplied",
+        )
 
     source_latency = _summarize_source_latency(source_audit)
     return HindcastReport(
@@ -327,8 +372,79 @@ def run_hindcast(
         case_count=len(cases),
         fixture_non_scientific=fixture,
         fixture_reason=fixture_reason,
-        promotion=not blockers,
         promotion_blockers=tuple(_deduplicate(blockers)),
+    )
+
+
+def evaluate_hindcast_evidence(path: Path) -> tuple[HindcastReport, _EvaluationReceipt]:
+    """Evaluate a version-2 archived-evidence bundle and issue its receipt.
+
+    Version 2 deliberately has no inline score rows.  Each case names an
+    immutable run manifest plus its forecast artifact and a separate immutable
+    target artifact.  Quantiles and truths are reconstructed from those bytes
+    after hashes, run identity, source receipts, holdouts, and scenario
+    assumptions have all been checked.
+    """
+    evidence_path = Path(path).resolve(strict=True)
+    root = evidence_path.parent
+    raw = _load_json_bytes(evidence_path.read_bytes(), "hindcast evidence")
+    if not isinstance(raw, dict) or raw.get("schema_version") != 2:
+        raise ValueError("hindcast evidence must be a schema_version 2 object")
+    _require_exact_keys(
+        raw,
+        {"schema_version", "evidence_classification", "provenance", "cases"},
+        "hindcast evidence",
+    )
+    classification = raw["evidence_classification"]
+    if classification not in {"real_archived", "software_fixture"}:
+        raise ValueError("evidence_classification must be real_archived or software_fixture")
+    provenance = raw["provenance"]
+    _parse_real_provenance(provenance, required=classification == "real_archived")
+    raw_cases = raw["cases"]
+    if not isinstance(raw_cases, list):
+        raise ValueError("hindcast evidence cases must be a list")
+    cases: list[HindcastCase] = []
+    case_hashes: list[str] = []
+    blockers: list[str] = []
+    for index, raw_case in enumerate(raw_cases):
+        case, digest, case_blockers, held_fold, held_season = _parse_verified_case(raw_case, root, index)
+        cases.append(case)
+        case_hashes.append(digest)
+        blockers.extend(case_blockers)
+        # A one-fold or one-season score is a diagnostic, not the frozen
+        # geographically and seasonally held-out validation protocol.
+        if index == 0:
+            held_folds: set[int] = set()
+            held_seasons: set[str] = set()
+        held_folds.add(held_fold)
+        held_seasons.add(held_season)
+    if raw_cases:
+        missing_folds = sorted(set(range(5)) - held_folds)
+        missing_seasons = sorted(set(_SEASONS.values()) - held_seasons)
+        if missing_folds:
+            blockers.append(f"missing preregistered held-out spatial folds: {missing_folds}")
+        if missing_seasons:
+            blockers.append(f"missing preregistered held-out seasons: {missing_seasons}")
+    fixture_reason = None
+    if classification != "real_archived":
+        fixture_reason = "evidence classification is software_fixture"
+    report = _aggregate_hindcast(tuple(cases), fixture_reason=fixture_reason, verified=True)
+    if blockers:
+        report = HindcastReport(
+            metrics=report.metrics,
+            source_latency=report.source_latency,
+            input_audit=report.input_audit,
+            case_count=report.case_count,
+            fixture_non_scientific=report.fixture_non_scientific,
+            fixture_reason=report.fixture_reason,
+            promotion_blockers=tuple(_deduplicate([*report.promotion_blockers, *blockers])),
+        )
+    evidence_sha256 = hashlib.sha256(_canonical_json(raw).encode("utf-8")).hexdigest()
+    return report, _EvaluationReceipt(
+        _authority=_RECEIPT_AUTHORITY,
+        report=report,
+        evidence_sha256=evidence_sha256,
+        case_sha256=tuple(case_hashes),
     )
 
 
@@ -360,12 +476,18 @@ def load_hindcast_cases(path: Path) -> tuple[tuple[HindcastCase, ...], str | Non
     return tuple(_parse_case(item) for item in raw_cases), fixture_reason
 
 
-def write_hindcast_validation(report: HindcastReport, destination: Path) -> Path:
-    """Write the unambiguous promotion receipt without silently overwriting it."""
-    if not isinstance(report, HindcastReport):
-        raise ValueError("hindcast validation requires a HindcastReport")
+def write_hindcast_validation(receipt: object, destination: Path) -> Path:
+    """Publish only a module-issued, hash-bound evaluation receipt.
+
+    A public ``HindcastReport`` has no authority, even if a caller forges its
+    ``promotion`` field.  This makes the validation file a result of verified
+    artifact evaluation rather than a serialization of caller-controlled rows.
+    """
+    if not isinstance(receipt, _EvaluationReceipt) or receipt._authority is not _RECEIPT_AUTHORITY:
+        raise ValueError("hindcast validation requires a verified evaluation receipt")
+    _validate_evaluation_receipt(receipt)
     encoded = (
-        json.dumps(report.validation_record(), sort_keys=True, separators=(",", ":"), allow_nan=False)
+        json.dumps(_receipt_payload(receipt), sort_keys=True, separators=(",", ":"), allow_nan=False)
         + "\n"
     ).encode("utf-8")
     return _write_new_bytes(Path(destination), encoded)
@@ -503,6 +625,161 @@ def _parse_row(value: object) -> HindcastRow:
     )
 
 
+def _parse_verified_case(
+    value: object, root: Path, case_index: int
+) -> tuple[HindcastCase, str, list[str], int, str]:
+    if not isinstance(value, dict):
+        raise ValueError("each evidence case must be an object")
+    _require_exact_keys(
+        value,
+        {
+            "issue_time", "forecast", "target", "source_receipts", "holdout",
+            "scenario_assumptions",
+        },
+        "evidence case",
+    )
+    issue = _parse_utc(value["issue_time"], "case issue_time")
+    forecast = value["forecast"]
+    target = value["target"]
+    if not isinstance(forecast, dict) or not isinstance(target, dict):
+        raise ValueError("evidence case forecast and target must be objects")
+    _require_exact_keys(
+        forecast, {"run_id", "manifest_path", "manifest_sha256", "artifact_path", "artifact_sha256"},
+        "forecast receipt",
+    )
+    _require_exact_keys(
+        target, {"path", "uri", "source_version", "sha256", "available_at"},
+        "target receipt",
+    )
+    manifest_bytes = _read_evidence_file(root, forecast["manifest_path"], "forecast manifest")
+    _require_digest(manifest_bytes, forecast["manifest_sha256"], "forecast manifest")
+    manifest = RunManifest.from_json(manifest_bytes.decode("utf-8"))
+    if forecast["run_id"] != manifest.run_id:
+        raise ValueError("forecast run_id does not match its verified manifest")
+    if manifest.issued_at != issue:
+        raise ValueError("forecast manifest issued_at must equal case issue_time")
+    forecast_bytes = _read_evidence_file(root, forecast["artifact_path"], "forecast artifact")
+    _require_digest(forecast_bytes, forecast["artifact_sha256"], "forecast artifact")
+    manifest_hashes = dict(manifest.artifact_sha256)
+    if manifest_hashes.get("outlook.json") != forecast["artifact_sha256"]:
+        raise ValueError("forecast artifact hash does not match verified manifest outlook.json")
+    forecast_payload = _load_json_bytes(forecast_bytes, "forecast artifact")
+    if not isinstance(forecast_payload, dict):
+        raise ValueError("forecast artifact must be a JSON object")
+    if forecast_payload.get("run_id") != manifest.run_id:
+        raise ValueError("forecast artifact run_id does not match manifest")
+    if forecast_payload.get("issued_at") != _format_utc(issue):
+        raise ValueError("forecast artifact issued_at does not match case issue_time")
+    if forecast_payload.get("fixture_non_scientific") is True:
+        raise ValueError("fixture forecast artifacts cannot be used as scientific evidence")
+    target_bytes = _read_evidence_file(root, target["path"], "target artifact")
+    _require_digest(target_bytes, target["sha256"], "target artifact")
+    target_available = _parse_utc(target["available_at"], "target available_at")
+    AvailableRecord(
+        name="target_artifact", available_at=target_available,
+        source_version=target["source_version"], sha256=target["sha256"], uri=target["uri"],
+    )
+    target_payload = _load_json_bytes(target_bytes, "target artifact")
+    _bind_target_receipt(target_payload, target, target_available)
+    rows = _rows_from_verified_artifacts(
+        forecast_payload, target_payload, issue, target_available, case_index
+    )
+    source_receipts = _parse_and_bind_source_receipts(value["source_receipts"], manifest, issue)
+    blockers, held_fold, held_season = _validate_holdout(value["holdout"], rows, issue, case_index)
+    blockers.extend(_validate_scenario_assumptions(value["scenario_assumptions"], issue, rows, case_index))
+    digest = hashlib.sha256(
+        _canonical_json(
+            {
+                "case": value,
+                "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+                "forecast_sha256": hashlib.sha256(forecast_bytes).hexdigest(),
+                "target_sha256": hashlib.sha256(target_bytes).hexdigest(),
+            }
+        ).encode("utf-8")
+    ).hexdigest()
+    return HindcastCase(issue_time=issue, records=source_receipts, rows=rows), digest, blockers, held_fold, held_season
+
+
+def _rows_from_verified_artifacts(
+    forecast: object, target: object, issue: datetime, target_available: datetime, case_index: int
+) -> tuple[HindcastRow, ...]:
+    if not isinstance(forecast, dict) or not isinstance(target, dict):
+        raise ValueError("forecast and target artifacts must be JSON objects")
+    collections = forecast.get("feature_collections")
+    if not isinstance(collections, list):
+        raise ValueError("forecast artifact must contain feature_collections")
+    quantiles: dict[tuple[str, int, str], tuple[float, float, float]] = {}
+    for collection in collections:
+        if not isinstance(collection, dict):
+            raise ValueError("forecast feature collection must be an object")
+        lead = collection.get("lead_day")
+        features = collection.get("features")
+        if isinstance(lead, bool) or not isinstance(lead, int) or not isinstance(features, list):
+            raise ValueError("forecast feature collection must contain lead_day and features")
+        for feature in features:
+            try:
+                props = feature["properties"]
+                grid_id = props["grid_id"]
+                layers = props["layers"]
+            except (TypeError, KeyError) as error:
+                raise ValueError("forecast feature lacks properties/grid_id/layers") from error
+            if not isinstance(grid_id, str) or not isinstance(layers, dict):
+                raise ValueError("forecast feature has invalid grid_id or layers")
+            for layer in PUBLISHED_LAYERS:
+                q = layers.get(layer)
+                if not isinstance(q, dict):
+                    raise ValueError(f"forecast artifact lacks {layer} quantiles")
+                values = tuple(q.get(name) for name in ("p10", "p50", "p90"))
+                if any(isinstance(item, bool) or not isinstance(item, (int, float)) for item in values):
+                    raise ValueError("forecast quantiles must be numeric")
+                quantiles[(layer, lead, grid_id)] = (float(values[0]), float(values[1]), float(values[2]))
+    _require_exact_keys(target, {"schema_version", "kind", "receipt", "values"}, "target artifact")
+    if target.get("schema_version") != 1 or target.get("kind") != "idaho_outlook_hindcast_target":
+        raise ValueError("target artifact must be a versioned idaho_outlook_hindcast_target")
+    entries = target.get("values")
+    if not isinstance(entries, list):
+        raise ValueError("target artifact values must be a list")
+    rows: list[HindcastRow] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError("target artifact value must be an object")
+        _require_exact_keys(entry, {"layer", "lead_day", "valid_date", "grid_id", "target_mm", "target_kind"}, "target value")
+        valid_text = entry["valid_date"]
+        if not isinstance(valid_text, str):
+            raise ValueError("target valid_date must be ISO text")
+        valid = date.fromisoformat(valid_text)
+        layer, lead, grid = entry["layer"], entry["lead_day"], entry["grid_id"]
+        if not isinstance(layer, str) or isinstance(lead, bool) or not isinstance(lead, int) or not isinstance(grid, str):
+            raise ValueError("target value layer, lead_day, and grid_id are invalid")
+        q = quantiles.get((layer, lead, grid))
+        if q is None:
+            raise ValueError("target value does not identity-match a forecast artifact quantile")
+        rows.append(HindcastRow(
+            layer=layer, lead_day=lead, valid_date=valid, spatial_block=grid,
+            p10=q[0], p50=q[1], p90=q[2], target_mm=entry["target_mm"],
+            target_kind=entry["target_kind"], target_available_at=target_available,
+        ))
+    if not rows:
+        raise ValueError(f"case {case_index} target artifact contains no values")
+    return tuple(rows)
+
+
+def _bind_target_receipt(target_payload: object, target_receipt: dict[object, object], available_at: datetime) -> None:
+    """Require availability/version/URI claims to be inside hashed target bytes."""
+    if not isinstance(target_payload, dict):
+        raise ValueError("target artifact must be an object")
+    receipt = target_payload.get("receipt")
+    if not isinstance(receipt, dict):
+        raise ValueError("target artifact must embed its immutable receipt")
+    _require_exact_keys(receipt, {"uri", "source_version", "available_at"}, "target artifact receipt")
+    if (
+        receipt["uri"] != target_receipt["uri"]
+        or receipt["source_version"] != target_receipt["source_version"]
+        or receipt["available_at"] != _format_utc(available_at)
+    ):
+        raise ValueError("target receipt does not match immutable target artifact")
+
+
 def _summarize_rows(
     layer: str, group: str, key: str, rows: Sequence[HindcastRow]
 ) -> HindcastMetric:
@@ -521,6 +798,165 @@ def _summarize_rows(
         p10_p90_coverage=sum(coverage) / count if count else None,
         mean_interval_width_mm=sum(widths) / count if count else None,
     )
+
+
+def _parse_and_bind_source_receipts(
+    value: object, manifest: RunManifest, issue: datetime
+) -> tuple[AvailableRecord, ...]:
+    if not isinstance(value, list):
+        raise ValueError("source_receipts must be a list")
+    records = tuple(_parse_record(item) for item in value)
+    manifest_sources = {source.name: source for source in manifest.sources}
+    if {record.name for record in records} != set(manifest_sources) or len(records) != len(manifest_sources):
+        raise ValueError("source receipts must bind every manifest source exactly once")
+    for record in records:
+        source = manifest_sources[record.name]
+        if record.sha256 != source.sha256 or record.uri != source.uri:
+            raise ValueError("source receipt identity does not match verified manifest source")
+        if record.available_at > issue:
+            raise ValueError("source receipt was available after case issue_time")
+    return records
+
+
+def _validate_holdout(value: object, rows: Sequence[HindcastRow], issue: datetime, index: int) -> tuple[list[str], int, str]:
+    if not isinstance(value, dict):
+        raise ValueError("holdout must be an object")
+    _require_exact_keys(
+        value,
+        {"spatial_block", "fold", "held_out_fold", "training_folds", "held_out_season", "training_seasons", "training_cutoff", "calibration_cutoff"},
+        "holdout",
+    )
+    block = value["spatial_block"]
+    fold, held = value["fold"], value["held_out_fold"]
+    if not isinstance(block, str) or isinstance(fold, bool) or not isinstance(fold, int) or isinstance(held, bool) or not isinstance(held, int):
+        raise ValueError("holdout spatial_block and folds are invalid")
+    training_folds = value["training_folds"]
+    seasons = value["training_seasons"]
+    held_season = value["held_out_season"]
+    if not isinstance(training_folds, list) or not all(isinstance(item, int) and not isinstance(item, bool) for item in training_folds):
+        raise ValueError("training_folds must be integer list")
+    if not isinstance(seasons, list) or not all(item in set(_SEASONS.values()) for item in seasons) or held_season not in set(_SEASONS.values()):
+        raise ValueError("holdout seasons are invalid")
+    training_cutoff = _parse_utc(value["training_cutoff"], "training_cutoff")
+    calibration_cutoff = _parse_utc(value["calibration_cutoff"], "calibration_cutoff")
+    blockers: list[str] = []
+    if fold != held or held in training_folds:
+        blockers.append(f"case {index} held-out spatial fold is present in training")
+    if training_cutoff > issue or calibration_cutoff > issue:
+        blockers.append(f"case {index} training or calibration cutoff is after issue_time")
+    if held_season in seasons:
+        blockers.append(f"case {index} held-out season is present in training")
+    for row in rows:
+        if row.spatial_block != block:
+            blockers.append(f"case {index} target grid is outside declared held-out spatial block")
+        if _SEASONS[row.valid_date.month] != held_season:
+            blockers.append(f"case {index} target date is outside declared held-out season")
+        if row.valid_date <= training_cutoff.date() or row.valid_date <= calibration_cutoff.date():
+            blockers.append(f"case {index} training or calibration cutoff reaches held-out target")
+    return _deduplicate(blockers), held, held_season
+
+
+def _validate_scenario_assumptions(
+    value: object, issue: datetime, rows: Sequence[HindcastRow], index: int
+) -> list[str]:
+    if not isinstance(value, dict):
+        raise ValueError("scenario_assumptions must be an object")
+    expected = {"water", "crop", "precip", "soil"}
+    if set(value) != expected:
+        raise ValueError("scenario_assumptions must contain water, crop, precip, and soil receipts")
+    requires_scenarios = any(row.layer.startswith("eta_") for row in rows)
+    blockers: list[str] = []
+    for name in sorted(expected):
+        try:
+            receipt = _parse_record(value[name])
+        except ValueError as error:
+            raise ValueError(f"scenario assumption {name} is invalid: {error}") from error
+        if receipt.available_at > issue:
+            blockers.append(f"case {index} scenario assumption {name} was available after issue_time")
+        if requires_scenarios and not receipt.sha256:
+            blockers.append(f"case {index} scenario assumption {name} lacks immutable identity")
+    return blockers
+
+
+def _read_evidence_file(root: Path, supplied: object, label: str) -> bytes:
+    if not isinstance(supplied, str) or not supplied or Path(supplied).is_absolute():
+        raise ValueError(f"{label} path must be a non-empty relative path")
+    candidate = (root / supplied).resolve(strict=True)
+    try:
+        candidate.relative_to(root)
+    except ValueError as error:
+        raise ValueError(f"{label} path escapes the evidence bundle") from error
+    if not candidate.is_file() or candidate.is_symlink():
+        raise ValueError(f"{label} must name a regular evidence file")
+    return candidate.read_bytes()
+
+
+def _require_digest(content: bytes, supplied: object, label: str) -> None:
+    if not isinstance(supplied, str) or len(supplied) != 64 or any(ch not in "0123456789abcdef" for ch in supplied):
+        raise ValueError(f"{label} sha256 must be lowercase SHA-256 hex")
+    if hashlib.sha256(content).hexdigest() != supplied:
+        raise ValueError(f"{label} sha256 does not match artifact bytes")
+
+
+def _load_json_bytes(content: bytes, label: str) -> object:
+    try:
+        return json.loads(content.decode("utf-8"), object_pairs_hook=_no_duplicate_keys)
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+        raise ValueError(f"{label} must be valid duplicate-key-free UTF-8 JSON") from error
+
+
+def _no_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, item in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON key")
+        result[key] = item
+    return result
+
+
+def _canonical_json(value: object) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def _require_exact_keys(value: object, expected: set[str], label: str) -> None:
+    if not isinstance(value, dict) or set(value) != expected:
+        raise ValueError(f"{label} fields must match the schema exactly")
+
+
+def _parse_real_provenance(value: object, *, required: bool) -> None:
+    if not isinstance(value, dict):
+        raise ValueError("evidence provenance must be an object")
+    _require_exact_keys(value, {"uri", "version", "sha256", "available_at"}, "evidence provenance")
+    try:
+        record = AvailableRecord(
+            name="evidence_provenance", uri=value["uri"], source_version=value["version"],
+            sha256=value["sha256"], available_at=_parse_utc(value["available_at"], "provenance available_at"),
+        )
+    except ValueError as error:
+        raise ValueError(f"evidence provenance is invalid: {error}") from error
+    if required and (record.uri.startswith("https://example.") or record.source_version.lower() in {"fixture", "unknown"}):
+        raise ValueError("real_archived evidence requires verified non-fixture provenance")
+
+
+def _receipt_payload(receipt: _EvaluationReceipt) -> dict[str, object]:
+    payload = receipt.report.validation_record()
+    payload.update({
+        "schema_version": 2,
+        "kind": "idaho_outlook_hindcast_evaluation_receipt",
+        "evidence_sha256": receipt.evidence_sha256,
+        "case_sha256": list(receipt.case_sha256),
+        "publication_authority": "verified_artifact_evaluation",
+    })
+    return payload
+
+
+def _validate_evaluation_receipt(receipt: _EvaluationReceipt) -> None:
+    if len(receipt.evidence_sha256) != 64 or any(ch not in "0123456789abcdef" for ch in receipt.evidence_sha256):
+        raise ValueError("evaluation receipt evidence hash is invalid")
+    if len(receipt.case_sha256) != receipt.report.case_count:
+        raise ValueError("evaluation receipt case hashes do not match the report")
+    if any(len(item) != 64 or any(ch not in "0123456789abcdef" for ch in item) for item in receipt.case_sha256):
+        raise ValueError("evaluation receipt case hash is invalid")
 
 
 def _summarize_source_latency(

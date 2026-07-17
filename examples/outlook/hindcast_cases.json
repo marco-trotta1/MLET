@@ -1,6 +1,11 @@
 {
-  "schema_version": 1,
-  "fixture_non_scientific": true,
-  "note": "Deterministic software fixture only. It is not a hindcast, operational forecast, or scientific validation evidence.",
+  "schema_version": 2,
+  "evidence_classification": "software_fixture",
+  "provenance": {
+    "uri": "https://example.invalid/mlet-hindcast-fixture",
+    "version": "fixture-v1",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "available_at": "2026-07-01T00:00:00Z"
+  },
   "cases": []
 }

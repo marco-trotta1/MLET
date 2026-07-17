@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+import hashlib
 import json
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import pytest
 
 from mlet.outlook.hindcast import (
     AvailableRecord,
+    evaluate_hindcast_evidence,
     HindcastCase,
     HindcastRow,
     load_hindcast_cases,
@@ -18,6 +20,7 @@ from mlet.outlook.hindcast import (
     select_inputs_as_of,
     write_hindcast_validation,
 )
+from mlet.outlook.manifest import build_manifest
 from mlet.cli import _trusted_hindcast_output, main
 
 
@@ -71,6 +74,54 @@ def _complete_case() -> HindcastCase:
     )
 
 
+def _write_verified_evidence(tmp_path: Path, *, classification: str = "real_archived") -> Path:
+    """Create an archived byte bundle; values are never inline in the case file."""
+    source = tmp_path / "source.bin"
+    source.write_bytes(b"archived source")
+    issue = ISSUE_TIME.strftime("%Y-%m-%dT%H:%M:%SZ")
+    collections = []
+    target_values = []
+    for lead in range(1, 21):
+        valid = (ISSUE_TIME.date() + timedelta(days=lead)).isoformat()
+        layers = {}
+        for layer, kind in {
+            "eto_mm": "independent_asce_short_reference_eto",
+            "eta_well_watered_mm": "declared_well_watered_scenario_target",
+            "eta_no_irrigation_mm": "declared_no_irrigation_scenario_target",
+        }.items():
+            layers[layer] = {"p10": 3.0, "p50": 4.0, "p90": 5.0}
+            target_values.append({"layer": layer, "lead_day": lead, "valid_date": valid, "grid_id": "43:-117", "target_mm": 4.5, "target_kind": kind})
+        collections.append({"lead_day": lead, "features": [{"properties": {"grid_id": "43:-117", "layers": layers}}]})
+    forecast = tmp_path / "outlook.json"
+    forecast.write_text(json.dumps({"run_id": "PLACEHOLDER", "issued_at": issue, "fixture_non_scientific": False, "feature_collections": collections}), encoding="utf-8")
+    manifest = build_manifest(issue, {"weather": source}, "test-revision", issue)
+    # The output has to carry the manifest identity, then the manifest pins its exact bytes.
+    forecast.write_text(json.dumps({"run_id": manifest.run_id, "issued_at": issue, "fixture_non_scientific": False, "feature_collections": collections}), encoding="utf-8")
+    manifest = manifest.with_artifact_sha256({"outlook.json": hashlib.sha256(forecast.read_bytes()).hexdigest()})
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(manifest.to_json(), encoding="utf-8")
+    target = tmp_path / "targets.json"
+    target.write_text(json.dumps({"schema_version": 1, "kind": "idaho_outlook_hindcast_target", "receipt": {"uri": "https://archive.example.org/targets", "source_version": "target-v1", "available_at": "2026-07-23T00:00:00Z"}, "values": target_values}), encoding="utf-8")
+    receipt = {"name": "weather", "available_at": issue, "source_version": "archive-v1", "sha256": hashlib.sha256(source.read_bytes()).hexdigest(), "uri": source.resolve().as_uri()}
+    assumptions = {name: {**receipt, "name": name} for name in ("water", "crop", "precip", "soil")}
+    evidence = {
+        "schema_version": 2,
+        "evidence_classification": classification,
+        "provenance": {"uri": "https://archive.example.org/idaho", "version": "archive-v1", "sha256": "b" * 64, "available_at": issue},
+        "cases": [{
+            "issue_time": issue,
+            "forecast": {"run_id": manifest.run_id, "manifest_path": "manifest.json", "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(), "artifact_path": "outlook.json", "artifact_sha256": hashlib.sha256(forecast.read_bytes()).hexdigest()},
+            "target": {"path": "targets.json", "uri": "https://archive.example.org/targets", "source_version": "target-v1", "sha256": hashlib.sha256(target.read_bytes()).hexdigest(), "available_at": "2026-07-23T00:00:00Z"},
+            "source_receipts": [receipt],
+            "holdout": {"spatial_block": "43:-117", "fold": 1, "held_out_fold": 1, "training_folds": [0, 2, 3, 4], "held_out_season": "JJA", "training_seasons": ["DJF", "MAM", "SON"], "training_cutoff": issue, "calibration_cutoff": issue},
+            "scenario_assumptions": assumptions,
+        }],
+    }
+    evidence_path = tmp_path / "evidence.json"
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    return evidence_path
+
+
 def test_select_inputs_as_of_excludes_future_records() -> None:
     future = _record(available_at=ISSUE_TIME + timedelta(seconds=1))
 
@@ -121,7 +172,8 @@ def test_hindcast_reports_lead_metrics_and_interval_coverage() -> None:
     assert report.input_audit[0].selected_source_names == ("archived-gefs",)
     assert report.input_audit[0].excluded_after_issue_names == ()
     assert report.validation_record()["input_audit"][0]["selected_records"][0]["sha256"] == "a" * 64
-    assert report.promotion is True
+    assert report.promotion is False
+    assert "aggregation-only" in report.promotion_blockers[0]
 
 
 def test_hindcast_blocks_promotion_when_a_published_lead_is_missing() -> None:
@@ -197,22 +249,9 @@ def test_hindcast_rejects_a_reference_that_was_not_later_than_its_target_day() -
 def test_fixture_cases_are_non_scientific_and_write_a_false_promotion_receipt(
     tmp_path: Path,
 ) -> None:
-    case_path = tmp_path / "fixture.json"
-    case_path.write_text(
-        json.dumps(
-            {
-                "schema_version": 1,
-                "fixture_non_scientific": True,
-                "note": "deterministic software fixture",
-                "cases": [],
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    cases, fixture_reason = load_hindcast_cases(case_path)
-    report = run_hindcast(cases, fixture_reason=fixture_reason)
-    receipt_path = write_hindcast_validation(report, tmp_path / "validation.json")
+    case_path = _write_verified_evidence(tmp_path, classification="software_fixture")
+    report, receipt = evaluate_hindcast_evidence(case_path)
+    receipt_path = write_hindcast_validation(receipt, tmp_path / "validation.json")
 
     assert report.promotion is False
     assert "fixture" in report.promotion_blockers[0]
@@ -223,18 +262,7 @@ def test_fixture_cases_are_non_scientific_and_write_a_false_promotion_receipt(
 def test_hindcast_cli_writes_fixture_receipts_and_returns_nonpromotion_status(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    cases = tmp_path / "fixture.json"
-    cases.write_text(
-        json.dumps(
-            {
-                "schema_version": 1,
-                "fixture_non_scientific": True,
-                "note": "deterministic software fixture",
-                "cases": [],
-            }
-        ),
-        encoding="utf-8",
-    )
+    cases = _write_verified_evidence(tmp_path, classification="software_fixture")
     report = tmp_path / "hindcast.md"
 
     code = main(["hindcast-outlook", "--cases", str(cases), "--out", str(report)])
@@ -271,3 +299,71 @@ def test_hindcast_cli_accepts_the_documented_private_tmp_verification_root() -> 
 def test_hindcast_cli_rejects_an_untrusted_output_location() -> None:
     with pytest.raises(ValueError, match="docs/results"):
         _trusted_hindcast_output(Path("/var/tmp/idaho_hindcast.md"))
+
+
+def test_old_inline_perfect_rows_cannot_be_mixed_into_verified_evidence(tmp_path: Path) -> None:
+    evidence_path = _write_verified_evidence(tmp_path)
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["cases"][0]["rows"] = [
+        {"layer": "eto_mm", "p10": 4.5, "p50": 4.5, "p90": 4.5, "target_mm": 4.5}
+    ]
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="fields must match"):
+        evaluate_hindcast_evidence(evidence_path)
+
+
+def test_fabricated_target_value_or_time_cannot_promote(tmp_path: Path) -> None:
+    evidence_path = _write_verified_evidence(tmp_path)
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    target = tmp_path / "targets.json"
+    original_target = target.read_text(encoding="utf-8")
+    target_payload = json.loads(target.read_text(encoding="utf-8"))
+    target_payload["values"][0]["target_mm"] = 999.0
+    target.write_text(json.dumps(target_payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="target artifact sha256"):
+        evaluate_hindcast_evidence(evidence_path)
+
+    # An invented early availability timestamp is a separate temporal leak.
+    target.write_text(original_target, encoding="utf-8")
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["cases"][0]["target"]["available_at"] = "2026-07-02T00:00:00Z"
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    with pytest.raises(ValueError, match="does not match immutable target artifact"):
+        evaluate_hindcast_evidence(evidence_path)
+
+
+def test_forged_public_report_cannot_write_a_promotion_receipt(tmp_path: Path) -> None:
+    report = run_hindcast((_complete_case(),))
+    # Promotion is derived from blockers, not a caller-settable report field.
+    with pytest.raises(AttributeError):
+        object.__setattr__(report, "promotion", True)
+    with pytest.raises(ValueError, match="verified evaluation receipt"):
+        write_hindcast_validation(report, tmp_path / "validation.json")
+
+
+def test_missing_fixture_classification_is_not_promotable(tmp_path: Path) -> None:
+    evidence_path = _write_verified_evidence(tmp_path)
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    del evidence["evidence_classification"]
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="fields must match"):
+        evaluate_hindcast_evidence(evidence_path)
+
+
+def test_held_out_training_leakage_blocks_promotion(tmp_path: Path) -> None:
+    evidence_path = _write_verified_evidence(tmp_path)
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["cases"][0]["holdout"]["training_folds"].append(1)
+    evidence["cases"][0]["holdout"]["training_seasons"].append("JJA")
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+    report, receipt = evaluate_hindcast_evidence(evidence_path)
+
+    assert report.promotion is False
+    assert any("held-out spatial fold" in item for item in report.promotion_blockers)
+    assert any("held-out season" in item for item in report.promotion_blockers)
+    path = write_hindcast_validation(receipt, tmp_path / "validation.json")
+    assert json.loads(path.read_text(encoding="utf-8"))["promotion"] is False
