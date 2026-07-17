@@ -93,3 +93,34 @@ must not carry a “validated” claim. A passed software test alone is not a
 scientific validation. A public validated-performance statement is permitted
 only after a complete preregistered hindcast passes these gates and publishes
 its manifests, metrics, and limitations.
+
+## Executable release-gate receipt
+
+The frozen evaluator is invoked with:
+
+```bash
+python3 -m mlet hindcast-outlook \
+  --cases ARCHIVED_CASES.json \
+  --out docs/results/idaho_outlook_hindcast.md
+```
+
+Each archived case records a strict-UTC `issue_time`, immutable input receipts
+(`name`, `available_at`, `source_version`, `sha256`, and `uri`), and scored
+rows. A row names exactly one layer, lead day, valid date, spatial block,
+`p10`/`p50`/`p90`, a later verification target, its availability timestamp,
+and its target kind. The evaluator only selects inputs with `available_at <=
+issue_time`; any later source receipt is retained in the audit and blocks
+promotion. An offset, naive, or otherwise ambiguous timestamp is invalid.
+
+The report contains sample count, MAE, RMSE, bias, empirical closed-interval
+coverage, and interval width by layer/lead, month, season, and spatial block.
+It writes an adjacent `validation.json` with the authoritative `promotion`
+boolean and every blocking reason. Promotion requires nonzero sample count and
+recorded coverage for leads 1–20 of ETo, the well-watered ETa scenario, and
+the no-irrigation ETa scenario. Conditional ETa targets must use their named
+scenario target kinds; they cannot be recast as observed actual ET.
+
+`fixture_non_scientific: true` is a permanent release blocker. It exists only
+to test software behavior and is never a result, a hindcast, or evidence for a
+forecast claim. This document reports no numerical skill result until an
+archived non-fixture data set satisfies all of the gates above.

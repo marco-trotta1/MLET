@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import argparse
 from datetime import date
+import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -13,6 +15,12 @@ from mlet.build_dataset import build_dataset
 from mlet.experiments import phase2_openet_value
 from mlet.loader import load_site_series
 from mlet.outlook.build import build_outlook
+from mlet.outlook.hindcast import (
+    load_hindcast_cases,
+    run_hindcast,
+    write_hindcast_markdown,
+    write_hindcast_validation,
+)
 from mlet.sources.gridmet import extract_eto
 from mlet.sources.gefs import fetch_gefs
 from mlet.sources.stations import load_station_metadata
@@ -53,6 +61,12 @@ def main(argv: list[str] | None = None) -> int:
     build_outlook_parser.add_argument("--state", required=True)
     build_outlook_parser.add_argument("--crop", required=True)
     build_outlook_parser.add_argument("--out", required=True)
+    hindcast = subparsers.add_parser(
+        "hindcast-outlook",
+        help="Run the preregistered no-lookahead Idaho outlook release gate.",
+    )
+    hindcast.add_argument("--cases", required=True)
+    hindcast.add_argument("--out", required=True)
     args = parser.parse_args(argv)
     if args.command == "validate-csv":
         return _run_validate(args.path)
@@ -65,6 +79,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_fetch_outlook_inputs(args.issue_date, args.out)
     if args.command == "build-outlook":
         return _run_build_outlook(args.weather, args.state, args.crop, args.out)
+    if args.command == "hindcast-outlook":
+        return _run_hindcast_outlook(args.cases, args.out)
     result = phase2_openet_value.run(args.interim, args.landcover)
     _write_report(args.out, result)
     print(f"decision: {result['decision']}")
@@ -105,6 +121,46 @@ def _run_build_outlook(weather: str, state: str, crop: str, destination: str) ->
     print(f"out_root: {result.output_root}")
     print("read: use mlet.outlook.build.read_published_run(out_root, run_id)")
     return 0
+
+
+def _run_hindcast_outlook(cases_path: str, destination: str) -> int:
+    """Write the auditable hindcast report and return its release-gate status."""
+    try:
+        report_path = _trusted_hindcast_output(Path(destination))
+        cases, fixture_reason = load_hindcast_cases(Path(cases_path))
+        report = run_hindcast(cases, fixture_reason=fixture_reason)
+        write_hindcast_validation(report, report_path.parent / "validation.json")
+        write_hindcast_markdown(report, report_path)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot run outlook hindcast: {exc}", file=sys.stderr)
+        return 2
+    print(f"report: {report_path}")
+    print(f"validation: {report_path.parent / 'validation.json'}")
+    print(f"promotion: {'true' if report.promotion else 'false'}")
+    return 0 if report.promotion else 1
+
+
+def _trusted_hindcast_output(destination: Path) -> Path:
+    """Permit reports only under repository results or the local temporary root."""
+    resolved = destination.resolve(strict=False)
+    roots = (
+        (Path.cwd() / "docs" / "results").resolve(strict=False),
+        Path(tempfile.gettempdir()).resolve(strict=False),
+        Path("/private/tmp").resolve(strict=False),
+    )
+    if any(_is_relative_to(resolved, root) for root in roots):
+        return resolved
+    raise ValueError(
+        "hindcast output must be under docs/results or the local temporary directory"
+    )
+
+
+def _is_relative_to(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
 
 
 def _run_validate(path: str) -> int:
