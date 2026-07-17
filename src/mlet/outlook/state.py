@@ -358,8 +358,10 @@ def _validate_provenance_at_issue(
     issue_time = _require_utc_timestamp(issued_at, "issued_at")
     if source_available_at > issue_time:
         raise ValueError("state provenance source_available_at is later than issued_at")
-    if observed_date > idaho_local_date(issue_time):
-        raise ValueError("state provenance observed_date is later than issued_at")
+    if observed_date >= idaho_local_date(issue_time):
+        raise ValueError(
+            "state provenance observed_date must be a completed day strictly before issued_at"
+        )
     return issue_time
 
 

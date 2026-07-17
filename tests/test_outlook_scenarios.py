@@ -395,7 +395,7 @@ def test_no_irrigation_projection_rejects_future_observed_state() -> None:
         source_available_at=datetime(2026, 7, 16, 18, tzinfo=timezone.utc),
     )
 
-    with pytest.raises(ValueError, match="observed_date is later"):
+    with pytest.raises(ValueError, match="completed day strictly before issued_at"):
         project_no_irrigation(
             initial_depletion_mm=20.0,
             taw_mm=80.0,
@@ -405,6 +405,77 @@ def test_no_irrigation_projection_rejects_future_observed_state() -> None:
             state_provenance=provenance,
             issued_at=_ISSUED_AT,
         )
+
+
+@pytest.mark.parametrize(
+    ("issued_at", "same_idaho_day", "previous_completed_day"),
+    (
+        (
+            datetime(2026, 7, 16, 18, tzinfo=timezone.utc),
+            date(2026, 7, 16),
+            date(2026, 7, 15),
+        ),
+        # 00:30Z is still July 15 in Idaho, so a July 15 daily state is open.
+        (
+            datetime(2026, 7, 16, 0, 30, tzinfo=timezone.utc),
+            date(2026, 7, 15),
+            date(2026, 7, 14),
+        ),
+        # 09:30Z is 03:30 MDT on the spring-forward day.
+        (
+            datetime(2026, 3, 8, 9, 30, tzinfo=timezone.utc),
+            date(2026, 3, 8),
+            date(2026, 3, 7),
+        ),
+    ),
+)
+def test_no_irrigation_state_requires_a_completed_idaho_local_day(
+    issued_at: datetime, same_idaho_day: date, previous_completed_day: date
+) -> None:
+    def provenance(observed_date: date) -> StateProvenance:
+        return StateProvenance(
+            source_name="fixture-soil-water-model",
+            source_version="fixture-v1",
+            source_uri="https://example.test/soil-water",
+            observed_date=observed_date,
+            source_available_at=issued_at,
+        )
+
+    with pytest.raises(ValueError, match="completed day strictly before issued_at"):
+        initialize_no_irrigation_state(
+            grid_id="fixture-idaho-grid",
+            taw_mm=80.0,
+            raw_mm=40.0,
+            initial_depletion_mm=20.0,
+            provenance=provenance(same_idaho_day),
+            issued_at=issued_at,
+        )
+    with pytest.raises(ValueError, match="completed day strictly before issued_at"):
+        project_no_irrigation(
+            initial_depletion_mm=20.0,
+            taw_mm=80.0,
+            raw_mm=40.0,
+            potential_et_mm=5.4,
+            precip_mm=0.0,
+            state_provenance=provenance(same_idaho_day),
+            issued_at=issued_at,
+        )
+
+    state = initialize_no_irrigation_state(
+        grid_id="fixture-idaho-grid",
+        taw_mm=80.0,
+        raw_mm=40.0,
+        initial_depletion_mm=20.0,
+        provenance=provenance(previous_completed_day),
+        issued_at=issued_at,
+    )
+    output = project_no_irrigation_from_state(
+        state, potential_et_mm=5.4, precip_mm=0.0, issued_at=issued_at
+    )
+
+    assert state.is_available is True
+    assert state.to_record()["availability"] == "available"
+    assert output.to_record()["availability"] == "available"
 
 
 def test_state_provenance_requires_explicit_utc_source_availability() -> None:
