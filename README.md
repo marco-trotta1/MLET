@@ -179,8 +179,9 @@ Not yet present:
 The [frozen residual-model protocol](docs/evaluation/OUTLOOK_RESIDUAL_MODEL_PROTOCOL.md)
 adds a deliberately isolated advanced-ML proving ground. It trains quantile
 residuals only beside the physical well-watered ETa scenario, using frozen
-geographic-and-seasonal holdouts, issue-time feature availability, separate
-training/calibration/test partitions, and recorded package/seed/data hashes.
+geographic-and-seasonal holdouts, chronological train/gap/calibration/gap/test
+partitions, issue-time feature availability, finite-sample conformal intervals,
+and recorded package/seed/data hashes.
 It cannot change the outlook artifact, map, Helios, or Irrigant input, and it
 always writes `promotion: false` for separately trusted external review.
 
@@ -191,7 +192,8 @@ python3 -m mlet evaluate-outlook-residual \
 ```
 
 That bundled input is a visibly non-scientific software fixture. Real residual
-evidence must bind to a checksummed Task 8 hindcast archive; software tests and
+evidence must bind every ML case and feature receipt to a checksummed Task 8
+hindcast archive; software tests and
 good experimental metrics alone are never a validated or production ML claim.
 
 ## Static research-candidate map

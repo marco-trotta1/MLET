@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 
@@ -10,6 +10,7 @@ import pytest
 
 from mlet.cli import main
 from mlet.experiments.idaho_outlook_residual import (
+    FrozenSplit,
     evaluate_residual_evidence,
     write_residual_authority_request,
 )
@@ -19,14 +20,22 @@ from mlet.outlook.residual_model import FEATURES, ResidualCase, fit_residual_mod
 ISSUE = "2024-01-01T00:00:00Z"
 
 
-def _case(case_id: str, role: str, *, issue: str = ISSUE, block: str = "43:-117", season: str = "MAM", target: float = 4.0) -> dict[str, object]:
+def _case(case_id: str, role: str, *, issue: str | None = None, block: str = "43:-117", target: float = 4.0) -> dict[str, object]:
+    issue_by_role = {
+        "train": "2023-03-01T00:00:00Z",
+        "calibration": "2023-04-03T00:00:00Z",
+        "test": "2024-01-01T00:00:00Z",
+    }
+    issue = issue or issue_by_role[role]
+    valid = datetime.fromisoformat(issue.replace("Z", "+00:00")) + timedelta(days=1)
+    season = "DJF" if valid.month in (12, 1, 2) else "MAM" if valid.month in (3, 4, 5) else "JJA" if valid.month in (6, 7, 8) else "SON"
     return {
         "case_id": case_id,
         "role": role,
         "layer": "eta_well_watered_mm",
         "target_kind": "declared_well_watered_scenario_target",
         "issue_time": issue,
-        "valid_date": "2024-01-02",
+        "valid_date": valid.date().isoformat(),
         "spatial_block": block,
         "season": season,
         "feature_available_at": {name: issue for name in FEATURES},
@@ -59,8 +68,8 @@ def _evidence(*, classification: str = "software_fixture") -> dict[str, object]:
         "hindcast_evidence": None,
         "split": {
             "split_id": "idaho-residual-v1-fold-4-djf",
-            "train_cutoff": ISSUE,
-            "calibration_cutoff": ISSUE,
+            "train_cutoff": "2023-03-01T00:00:00Z",
+            "calibration_cutoff": "2023-04-03T00:00:00Z",
             "held_out_spatial_blocks": ["44:-116"],
             "held_out_seasons": ["DJF"],
         },
@@ -68,7 +77,7 @@ def _evidence(*, classification: str = "software_fixture") -> dict[str, object]:
             _case("train-1", "train", target=3.5),
             _case("train-2", "train", target=3.8),
             _case("calibration-1", "calibration", target=3.7),
-            _case("test-1", "test", block="44:-116", season="DJF", target=3.7),
+            _case("test-1", "test", block="44:-116", target=3.7),
         ],
     }
 
@@ -90,7 +99,7 @@ def test_residual_fit_receives_only_training_issue_times() -> None:
             issue_time=issue,
             valid_date="2024-01-02",
             spatial_block="43:-117",
-            season="MAM",
+                season="DJF",
             feature_available_at=available,
             features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
             physical_p50=3.0,
@@ -121,9 +130,44 @@ def test_held_out_training_leakage_is_rejected(tmp_path: Path) -> None:
     assert isinstance(cases, list)
     first = cases[0]
     assert isinstance(first, dict)
-    first["season"] = "DJF"
+    first["spatial_block"] = "44:-116"
     with pytest.raises(ValueError, match="held-out spatial block or season appears in training"):
         evaluate_residual_evidence(_write(tmp_path / "leaky.json", evidence))
+
+
+def test_case_valid_date_and_caller_season_cannot_disagree_with_issue_and_lead() -> None:
+    issue = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    with pytest.raises(ValueError, match="valid_date must equal"):
+        ResidualCase(
+            case_id="bad-date", role="train", layer="eta_well_watered_mm",
+            target_kind="declared_well_watered_scenario_target", issue_time=issue,
+            valid_date="2024-01-03", spatial_block="43:-117", season="DJF",
+            feature_available_at=tuple((name, issue) for name in FEATURES),
+            features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0), physical_p50=3.0, target_mm=3.5,
+        )
+    with pytest.raises(ValueError, match="calendar season"):
+        ResidualCase(
+            case_id="bad-season", role="train", layer="eta_well_watered_mm",
+            target_kind="declared_well_watered_scenario_target", issue_time=issue,
+            valid_date="2024-01-02", spatial_block="43:-117", season="MAM",
+            feature_available_at=tuple((name, issue) for name in FEATURES),
+            features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0), physical_p50=3.0, target_mm=3.5,
+        )
+
+
+def test_split_requires_preregistered_assignment_and_strict_cutoffs() -> None:
+    with pytest.raises(ValueError, match="preregistered Idaho tile"):
+        FrozenSplit(
+            split_id="archive-decides-its-own-fold", train_cutoff=datetime(2023, 1, 1, tzinfo=timezone.utc),
+            calibration_cutoff=datetime(2023, 2, 1, tzinfo=timezone.utc),
+            held_out_spatial_blocks=("44:-116",), held_out_seasons=("DJF",),
+        )
+    with pytest.raises(ValueError, match="before calibration"):
+        FrozenSplit(
+            split_id="idaho-residual-v1-fold-4-djf", train_cutoff=datetime(2023, 2, 1, tzinfo=timezone.utc),
+            calibration_cutoff=datetime(2023, 2, 1, tzinfo=timezone.utc),
+            held_out_spatial_blocks=("44:-116",), held_out_seasons=("DJF",),
+        )
 
 
 def test_candidate_is_false_even_when_metrics_are_eligible(tmp_path: Path) -> None:
@@ -136,6 +180,7 @@ def test_candidate_is_false_even_when_metrics_are_eligible(tmp_path: Path) -> No
     assert report.promotion is False
     assert payload["promotion"] is False
     assert "requires_separately_trusted_release_authority" in payload["promotion_blockers"]
+    assert payload["external_release_eligible"] is False
 
 
 def test_real_archived_cases_require_task8_hindcast_evidence(tmp_path: Path) -> None:

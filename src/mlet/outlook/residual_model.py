@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import math
 
 import numpy as np
@@ -30,6 +30,24 @@ FEATURES = (
 )
 QUANTILES = (0.1, 0.5, 0.9)
 MODEL_RANDOM_SEED = 20260717
+MODEL_HYPERPARAMETERS = {
+    "loss": "quantile",
+    "n_estimators": 80,
+    "max_depth": 2,
+    "min_samples_leaf": 2,
+    "learning_rate": 0.05,
+}
+
+
+def calendar_season(day: date) -> str:
+    """Return the fixed meteorological season for an immutable valid date."""
+    if day.month in (12, 1, 2):
+        return "DJF"
+    if day.month in (3, 4, 5):
+        return "MAM"
+    if day.month in (6, 7, 8):
+        return "JJA"
+    return "SON"
 
 
 @dataclass(frozen=True)
@@ -79,12 +97,14 @@ class ResidualCase:
             raise ValueError("residual target must retain the declared well-watered scenario kind")
         issue = _strict_utc(self.issue_time, "issue_time")
         object.__setattr__(self, "issue_time", issue)
-        if not isinstance(self.valid_date, str) or not self.valid_date:
-            raise ValueError("residual valid_date must be non-empty ISO text")
+        if not isinstance(self.valid_date, str):
+            raise ValueError("residual valid_date must be ISO calendar-date text")
+        try:
+            valid_day = date.fromisoformat(self.valid_date)
+        except ValueError as error:
+            raise ValueError("residual valid_date must be ISO calendar-date text") from error
         if not isinstance(self.spatial_block, str) or not self.spatial_block:
             raise ValueError("residual spatial_block must be non-empty text")
-        if self.season not in {"DJF", "MAM", "JJA", "SON"}:
-            raise ValueError("residual season must be DJF, MAM, JJA, or SON")
         names = tuple(name for name, _available_at in self.feature_available_at)
         if names != FEATURES:
             raise ValueError("residual feature availability must name FEATURES in order")
@@ -93,6 +113,14 @@ class ResidualCase:
                 raise ValueError(f"feature {name} was available after issue_time")
         if len(self.features) != len(FEATURES) or not all(math.isfinite(value) for value in self.features):
             raise ValueError("residual features must be finite and match FEATURES")
+        lead = self.features[0]
+        if not lead.is_integer() or not 1 <= int(lead) <= 20:
+            raise ValueError("residual lead_day must be an integer from 1 through 20")
+        if valid_day != issue.date() + timedelta(days=int(lead)):
+            raise ValueError("residual valid_date must equal issue date plus lead_day")
+        derived_season = calendar_season(valid_day)
+        if self.season != derived_season:
+            raise ValueError("residual season must equal the calendar season of valid_date")
         if not math.isfinite(self.physical_p50) or not math.isfinite(self.target_mm):
             raise ValueError("residual physical_p50 and target_mm must be finite")
 
@@ -131,12 +159,8 @@ def fit_residual_model(
     scaled = scaler.transform(values)
     estimators = tuple(
         GradientBoostingRegressor(
-            loss="quantile",
             alpha=quantile,
-            n_estimators=80,
-            max_depth=2,
-            min_samples_leaf=2,
-            learning_rate=0.05,
+            **MODEL_HYPERPARAMETERS,
             random_state=seed,
         ).fit(scaled, targets)
         for quantile in QUANTILES
