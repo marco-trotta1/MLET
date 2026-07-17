@@ -19,6 +19,15 @@ STATE_FIXTURE = Path("examples/outlook/state.jsonl")
 CROP_FIXTURE = Path("examples/outlook/crop_grid.jsonl")
 
 
+def _private_generation(result: object) -> Path:
+    """Test-only access to the private target; it is not a public API."""
+    output_root = getattr(result, "output_root")
+    run_id = getattr(result, "run_id")
+    assert isinstance(output_root, Path)
+    assert isinstance(run_id, str)
+    return output_root / os.readlink(output_root / run_id)
+
+
 def test_build_outlook_writes_twenty_days_for_each_fixture_cell(tmp_path: Path) -> None:
     result = build_outlook(
         weather_path=WEATHER_FIXTURE,
@@ -56,7 +65,8 @@ def test_build_outlook_writes_twenty_days_for_each_fixture_cell(tmp_path: Path) 
     assert resolve_published_run(tmp_path, result.run_id) == published
     assert published.run_id == result.run_id
     assert json.loads(published.artifact_bytes("outlook.json")) == payload
-    assert result.run_dir.name.startswith(f".{result.run_id}.building-")
+    assert result.output_root == tmp_path
+    assert not hasattr(result, "run_dir")
     assert all(
         hashlib.sha256(published.artifact_bytes(filename)).hexdigest() == digest
         for filename, digest in manifest.artifact_sha256
@@ -85,7 +95,8 @@ def test_build_outlook_cli_prints_immutable_run_location(
 
     output = capsys.readouterr().out
     assert "run_id: " in output
-    assert "out: " in output
+    assert "out_root: " in output
+    assert "read: use mlet.outlook.build.read_published_run" in output
 
 
 def test_direct_unprovenanced_jsonl_cannot_be_recast_as_an_operational_build(
@@ -115,7 +126,8 @@ def test_build_outlook_never_replaces_an_existing_run_directory(tmp_path: Path) 
         crop_path=CROP_FIXTURE,
         out_dir=tmp_path,
     )
-    manifest_before = (first.run_dir / "manifest.json").read_bytes()
+    generation = _private_generation(first)
+    manifest_before = (generation / "manifest.json").read_bytes()
 
     with pytest.raises(ValueError, match="already exists"):
         build_outlook(
@@ -125,7 +137,7 @@ def test_build_outlook_never_replaces_an_existing_run_directory(tmp_path: Path) 
             out_dir=tmp_path,
         )
 
-    assert (first.run_dir / "manifest.json").read_bytes() == manifest_before
+    assert (generation / "manifest.json").read_bytes() == manifest_before
 
 
 def test_build_outlook_exclusive_claim_does_not_clobber_a_concurrent_run(
@@ -171,7 +183,46 @@ def test_build_outlook_exclusive_claim_does_not_clobber_a_concurrent_run(
     published = next(path for path in tmp_path.iterdir() if not path.name.startswith("."))
     assert published.is_dir()
     assert (published / "owner.txt").read_bytes() == sentinel
-    assert not list(tmp_path.glob(".*.building-*"))
+    # A failed publish keeps the private generation rather than recursively
+    # deleting by a mutable pathname that could have been replaced.
+    assert list(tmp_path.glob(".*.building-*"))
+
+
+def test_builder_rejects_a_private_generation_replaced_before_its_fd_is_pinned(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The builder never writes a replacement created between mkdir and open."""
+    from mlet.outlook import build as outlook_build
+
+    original_open = outlook_build._open_child_directory
+    moved_name: str | None = None
+    replacement_name: str | None = None
+
+    def replace_private_generation(parent_fd: int, name: str) -> int:
+        nonlocal moved_name, replacement_name
+        if name.startswith(".") and ".building-" in name and moved_name is None:
+            moved_name = f"{name}.original"
+            replacement_name = name
+            os.rename(name, moved_name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
+            os.mkdir(name, dir_fd=parent_fd)
+        return original_open(parent_fd, name)
+
+    monkeypatch.setattr(
+        "mlet.outlook.build._open_child_directory", replace_private_generation
+    )
+
+    with pytest.raises(ValueError, match="private outlook generation changed while being opened"):
+        build_outlook(
+            weather_path=WEATHER_FIXTURE,
+            state_path=STATE_FIXTURE,
+            crop_path=CROP_FIXTURE,
+            out_dir=tmp_path,
+        )
+
+    assert moved_name is not None
+    assert replacement_name is not None
+    assert (tmp_path / moved_name).is_dir()
+    assert (tmp_path / replacement_name).is_dir()
 
 
 def test_failed_publication_fsync_preserves_claim_without_racy_rollback(
@@ -231,7 +282,7 @@ def test_resolve_published_run_rejects_tampered_or_unsafe_artifacts(
         out_dir=tmp_path,
     )
     stable_link = tmp_path / result.run_id
-    generation = result.run_dir
+    generation = _private_generation(result)
 
     if tamper == "absolute_target":
         stable_link.unlink()
@@ -256,7 +307,7 @@ def test_resolve_published_run_rejects_tampered_or_unsafe_artifacts(
         )
         assert alternate.run_id != result.run_id
         (generation / "manifest.json").write_bytes(
-            (alternate.run_dir / "manifest.json").read_bytes()
+            (_private_generation(alternate) / "manifest.json").read_bytes()
         )
     else:
         raise AssertionError(f"unrecognized tamper case: {tamper}")
@@ -311,25 +362,80 @@ def test_reader_returns_original_verified_bytes_when_public_link_is_replaced(
         crop_path=CROP_FIXTURE,
         out_dir=tmp_path,
     )
-    expected = (result.run_dir / "outlook.json").read_bytes()
+    generation = _private_generation(result)
+    expected = (generation / "outlook.json").read_bytes()
     stable_link = tmp_path / result.run_id
     hostile = tmp_path / ".hostile-generation"
     hostile.mkdir()
-    original_target = outlook_build._read_pinned_stable_target
+    original_open = outlook_build._open_pinned_published_generation
 
-    def replace_public_link(root_fd: int, run_id: str) -> str:
-        target = original_target(root_fd, run_id)
+    def replace_public_link(root_fd: int, run_id: str):
+        pinned = original_open(root_fd, run_id)
         stable_link.unlink()
         stable_link.symlink_to(hostile, target_is_directory=True)
-        return target
+        return pinned
 
     monkeypatch.setattr(
-        "mlet.outlook.build._read_pinned_stable_target", replace_public_link
+        "mlet.outlook.build._open_pinned_published_generation", replace_public_link
     )
 
     published = read_published_run(tmp_path, result.run_id)
     assert published.artifact_bytes("outlook.json") == expected
     assert stable_link.resolve() == hostile
+
+
+def test_reader_rejects_generation_replaced_before_open_while_stable_link_is_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A target-name swap cannot redirect the reader after its inode sample."""
+    from mlet.outlook import build as outlook_build
+
+    result = build_outlook(
+        weather_path=WEATHER_FIXTURE,
+        state_path=STATE_FIXTURE,
+        crop_path=CROP_FIXTURE,
+        out_dir=tmp_path,
+    )
+    stable_link = tmp_path / result.run_id
+    target = os.readlink(stable_link)
+    generation = tmp_path / target
+    moved = tmp_path / f"{target}.original"
+    original_open = outlook_build._open_child_directory
+    swapped = False
+
+    def replace_named_generation(parent_fd: int, name: str) -> int:
+        nonlocal swapped
+        if name == target and not swapped:
+            swapped = True
+            generation.rename(moved)
+            generation.mkdir()
+        return original_open(parent_fd, name)
+
+    monkeypatch.setattr(
+        "mlet.outlook.build._open_child_directory", replace_named_generation
+    )
+
+    with pytest.raises(ValueError, match="generation changed while being opened"):
+        read_published_run(tmp_path, result.run_id)
+    assert swapped
+    assert os.readlink(stable_link) == target
+    assert moved.is_dir()
+
+
+@pytest.mark.parametrize("missing_flag", ["O_DIRECTORY", "O_NOFOLLOW"])
+def test_outlook_descriptor_capability_is_checked_lazily(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing_flag: str
+) -> None:
+    """Unsupported POSIX flags fail at use, not while importing MLET."""
+    monkeypatch.delattr("mlet.outlook.build.os." + missing_flag, raising=False)
+
+    with pytest.raises(OSError, match="requires local POSIX descriptor support"):
+        build_outlook(
+            weather_path=WEATHER_FIXTURE,
+            state_path=STATE_FIXTURE,
+            crop_path=CROP_FIXTURE,
+            out_dir=tmp_path,
+        )
 
 
 def test_reader_returns_original_verified_bytes_when_generation_name_is_replaced(
@@ -344,7 +450,8 @@ def test_reader_returns_original_verified_bytes_when_generation_name_is_replaced
         crop_path=CROP_FIXTURE,
         out_dir=tmp_path,
     )
-    expected = (result.run_dir / "outlook.json").read_bytes()
+    generation = _private_generation(result)
+    expected = (generation / "outlook.json").read_bytes()
     moved = tmp_path / ".moved-original"
     original_read = outlook_build._read_regular_at
     swapped = False
@@ -354,9 +461,9 @@ def test_reader_returns_original_verified_bytes_when_generation_name_is_replaced
         contents = original_read(directory_fd, filename)
         if filename == "manifest.json" and not swapped:
             swapped = True
-            result.run_dir.rename(moved)
-            result.run_dir.mkdir()
-            (result.run_dir / "manifest.json").write_text("{}", encoding="utf-8")
+            generation.rename(moved)
+            generation.mkdir()
+            (generation / "manifest.json").write_text("{}", encoding="utf-8")
         return contents
 
     monkeypatch.setattr("mlet.outlook.build._read_regular_at", move_generation_after_manifest)
@@ -364,7 +471,7 @@ def test_reader_returns_original_verified_bytes_when_generation_name_is_replaced
     published = read_published_run(tmp_path, result.run_id)
     assert swapped
     assert published.artifact_bytes("outlook.json") == expected
-    assert (result.run_dir / "manifest.json").read_text(encoding="utf-8") == "{}"
+    assert (generation / "manifest.json").read_text(encoding="utf-8") == "{}"
 
 
 def test_reader_rejects_member_replaced_between_lstat_and_open(
@@ -390,9 +497,10 @@ def test_reader_rejects_member_replaced_between_lstat_and_open(
         nonlocal swapped
         if path == "outlook.json" and (flags & os.O_ACCMODE) == os.O_RDONLY and not swapped:
             swapped = True
-            replacement = result.run_dir / "replacement.json"
+            generation = _private_generation(result)
+            replacement = generation / "replacement.json"
             replacement.write_bytes(b"replaced after lstat")
-            replacement.replace(result.run_dir / "outlook.json")
+            replacement.replace(generation / "outlook.json")
         if dir_fd is None:
             return original_open(path, flags, mode)
         return original_open(path, flags, mode, dir_fd=dir_fd)

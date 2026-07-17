@@ -102,7 +102,8 @@ def _run_build_outlook(weather: str, state: str, crop: str, destination: str) ->
         print(f"error: cannot build outlook: {exc}", file=sys.stderr)
         return 1
     print(f"run_id: {result.run_id}")
-    print(f"out: {result.run_dir}")
+    print(f"out_root: {result.output_root}")
+    print("read: use mlet.outlook.build.read_published_run(out_root, run_id)")
     return 0
 
 

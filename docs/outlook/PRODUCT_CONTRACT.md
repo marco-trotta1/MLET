@@ -85,26 +85,32 @@ exclusive `symlink(2)` creation and durable directory `fsync`; network or
 object-store paths are not supported publication targets.
 
 The stable symlink is a discovery handle, not a completed artifact path.
-Consumers must call `read_published_run` (with `resolve_published_run` retained
-as an alias) and use the returned immutable artifact bytes—not a `Path`—before
-serving or adapting a run. The reader opens the output root, generation, and
-each member with POSIX `openat(2)`-style directory descriptors and
+`build_outlook` returns only its `run_id` and output-root reference; it never
+returns the private generation pathname. Consumers must call
+`read_published_run` (with `resolve_published_run` retained as an alias) with
+that pair and use the returned immutable artifact bytes—not a `Path`—before
+serving or adapting a run. The reader samples the stable target identity,
+opens and pins the matching generation descriptor before trusting its name,
+then opens each member with POSIX `openat(2)`-style directory descriptors and
 `O_NOFOLLOW`; it validates the manifest run ID and computes every receipt hash
 from the exact pinned bytes it returns. It rejects symlinked output ancestors,
 absolute or escaping targets, dangling or non-directory generations, links or
 subdirectories inside a generation, an inconsistent manifest run ID, and every
-recorded artifact whose SHA-256 does not match its receipt. A `BuildResult`
-path is only a local builder convenience and is never a verified consumer
-contract.
+recorded artifact whose SHA-256 does not match its receipt. A private
+generation replacement before either builder or reader descriptor pinning is
+rejected. A replacement after pinning cannot redirect the pinned descriptor.
 
 This publication protocol requires a local POSIX filesystem supporting
-descriptor-relative operations, `O_NOFOLLOW`, exclusive `symlink(2)` creation,
-and durable directory `fsync`; network/object-store paths and platforms without
-those semantics are unsupported. If the final directory `fsync` fails after an
-exclusive public claim, durability is uncertain. The builder deliberately does
-not attempt a readlink-then-unlink rollback, because POSIX cannot make that
-unlink conditional and it could erase a replacement publisher's entry. It
-leaves the claim and private generation for explicit inspection instead.
+descriptor-relative operations, `O_DIRECTORY`, `O_NOFOLLOW`, exclusive
+`symlink(2)` creation, and durable directory `fsync`; network/object-store
+paths and platforms without those semantics are unsupported. MLET detects
+these capabilities only when the outlook builder or reader is invoked and
+raises a clear unsupported-POSIX error if they are unavailable. If the final
+directory `fsync` fails after an exclusive public claim, durability is
+uncertain. The builder deliberately does not attempt a readlink-then-unlink
+rollback, because POSIX cannot make that unlink conditional and it could erase
+a replacement publisher's entry. It leaves the claim and private generation
+for explicit inspection instead.
 
 ## Inputs and provenance
 
