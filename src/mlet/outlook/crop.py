@@ -10,6 +10,7 @@ import math
 from mlet.sources.cdl import (
     CdlLayerMetadata,
     CropFraction,
+    validate_crop_fraction,
     validate_cdl_layer_metadata,
 )
 
@@ -33,12 +34,8 @@ class CropCoefficientInput:
     source_available_at: datetime
 
     def __post_init__(self) -> None:
-        _require_crop_key(self.crop_code, self.crop_class)
-        _require_kc(self.kc)
-        _require_date(self.effective_date, "crop coefficient effective_date")
-        _require_text(self.vegetation_state, "crop coefficient vegetation_state")
-        _require_text(self.source_name, "crop coefficient source_name")
-        _require_text(self.source_version, "crop coefficient source_version")
+        """Reject malformed dated coefficient evidence at the public boundary."""
+        validate_crop_coefficient_input(self)
         object.__setattr__(
             self,
             "source_available_at",
@@ -62,6 +59,30 @@ class CropCoefficientInput:
             "source_version": self.source_version,
             "source_available_at": _format_utc_timestamp(self.source_available_at),
         }
+
+
+def validate_crop_coefficient_input(
+    coefficient: object,
+) -> CropCoefficientInput:
+    """Validate one complete, explicitly dated crop-coefficient source input.
+
+    This boundary validator is deliberately reused when an assignment is built,
+    checked for issue-time eligibility, or serialized.  Frozen dataclasses can
+    still be altered with ``object.__setattr__``; no mutated blank source or
+    non-UTC timestamp may therefore cross into an ETc artifact.
+    """
+    if not isinstance(coefficient, CropCoefficientInput):
+        raise ValueError("crop_coefficients must contain CropCoefficientInput records")
+    _require_crop_key(coefficient.crop_code, coefficient.crop_class)
+    _require_kc(coefficient.kc)
+    _require_date(coefficient.effective_date, "crop coefficient effective_date")
+    _require_text(coefficient.vegetation_state, "crop coefficient vegetation_state")
+    _require_text(coefficient.source_name, "crop coefficient source_name")
+    _require_text(coefficient.source_version, "crop coefficient source_version")
+    _require_utc_timestamp(
+        coefficient.source_available_at, "crop coefficient source_available_at"
+    )
+    return coefficient
 
 
 @dataclass(frozen=True)
@@ -136,8 +157,6 @@ def apply_crop_coefficients(
     target_date = _require_date(valid_date, "valid_date")
     coefficient_by_crop: dict[tuple[str | None, str], CropCoefficientInput] = {}
     for coefficient in crop_coefficients:
-        if not isinstance(coefficient, CropCoefficientInput):
-            raise ValueError("crop_coefficients must contain CropCoefficientInput records")
         _validate_coefficient_eligibility(
             coefficient, issued_at=issue_time, valid_date=target_date
         )
@@ -359,7 +378,7 @@ def _derive_potential_etc_terms(
         raise ValueError("potential ET fractions must share one source_year")
     coverage_fraction = cell_fractions[0].coverage_fraction
     if any(
-        not _is_close(fraction.coverage_fraction, coverage_fraction)
+        fraction.coverage_fraction != coverage_fraction
         for fraction in cell_fractions[1:]
     ):
         raise ValueError("potential ET fractions must share one coverage_fraction")
@@ -416,8 +435,6 @@ def _validate_assignment(
     target_date = _require_date(valid_date, "valid_date")
     coefficient_by_crop: dict[tuple[str | None, str], CropCoefficientInput] = {}
     for coefficient in coefficients:
-        if not isinstance(coefficient, CropCoefficientInput):
-            raise ValueError("crop_coefficients must contain CropCoefficientInput records")
         _validate_coefficient_eligibility(
             coefficient, issued_at=issue_time, valid_date=target_date
         )
@@ -451,26 +468,13 @@ def _validate_assignment(
 
 
 def _validate_crop_fraction(fraction: CropFraction) -> None:
-    if not isinstance(fraction, CropFraction):
-        raise ValueError("fractions must contain CropFraction records")
-    _require_text(fraction.grid_id, "CropFraction grid_id")
-    _require_crop_key(fraction.crop_code, fraction.crop_class)
-    _require_fraction(fraction.fraction, "CropFraction fraction")
-    _require_fraction(fraction.coverage_fraction, "CropFraction coverage_fraction")
-    if not isinstance(fraction.source_year, int) or isinstance(fraction.source_year, bool):
-        raise ValueError("CropFraction source_year must be a recorded integer")
-    if fraction.source_year < 1:
-        raise ValueError("CropFraction source_year must be positive")
-    if not isinstance(fraction.layer_metadata, CdlLayerMetadata):
-        raise ValueError("CropFraction requires immutable CdlLayerMetadata provenance")
-    validate_cdl_layer_metadata(fraction.layer_metadata)
-    if fraction.layer_metadata.source_year != fraction.source_year:
-        raise ValueError("CropFraction source_year must match its CDL layer provenance")
+    validate_crop_fraction(fraction)
 
 
 def _validate_coefficient_eligibility(
     coefficient: CropCoefficientInput, *, issued_at: datetime, valid_date: date
 ) -> None:
+    validate_crop_coefficient_input(coefficient)
     issue_time = _require_utc_timestamp(issued_at, "issued_at")
     target_date = _require_date(valid_date, "valid_date")
     if coefficient.source_available_at > issue_time:

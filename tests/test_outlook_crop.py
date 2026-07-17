@@ -209,6 +209,92 @@ def test_crop_assignment_revalidates_mutated_cdl_metadata() -> None:
         _assignment(fraction)
 
 
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("vegetation_state", " ", "vegetation_state"),
+        ("source_name", "", "source_name"),
+        ("source_version", "", "source_version"),
+        ("effective_date", datetime(2026, 7, 17, tzinfo=timezone.utc), "effective_date"),
+        ("source_available_at", datetime(2026, 7, 16, 12), "explicit UTC"),
+    ),
+)
+def test_crop_coefficient_assignment_rejects_post_construction_structural_bypasses(
+    field: str, value: object, message: str
+) -> None:
+    coefficient = _coefficient()
+    object.__setattr__(coefficient, field, value)
+
+    with pytest.raises(ValueError, match=message):
+        CropCoefficientAssignment(
+            fractions=(_fraction(kc=1.0),),
+            crop_coefficients=(coefficient,),
+            issued_at=_ISSUED_AT,
+            valid_date=_VALID_DATE,
+        )
+
+
+def test_crop_coefficient_serialization_revalidates_a_mutated_source_identity() -> None:
+    assignment = _assignment(_fraction(kc=1.0))
+    object.__setattr__(assignment.crop_coefficients[0], "source_name", "")
+
+    with pytest.raises(ValueError, match="source_name"):
+        assignment.to_record()
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("crop_code", "999", "2024 legend"),
+        ("crop_code", "0", "explicit non_crop"),
+        ("crop_code", None, "crop_code"),
+        ("crop_class", "non_crop", "explicit non_crop"),
+        ("fraction", 0.7, "must not exceed coverage_fraction"),
+        ("confidence_pct", 101.0, "confidence_pct"),
+    ),
+)
+def test_crop_fraction_rejects_invalid_pinned_legend_semantics_at_construction(
+    field: str, value: object, message: str
+) -> None:
+    fields: dict[str, object] = {
+        "grid_id": "fixture-idaho-grid",
+        "crop_code": "1",
+        "crop_class": "corn",
+        "fraction": 0.6,
+        "coverage_fraction": 0.6,
+        "source_year": 2024,
+        "confidence_pct": 90.0,
+        "layer_metadata": _fraction().layer_metadata,
+    }
+    fields[field] = value
+
+    with pytest.raises(ValueError, match=message):
+        CropFraction(**fields)  # type: ignore[arg-type]
+
+
+def test_assignment_and_etc_revalidate_a_mutated_crop_fraction_semantics() -> None:
+    fraction = _fraction(kc=None)
+    object.__setattr__(fraction, "crop_code", "999")
+
+    with pytest.raises(ValueError, match="2024 legend"):
+        apply_crop_coefficients(
+            [fraction], [_coefficient()], issued_at=_ISSUED_AT, valid_date=_VALID_DATE
+        )
+
+    assignment = _assignment(_fraction(kc=1.0))
+    object.__setattr__(assignment.fractions[0], "crop_class", "non_crop")
+    with pytest.raises(ValueError, match="explicit non_crop"):
+        potential_et_c(5.0, assignment)
+
+
+def test_etc_serialization_revalidates_a_mutated_crop_fraction_semantics() -> None:
+    result = potential_et_c(5.0, _assignment(_fraction(kc=1.0)))
+    object.__setattr__(result.crop_coefficient_assignment.fractions[0], "crop_code", "999")
+
+    with pytest.raises(ValueError, match="2024 legend"):
+        result.to_record()
+
+
 def test_potential_etc_serialization_revalidates_mutated_cdl_metadata() -> None:
     record = potential_et_c(5.0, _assignment(_fraction(kc=1.0)))
     object.__setattr__(record.layer_metadata, "upstream_uri", "http://forged.example/cdl")
@@ -379,6 +465,23 @@ def test_potential_et_rejects_inconsistent_declared_coverage() -> None:
                     crop_class="non_crop",
                     fraction=0.5,
                     coverage_fraction=0.9,
+                    kc=0.0,
+                ),
+            ),
+        )
+
+
+def test_potential_et_rejects_even_tiny_declared_coverage_mismatches() -> None:
+    with pytest.raises(ValueError, match="one coverage_fraction"):
+        potential_et_c(
+            5.0,
+            _assignment(
+                _fraction(fraction=0.3, coverage_fraction=0.5, kc=1.0),
+                _fraction(
+                    crop_code=None,
+                    crop_class="non_crop",
+                    fraction=0.2,
+                    coverage_fraction=0.5000000005,
                     kc=0.0,
                 ),
             ),

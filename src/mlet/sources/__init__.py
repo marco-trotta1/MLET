@@ -5,6 +5,7 @@ from mlet.sources.cdl import (
     CropFraction,
     GridCell,
     aggregate_cdl,
+    validate_crop_fraction,
     validate_cdl_layer_metadata,
 )
 from mlet.sources.gefs import (
@@ -28,5 +29,6 @@ __all__ = [
     "normalize_gefs_rows",
     "normalize_openet_state",
     "resolve_gefs_daily_artifact",
+    "validate_crop_fraction",
     "validate_cdl_layer_metadata",
 ]

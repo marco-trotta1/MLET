@@ -212,11 +212,8 @@ class CropFraction:
     kc: float | None = None
 
     def __post_init__(self) -> None:
-        """Bind each public fraction to structurally valid, matching CDL evidence."""
-        validate_cdl_layer_metadata(self.layer_metadata)
-        _validate_requested_source_year(self.source_year)
-        if self.source_year != self.layer_metadata.source_year:
-            raise ValueError("CropFraction source_year must match its CDL layer provenance")
+        """Bind each public fraction to pinned, structurally valid CDL evidence."""
+        validate_crop_fraction(self)
 
 
 def aggregate_cdl(
@@ -362,6 +359,39 @@ def validate_cdl_layer_metadata(layer: object) -> datetime:
     return release_time
 
 
+def validate_crop_fraction(fraction: object) -> CropFraction:
+    """Validate one public fraction against the pinned 2024 CDL semantics.
+
+    ``CropFraction`` is a public boundary, so this validator is intentionally
+    reusable by both source ingestion and the potential-ETc path.  The 2024
+    legend distinguishes crop codes from background/non-crop codes; a
+    non-crop contribution is represented explicitly as ``crop_code=None`` and
+    ``crop_class="non_crop"``.  The ``unknown`` sentinel likewise carries no
+    code, preserving an explicit incomplete-coverage meaning.
+    """
+    if not isinstance(fraction, CropFraction):
+        raise ValueError("fractions must contain CropFraction records")
+    _require_crop_fraction_text(fraction.grid_id, "CropFraction grid_id")
+    _validate_crop_fraction_identity(fraction.crop_code, fraction.crop_class)
+    area_fraction = _require_fraction(
+        fraction.fraction, "CropFraction fraction"
+    )
+    coverage_fraction = _require_fraction(
+        fraction.coverage_fraction, "CropFraction coverage_fraction"
+    )
+    if area_fraction > coverage_fraction:
+        raise ValueError(
+            "CropFraction fraction must not exceed coverage_fraction"
+        )
+    if fraction.confidence_pct is not None:
+        _require_fraction_percentage(fraction.confidence_pct, "CropFraction confidence_pct")
+    _validate_requested_source_year(fraction.source_year)
+    validate_cdl_layer_metadata(fraction.layer_metadata)
+    if fraction.source_year != fraction.layer_metadata.source_year:
+        raise ValueError("CropFraction source_year must match its CDL layer provenance")
+    return fraction
+
+
 def _validate_grid_cells(grid_cells: Sequence[GridCell]) -> dict[str, GridCell]:
     cells: dict[str, GridCell] = {}
     for cell in grid_cells:
@@ -442,6 +472,36 @@ def _require_2024_legend_code(row: Mapping[str, object], row_index: int) -> int:
     return code
 
 
+def _validate_crop_fraction_identity(crop_code: object, crop_class: object) -> None:
+    """Require a crop-code/class pair that preserves the pinned legend meaning."""
+    class_name = _require_crop_fraction_text(crop_class, "CropFraction crop_class")
+    if class_name == "unknown":
+        if crop_code is not None:
+            raise ValueError("unknown CropFraction must use crop_code None")
+        return
+    if class_name == "non_crop":
+        if crop_code is not None:
+            raise ValueError("non-crop CDL codes require explicit non_crop with crop_code None")
+        return
+    if crop_code is None:
+        raise ValueError("CropFraction crop_code must be a numeric recognized 2024 crop code")
+    code = _parse_crop_fraction_code(crop_code)
+    if code in _CDL_2024_NON_CROP_CODES:
+        raise ValueError("non-crop CDL codes require explicit non_crop with crop_code None")
+    if code not in _CDL_2024_CROP_CODES:
+        raise ValueError("CropFraction crop_code is not recognized by the 2024 legend")
+
+
+def _parse_crop_fraction_code(value: object) -> int:
+    if isinstance(value, bool):
+        raise ValueError("CropFraction crop_code must be a numeric recognized 2024 crop code")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    raise ValueError("CropFraction crop_code must be a numeric recognized 2024 crop code")
+
+
 def _classify_crop_code(
     row: Mapping[str, object], code: int, row_index: int
 ) -> tuple[str | None, str]:
@@ -470,6 +530,26 @@ def _require_number(
     if value > maximum or value < minimum or (strict_minimum and value == minimum):
         raise ValueError(f"CDL row {row_index} field {name} is outside its allowed range")
     return value
+
+
+def _require_crop_fraction_text(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{label} must be non-empty text")
+    return value
+
+
+def _require_fraction(value: object, label: str) -> float:
+    result = _finite_float(value, label)
+    if not 0.0 <= result <= 1.0:
+        raise ValueError(f"{label} must be within [0, 1]")
+    return result
+
+
+def _require_fraction_percentage(value: object, label: str) -> float:
+    result = _finite_float(value, label)
+    if not 0.0 <= result <= 100.0:
+        raise ValueError(f"{label} must be within [0, 100]")
+    return result
 
 
 def _finite_float(value: object, label: str) -> float:
