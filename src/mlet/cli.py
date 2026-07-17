@@ -19,6 +19,7 @@ from mlet.outlook.hindcast import (
     evaluate_hindcast_evidence,
     write_hindcast_markdown,
     write_hindcast_validation,
+    write_release_authority_request,
 )
 from mlet.sources.gridmet import extract_eto
 from mlet.sources.gefs import fetch_gefs
@@ -128,14 +129,16 @@ def _run_hindcast_outlook(cases_path: str, destination: str) -> int:
         report_path = _trusted_hindcast_output(Path(destination))
         report, receipt = evaluate_hindcast_evidence(Path(cases_path))
         write_hindcast_validation(receipt, report_path.parent / "validation.json")
+        write_release_authority_request(receipt, report_path.parent / "authority_request.json")
         write_hindcast_markdown(report, report_path)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"error: cannot run outlook hindcast: {exc}", file=sys.stderr)
         return 2
     print(f"report: {report_path}")
     print(f"validation: {report_path.parent / 'validation.json'}")
-    print(f"promotion: {'true' if report.promotion else 'false'}")
-    return 0 if report.promotion else 1
+    print(f"authority request: {report_path.parent / 'authority_request.json'}")
+    print("promotion: false")
+    return 1
 
 
 def _trusted_hindcast_output(destination: Path) -> Path:

@@ -1,9 +1,8 @@
 """Leakage-safe, preregistered rolling hindcast contracts for the outlook.
 
-This module is intentionally a release gate rather than a model-selection
-tool.  A report can describe incomplete archived evidence, but it can promote
-an outlook only when every frozen layer and lead has auditable, no-lookahead
-validation coverage.
+This module is intentionally an evidence gate rather than a model-selection
+or release-authority tool.  It can describe archived evidence and construct a
+release candidate, but it can never promote an outlook.
 """
 
 from __future__ import annotations
@@ -12,16 +11,12 @@ from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
-import base64
 import hashlib
 import json
 import math
 import os
 from pathlib import Path
 from urllib.parse import urlparse
-
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from mlet.outlook.manifest import RunManifest
 
@@ -51,41 +46,7 @@ _SEASONS = {
     10: "SON",
     11: "SON",
 }
-_ATTESTATION_PROTOCOL = b"MLET-IDAHO-OUTLOOK-HINDCAST-ATTESTATION\x00\x01"
-
-
-@dataclass(frozen=True)
-class _PinnedPromotionAuthority:
-    """Committed, verification-only release-authority configuration."""
-
-    key_id: str
-    algorithm: str
-    public_key: bytes
-
-
-def _load_pinned_promotion_authority() -> _PinnedPromotionAuthority:
-    """Load the repository-pinned public verification key, never a signer."""
-    path = Path(__file__).with_name("promotion_authority.json")
-    try:
-        raw = _load_json_bytes(path.read_bytes(), "promotion authority configuration")
-    except OSError as error:
-        raise RuntimeError("committed promotion authority configuration is unavailable") from error
-    _require_exact_keys(
-        raw,
-        {"schema_version", "algorithm", "key_id", "public_key_base64"},
-        "promotion authority configuration",
-    )
-    assert isinstance(raw, dict)
-    key_id = raw["key_id"]
-    encoded = raw["public_key_base64"]
-    if raw["schema_version"] != 1 or raw["algorithm"] != "ed25519" or not isinstance(key_id, str) or not key_id.strip() or not isinstance(encoded, str):
-        raise RuntimeError("committed promotion authority configuration is invalid")
-    try:
-        public_key = base64.b64decode(encoded, validate=True)
-        Ed25519PublicKey.from_public_bytes(public_key)
-    except (ValueError, TypeError) as error:
-        raise RuntimeError("committed promotion authority public key is invalid") from error
-    return _PinnedPromotionAuthority(key_id=key_id, algorithm="ed25519", public_key=public_key)
+_EXTERNAL_RELEASE_AUTHORITY_BLOCKER = "requires_separately_trusted_release_authority"
 
 
 @dataclass(frozen=True)
@@ -254,8 +215,14 @@ class HindcastReport:
 
     @property
     def promotion(self) -> bool:
-        """Diagnostic status derived from blockers, never publication authority."""
-        return not self.promotion_blockers
+        """Always false: MLET cannot issue a promotion decision.
+
+        Frozen computational gates are represented by ``promotion_blockers``;
+        an external release system, not this report, may make a later decision.
+        Keeping this property constant also prevents a mutated blocker tuple
+        from changing a rendered local artifact into a promotion claim.
+        """
+        return False
 
     def validation_record(self) -> dict[str, object]:
         """Return a non-authoritative diagnostic record, never a release receipt."""
@@ -306,19 +273,17 @@ class HindcastReport:
 
 @dataclass(frozen=True)
 class EvaluationReceipt:
-    """Content-bound evaluation result whose promotion needs external authority.
+    """Content-bound, non-promotable evaluation candidate.
 
-    This type is deliberately not a security boundary.  It is public data that
-    can be reconstructed by any caller.  ``write_hindcast_validation`` checks
-    a separately held external Ed25519 attestation before it will serialize a
-    true promotion.  This repository contains only the pinned public key.
+    This repository is an evaluator, not a release authority.  The candidate
+    may support an external release decision, but its ``report`` is always
+    non-promotable and no local API can turn it into an authorization.
     """
 
     report: HindcastReport
     evidence_path: Path
     evaluation_digest: str
     case_sha256: tuple[str, ...]
-    attestation: dict[str, object] | None
 
 
 def select_inputs_as_of(
@@ -420,48 +385,38 @@ def _aggregate_hindcast(
 
 
 def evaluate_hindcast_evidence(path: Path) -> tuple[HindcastReport, EvaluationReceipt]:
-    """Evaluate a version-3 archived-evidence bundle.
+    """Evaluate archived evidence and issue a non-promotable release candidate.
 
-    The evaluator can make a transparent non-promotable report without a key.
-    A true promotion additionally needs an external Ed25519 attestation over
-    the exact evidence digest and the independently reconstructed report
-    digest.  The verifier has only its committed public key.
+    Passing the frozen computational gates makes evidence eligible for an
+    *external* release decision.  It never changes this evaluator's result to
+    ``promotion: true``.
     """
-    report, digest, case_hashes, attestation = _evaluate_evidence_bundle(path)
-    authority_error = _verify_promotion_attestation(attestation, digest, report)
-    if authority_error is not None:
-        report = _with_blockers(report, [authority_error])
+    report, digest, case_hashes = _evaluate_evidence_bundle(path)
+    report = _with_blockers(report, [_EXTERNAL_RELEASE_AUTHORITY_BLOCKER])
     return report, EvaluationReceipt(
         report=report,
         evidence_path=Path(path).resolve(strict=True),
         evaluation_digest=digest,
         case_sha256=case_hashes,
-        attestation=attestation,
     )
 
 
-def build_promotion_attestation_request(path: Path) -> dict[str, object]:
-    """Prepare a verification request for an external release authority.
+def build_release_authority_request(path: Path) -> dict[str, object]:
+    """Build canonical evidence for a separately trusted release process.
 
-    This helper performs no signing and has no private-key configuration.  The
-    authority signs :func:`_attestation_message` outside MLET, then embeds the
-    returned signature with these exact fields in the evidence bundle.
+    This is deliberately a request, not an attestation protocol.  The result
+    binds the archived evidence and computational report, but carries an
+    explicit false promotion status.  An external release authority must
+    create and publish any true-release receipt outside this process.
     """
-    report, digest, _case_hashes, _attestation = _evaluate_evidence_bundle(path)
-    if not report.promotion:
-        raise ValueError("cannot request an attestation for a hindcast that fails the frozen release gates")
-    return {
-        "schema_version": 1,
-        "algorithm": _PINNED_PROMOTION_AUTHORITY.algorithm,
-        "key_id": _PINNED_PROMOTION_AUTHORITY.key_id,
-        "evaluation_digest": digest,
-        "report_sha256": _report_sha256(report),
-    }
+    report, digest, case_hashes = _evaluate_evidence_bundle(path)
+    report = _with_blockers(report, [_EXTERNAL_RELEASE_AUTHORITY_BLOCKER])
+    return _release_authority_request_payload(report, digest, case_hashes)
 
 
 def _evaluate_evidence_bundle(
     path: Path,
-) -> tuple[HindcastReport, str, tuple[str, ...], dict[str, object] | None]:
+) -> tuple[HindcastReport, str, tuple[str, ...]]:
     """Reconstruct a report and canonical digest without consulting authority."""
     evidence_path = Path(path).resolve(strict=True)
     root = evidence_path.parent
@@ -472,7 +427,6 @@ def _evaluate_evidence_bundle(
         raw,
         {
             "schema_version", "evidence_classification", "provenance", "cases",
-            "promotion_attestation",
         },
         "hindcast evidence",
     )
@@ -532,10 +486,7 @@ def _evaluate_evidence_bundle(
             }
         ).encode("utf-8")
     ).hexdigest()
-    attestation = raw["promotion_attestation"]
-    if attestation is not None and not isinstance(attestation, dict):
-        raise ValueError("promotion_attestation must be an object or null")
-    return report, digest, tuple(case_hashes), attestation
+    return report, digest, tuple(case_hashes)
 
 
 def load_hindcast_cases(path: Path) -> tuple[tuple[HindcastCase, ...], str | None]:
@@ -567,34 +518,27 @@ def load_hindcast_cases(path: Path) -> tuple[tuple[HindcastCase, ...], str | Non
 
 
 def write_hindcast_validation(receipt: object, destination: Path) -> Path:
-    """Write a validation record, independently rejecting unauthorised truth.
+    """Write only a non-promotable, reconstructed validation candidate.
 
-    This verifier never trusts Python object identity or a private attribute:
-    a caller-made receipt/report may be written only as non-promotable.  A
-    requested true promotion must carry a valid externally signed attestation
-    over both the canonical evidence digest and the exact report bytes.
+    Direct caller mutation of ``receipt.report`` cannot authorize a release:
+    output is reconstructed from the evidence bytes and given the permanent
+    external-authority blocker immediately before serialization.
     """
     if not isinstance(receipt, EvaluationReceipt):
         raise ValueError("hindcast validation requires an evaluation receipt")
     _validate_evaluation_receipt(receipt)
-    if receipt.report.promotion:
-        authority_error = _verify_promotion_attestation(
-            receipt.attestation, receipt.evaluation_digest, receipt.report
-        )
-        if authority_error is not None:
-            raise ValueError(f"hindcast validation refuses unauthorised promotion: {authority_error}")
-        rebuilt, rebuilt_digest, rebuilt_cases, _attestation = _evaluate_evidence_bundle(
-            receipt.evidence_path
-        )
-        if (
-            rebuilt_digest != receipt.evaluation_digest
-            or rebuilt_cases != receipt.case_sha256
-            or _canonical_json(rebuilt.validation_record())
-            != _canonical_json(receipt.report.validation_record())
-        ):
-            raise ValueError("hindcast validation refuses a receipt not reconstructed from evidence")
+    rebuilt, rebuilt_digest, rebuilt_cases = _evaluate_evidence_bundle(receipt.evidence_path)
+    if rebuilt_digest != receipt.evaluation_digest or rebuilt_cases != receipt.case_sha256:
+        raise ValueError("hindcast validation refuses a receipt not reconstructed from evidence")
+    rebuilt = _with_blockers(rebuilt, [_EXTERNAL_RELEASE_AUTHORITY_BLOCKER])
+    canonical_receipt = EvaluationReceipt(
+        report=rebuilt,
+        evidence_path=receipt.evidence_path,
+        evaluation_digest=rebuilt_digest,
+        case_sha256=rebuilt_cases,
+    )
     encoded = (
-        json.dumps(_receipt_payload(receipt), sort_keys=True, separators=(",", ":"), allow_nan=False)
+        json.dumps(_receipt_payload(canonical_receipt), sort_keys=True, separators=(",", ":"), allow_nan=False)
         + "\n"
     ).encode("utf-8")
     return _write_new_bytes(Path(destination), encoded)
@@ -1161,8 +1105,7 @@ def _receipt_payload(receipt: EvaluationReceipt) -> dict[str, object]:
         "kind": "idaho_outlook_hindcast_evaluation_receipt",
         "evaluation_digest": receipt.evaluation_digest,
         "case_sha256": list(receipt.case_sha256),
-        "promotion_attestation": receipt.attestation,
-        "publication_authority": "externally_attested_ed25519_evaluation",
+        "publication_authority": "requires_separately_trusted_release_authority",
     })
     return payload
 
@@ -1176,8 +1119,6 @@ def _validate_evaluation_receipt(receipt: EvaluationReceipt) -> None:
         raise ValueError("evaluation receipt case hashes do not match the report")
     if any(len(item) != 64 or any(ch not in "0123456789abcdef" for ch in item) for item in receipt.case_sha256):
         raise ValueError("evaluation receipt case hash is invalid")
-    if receipt.attestation is not None and not isinstance(receipt.attestation, dict):
-        raise ValueError("evaluation receipt attestation is invalid")
 
 
 def _with_blockers(report: HindcastReport, blockers: Iterable[str]) -> HindcastReport:
@@ -1197,56 +1138,39 @@ def _report_sha256(report: HindcastReport) -> str:
     return hashlib.sha256(_canonical_json(report.validation_record()).encode("utf-8")).hexdigest()
 
 
-def _verify_promotion_attestation(
-    value: dict[str, object] | None, evaluation_digest: str, report: HindcastReport,
-) -> str | None:
-    """Return a gate failure or verify the attested content with the external key."""
-    if not report.promotion:
-        return "hindcast metrics or evidence gates did not qualify for promotion"
-    if value is None:
-        return "promotion requires an external attestation"
-    expected = {"schema_version", "algorithm", "key_id", "evaluation_digest", "report_sha256", "signature"}
-    if set(value) != expected:
-        return "promotion attestation schema is invalid"
-    if (
-        value.get("schema_version") != 1
-        or value.get("algorithm") != _PINNED_PROMOTION_AUTHORITY.algorithm
-        or value.get("key_id") != _PINNED_PROMOTION_AUTHORITY.key_id
-        or value.get("evaluation_digest") != evaluation_digest
-        or value.get("report_sha256") != _report_sha256(report)
-    ):
-        return "promotion attestation does not bind the verified evaluation"
-    signature_value = value.get("signature")
-    if not isinstance(signature_value, str):
-        return "promotion attestation signature is invalid"
-    try:
-        signature = base64.b64decode(signature_value, validate=True)
-        Ed25519PublicKey.from_public_bytes(_PINNED_PROMOTION_AUTHORITY.public_key).verify(
-            signature, _attestation_message(evaluation_digest, _report_sha256(report))
-        )
-    except (ValueError, TypeError, InvalidSignature):
-        return "promotion attestation signature is invalid"
-    return None
+def write_release_authority_request(receipt: object, destination: Path) -> Path:
+    """Write the canonical, non-promotable external-release request.
 
-
-def _attestation_message(evaluation_digest: str, report_digest: str) -> bytes:
-    """Return the fixed binary protocol that an external authority signs.
-
-    The payload contains two 32-byte SHA-256 values and a versioned prefix;
-    it never delegates protocol meaning to mutable JSON ``kind`` text.
+    Its bytes are based on reconstructed evidence, never a mutable report or
+    a locally supplied signer, and it always states ``promotion: false``.
     """
-    if not _is_sha256(evaluation_digest) or not _is_sha256(report_digest):
-        raise ValueError("attestation message requires SHA-256 digests")
-    return _ATTESTATION_PROTOCOL + bytes.fromhex(evaluation_digest) + bytes.fromhex(report_digest)
+    if not isinstance(receipt, EvaluationReceipt):
+        raise ValueError("release authority request requires an evaluation receipt")
+    _validate_evaluation_receipt(receipt)
+    rebuilt, digest, case_hashes = _evaluate_evidence_bundle(receipt.evidence_path)
+    if digest != receipt.evaluation_digest or case_hashes != receipt.case_sha256:
+        raise ValueError("release authority request refuses a receipt not reconstructed from evidence")
+    rebuilt = _with_blockers(rebuilt, [_EXTERNAL_RELEASE_AUTHORITY_BLOCKER])
+    payload = _release_authority_request_payload(rebuilt, digest, case_hashes)
+    encoded = (json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
+    return _write_new_bytes(Path(destination), encoded)
 
 
-def _is_sha256(value: object) -> bool:
-    return isinstance(value, str) and len(value) == 64 and all(ch in "0123456789abcdef" for ch in value)
-
-
-# This is evaluated from a committed file when the verifier imports.  There is
-# deliberately no environment variable, CLI option, or runtime key selection.
-_PINNED_PROMOTION_AUTHORITY = _load_pinned_promotion_authority()
+def _release_authority_request_payload(
+    report: HindcastReport, evaluation_digest: str, case_sha256: tuple[str, ...],
+) -> dict[str, object]:
+    """Return the one canonical local artifact for external release review."""
+    return {
+        "schema_version": 1,
+        "kind": "idaho_outlook_hindcast_release_authority_request",
+        "evaluation_digest": evaluation_digest,
+        "case_sha256": list(case_sha256),
+        "candidate_report_sha256": _report_sha256(report),
+        "promotion": False,
+        "promotion_blockers": list(report.promotion_blockers),
+        "external_release_eligible": report.promotion_blockers == (_EXTERNAL_RELEASE_AUTHORITY_BLOCKER,),
+        "required_external_artifact": "separately_trusted_release_validation_receipt",
+    }
 
 
 def _summarize_source_latency(

@@ -3,21 +3,16 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
-import base64
 import hashlib
 import json
 from pathlib import Path
 
 import pytest
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 import mlet.outlook.hindcast as hindcast_module
 from mlet.outlook.hindcast import (
     AvailableRecord,
-    _PinnedPromotionAuthority,
-    _attestation_message,
-    build_promotion_attestation_request,
+    build_release_authority_request,
     evaluate_hindcast_evidence,
     HindcastCase,
     HindcastRow,
@@ -26,6 +21,7 @@ from mlet.outlook.hindcast import (
     run_hindcast,
     select_inputs_as_of,
     write_hindcast_validation,
+    write_release_authority_request,
 )
 from mlet.outlook.manifest import build_manifest
 from mlet.cli import _trusted_hindcast_output, main
@@ -134,7 +130,6 @@ def _write_verified_evidence(
         "schema_version": 3,
         "evidence_classification": classification,
         "provenance": {"uri": "https://archive.example.org/idaho", "version": "archive-v1", "sha256": "b" * 64, "available_at": issue},
-        "promotion_attestation": None,
         "cases": [{
             "case_id": case_id,
             "issue_time": issue,
@@ -192,7 +187,6 @@ def _write_qualifying_verified_evidence(tmp_path: Path) -> Path:
             "sha256": "b" * 64,
             "available_at": "2026-01-01T00:00:00Z",
         },
-        "promotion_attestation": None,
         "cases": cases,
     }
     evidence_path = tmp_path / "qualifying-evidence.json"
@@ -348,6 +342,7 @@ def test_hindcast_cli_writes_fixture_receipts_and_returns_nonpromotion_status(
     assert code == 1
     assert report.exists()
     assert (tmp_path / "validation.json").exists()
+    assert (tmp_path / "authority_request.json").exists()
     assert "promotion: false" in capsys.readouterr().out.lower()
 
 
@@ -489,66 +484,61 @@ def test_altered_receipt_bytes_and_inline_receipts_are_rejected(tmp_path: Path) 
         evaluate_hindcast_evidence(evidence_path)
 
 
-def test_external_ed25519_attestation_promotes_only_the_exact_qualified_bundle(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+def test_qualifying_archived_evidence_is_only_an_external_release_candidate(
+    tmp_path: Path,
 ) -> None:
     evidence_path = _write_qualifying_verified_evidence(tmp_path)
-    external_private_key = Ed25519PrivateKey.generate()
-    public_key = external_private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
-    monkeypatch.setattr(
-        hindcast_module,
-        "_PINNED_PROMOTION_AUTHORITY",
-        _PinnedPromotionAuthority("test-external-authority", "ed25519", public_key),
-    )
-
-    request = build_promotion_attestation_request(evidence_path)
-    signature = external_private_key.sign(
-        _attestation_message(str(request["evaluation_digest"]), str(request["report_sha256"]))
-    )
-    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
-    evidence["promotion_attestation"] = {
-        **request,
-        "signature": base64.b64encode(signature).decode("ascii"),
-    }
-    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
 
     report, receipt = evaluate_hindcast_evidence(evidence_path)
     validation_path = write_hindcast_validation(receipt, tmp_path / "validation.json")
+    request_path = write_release_authority_request(receipt, tmp_path / "authority_request.json")
+    request = build_release_authority_request(evidence_path)
 
-    assert report.promotion is True
-    assert json.loads(validation_path.read_text(encoding="utf-8"))["promotion"] is True
+    validation = json.loads(validation_path.read_text(encoding="utf-8"))
+    written_request = json.loads(request_path.read_text(encoding="utf-8"))
+    assert report.promotion is False
+    assert report.promotion_blockers == ("requires_separately_trusted_release_authority",)
+    assert validation["promotion"] is False
+    assert validation["publication_authority"] == "requires_separately_trusted_release_authority"
+    assert written_request == request
+    assert request["promotion"] is False
+    assert request["promotion_blockers"] == ["requires_separately_trusted_release_authority"]
+    assert request["external_release_eligible"] is True
 
-    # The signature is over this exact evidence digest: reordering otherwise
-    # valid cases or altering bytes cannot replay it across an archive.
-    replayed = json.loads(evidence_path.read_text(encoding="utf-8"))
-    replayed["cases"].reverse()
-    evidence_path.write_text(json.dumps(replayed), encoding="utf-8")
-    replayed_report, _receipt = evaluate_hindcast_evidence(evidence_path)
-    assert replayed_report.promotion is False
-    assert any("does not bind" in blocker for blocker in replayed_report.promotion_blockers)
 
-    altered = json.loads(evidence_path.read_text(encoding="utf-8"))
-    altered["cases"].reverse()
-    altered["promotion_attestation"]["signature"] += "x"
-    evidence_path.write_text(json.dumps(altered), encoding="utf-8")
-    altered_report, _receipt = evaluate_hindcast_evidence(evidence_path)
-    assert altered_report.promotion is False
-    assert any("signature is invalid" in blocker for blocker in altered_report.promotion_blockers)
+def test_hindcast_cli_emits_a_qualified_candidate_but_exits_one(
+    tmp_path: Path,
+) -> None:
+    evidence_path = _write_qualifying_verified_evidence(tmp_path)
+    report_path = tmp_path / "hindcast.md"
 
-    # Runtime-selected material is ignored; an attacker cannot replace the
-    # committed verifier identity with an environment value or a new key ID.
-    monkeypatch.setenv("MLET_HINDCAST_PROMOTION_PUBLIC_KEY", base64.b64encode(public_key).decode("ascii"))
-    attacker_private_key = Ed25519PrivateKey.generate()
-    altered["promotion_attestation"]["key_id"] = "attacker-selected-key"
-    altered["promotion_attestation"]["signature"] = base64.b64encode(
-        attacker_private_key.sign(
-            _attestation_message(str(request["evaluation_digest"]), str(request["report_sha256"]))
-        )
-    ).decode("ascii")
-    evidence_path.write_text(json.dumps(altered), encoding="utf-8")
-    attacked_report, _receipt = evaluate_hindcast_evidence(evidence_path)
-    assert attacked_report.promotion is False
-    assert any("does not bind" in blocker for blocker in attacked_report.promotion_blockers)
+    code = main(["hindcast-outlook", "--cases", str(evidence_path), "--out", str(report_path)])
+
+    request = json.loads((tmp_path / "authority_request.json").read_text(encoding="utf-8"))
+    validation = json.loads((tmp_path / "validation.json").read_text(encoding="utf-8"))
+    assert code == 1
+    assert request["external_release_eligible"] is True
+    assert request["promotion"] is False
+    assert validation["promotion"] is False
+
+
+def test_runtime_authority_monkeypatches_cannot_cause_local_promotion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    evidence_path = _write_qualifying_verified_evidence(tmp_path)
+    monkeypatch.setattr(hindcast_module, "_PINNED_PROMOTION_AUTHORITY", object(), raising=False)
+    monkeypatch.setenv("MLET_HINDCAST_PROMOTION_PUBLIC_KEY", "attacker-selected")
+    monkeypatch.setenv("MLET_HINDCAST_PROMOTION_PRIVATE_KEY", "attacker-selected")
+
+    report, receipt = evaluate_hindcast_evidence(evidence_path)
+    assert report.promotion is False
+    object.__setattr__(receipt.report, "promotion_blockers", ())
+    assert receipt.report.promotion is False
+    validation_path = write_hindcast_validation(receipt, tmp_path / "validation.json")
+    request_path = write_release_authority_request(receipt, tmp_path / "authority_request.json")
+
+    assert json.loads(validation_path.read_text(encoding="utf-8"))["promotion"] is False
+    assert json.loads(request_path.read_text(encoding="utf-8"))["promotion"] is False
 
 
 def test_held_out_training_leakage_blocks_promotion(tmp_path: Path) -> None:

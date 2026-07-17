@@ -135,10 +135,12 @@ classification states are permanent promotion blockers.
 
 The report contains sample count, MAE, RMSE, bias, empirical closed-interval
 coverage, and interval width by layer/lead, month, season, and spatial block.
-It writes an adjacent `validation.json` from an internally issued,
-hash-bound evaluation receipt (not a public report object) with the
-authoritative `promotion` boolean and every blocking reason. Promotion requires
-nonzero sample count and
+It writes an adjacent `validation.json` and `authority_request.json` from a
+reconstructed, hash-bound evaluation candidate (not a public report object).
+Both local artifacts always carry `promotion: false` and every blocking reason.
+The request is eligible for external release review only when its sole blocker
+is `requires_separately_trusted_release_authority`. Computational eligibility
+requires nonzero sample count and
 recorded coverage for leads 1–20 of ETo, the well-watered ETa scenario, and
 the no-irrigation ETa scenario. Conditional ETa targets must use their named
 scenario target kinds; they cannot be recast as observed actual ET.
@@ -150,40 +152,40 @@ archived non-fixture data set satisfies all of the gates above.
 
 ## External promotion authority
 
-Passing computational gates does not itself authorize a public promotion. The
-evaluator canonicalizes the verified forecast, manifest, target, receipt-byte
-hashes, case/run identifiers, classification, fold/cutoff, and scenario
-evidence into an `evaluation_digest`. An external release authority must attest
-to that digest **and** the reconstructed report digest with Ed25519. The
-accepted identity, key ID, algorithm, and public key are committed in
-`src/mlet/outlook/promotion_authority.json`. MLET has no private key, no
-environment-variable key override, and no `attest-hindcast-outlook` signing
-command. Changing the authority requires a reviewed repository change to that
-public verifier configuration.
+Passing computational gates does not authorize public promotion. MLET is inside
+the evaluator threat boundary: a process able to modify its Python memory,
+environment, code, or output directory must never be able to make MLET emit a
+true promotion. Accordingly, MLET has no signing key, public-key verifier,
+authority configuration, environment-variable override, or local promotion
+command. It cannot create, verify, or publish a true promotion receipt.
 
-The evaluator exposes a verification request only; it does not sign it:
+For a qualifying archived data set, MLET canonicalizes the verified forecast,
+manifest, target, receipt-byte hashes, case/run identifiers, classification,
+fold/cutoff, and scenario evidence into an `evaluation_digest`. It then writes
+`authority_request.json`, a canonical candidate artifact whose bytes include
+that digest, the case hashes, and the hash of the reconstructed candidate
+report. The candidate remains `promotion: false`:
 
 ```python
 from pathlib import Path
-from mlet.outlook.hindcast import build_promotion_attestation_request
+from mlet.outlook.hindcast import build_release_authority_request
 
-request = build_promotion_attestation_request(Path("ARCHIVED_CASES.json"))
+request = build_release_authority_request(Path("ARCHIVED_CASES.json"))
 ```
 
-The external release authority independently checks the archived evidence,
-then signs exactly these binary bytes with its offline/private Ed25519 key:
+The separately trusted release authority operates outside this repository and
+outside the MLET evaluator process. It independently retrieves the immutable
+archive and candidate request; checks their SHA-256 bindings, frozen gates, and
+publication policy; and creates and publishes a distinct
+`separately_trusted_release_validation_receipt` in its own controlled release
+system. That external receipt must identify the exact `evaluation_digest`, the
+candidate-report hash, its release-authority identity, decision time, and an
+auditable signature or equivalent approval record. It is never embedded into
+the evidence bundle for MLET to turn into local `promotion: true`.
 
-```text
-ASCII "MLET-IDAHO-OUTLOOK-HINDCAST-ATTESTATION" + 0x00 + 0x01
-+ 32 raw bytes of evaluation_digest (hex-decoded)
-+ 32 raw bytes of report_sha256 (hex-decoded)
-```
-
-It returns a `promotion_attestation` object with exactly
-`schema_version`, `algorithm`, `key_id`, `evaluation_digest`, `report_sha256`,
-and base64 `signature`. The operator embeds that object in the evidence bundle
-and reruns `hindcast-outlook`. The evaluator and validation writer independently
-reconstruct the report and digest, require the exact pinned key identity, and
-verify the signature. Missing, altered, replayed, cross-bundle, or
-attacker-selected-key attestations remain non-promotable. Software fixtures
-have no signing path and remain non-promotable.
+The public release workflow is therefore: (1) archive the exact evidence and
+MLET candidate, (2) obtain a separately trusted release receipt, and (3) have
+the external release system publish the promoted product together with both
+artifacts. A local qualifying archive exits with code 1 as a release candidate;
+fixtures also exit with code 1 but remain permanently non-scientific and are
+not eligible for external release review.
