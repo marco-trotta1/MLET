@@ -4,5 +4,7 @@ __pycache__/
 artifacts/
 data/*
 !data/manifest.json
+!data/outlook/
+!data/outlook/source_registry.json
 data/cache/
 data/interim/

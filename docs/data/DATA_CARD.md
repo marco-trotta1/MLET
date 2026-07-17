@@ -1,4 +1,22 @@
-# Phase 2 public daily-ET dataset
+# MLET data card
+
+MLET maintains two deliberately separate source families:
+
+- **Phase 2 archived benchmark sources** support the completed public
+  daily-ET comparison described below. They are retrospective research data,
+  not operational forecast inputs.
+- **Idaho outlook operational sources** are the prospective weather, observed
+  ETa, and crop-classification inputs for the 20-day regional map. Their
+  required variables, licenses, and latency statements are frozen in
+  [`data/outlook/source_registry.json`](../../data/outlook/source_registry.json).
+  They must be acquired with run receipts and issue-time provenance before any
+  operational or validation claim is made.
+
+No raw download, credential, or generated outlook belongs in Git. Both source
+families use manifests, checksums, documented acquisition commands, and source
+timestamps for reproducibility.
+
+## Phase 2 archived public daily-ET benchmark
 
 ## Purpose and scope
 
@@ -11,6 +29,22 @@ The frozen hypotheses, models, splits, and decision rule are in
 [the Phase 2 pre-registration](../evaluation/PREREGISTRATION.md). Generated
 performance and the decision are in
 [the Phase 2 results](../results/phase2_openet_value.md).
+
+## Idaho outlook operational sources
+
+The outlook is Idaho only and publishes regional weather-grid quantities. Its
+sources are intentionally not mixed with the Phase 2 benchmark:
+
+| Source key | Prospective role | Latency/provenance requirement |
+|---|---|---|
+| `gefs` | ensemble meteorological drivers for `eto_mm` | retain forecast issue and valid times in each run receipt |
+| `openet_eta` | delayed `eta_analysis_mm` only | retain observation date, model, and observed-date lag; do not use it as a future input |
+| `usda_cdl` | crop class and coefficient provenance for potential ET and scenarios | retain annual source year and confidence; do not substitute a later annual release into a historical issue |
+
+The full variable inventory, citations, and licenses are in the source registry.
+The product contract defines the difference between forecast ETo, potential ET,
+observed ETa analysis, and conditional ETa scenarios. No entry in this section
+establishes forecast accuracy; that requires the preregistered hindcast gate.
 
 ## Sources and provenance
 

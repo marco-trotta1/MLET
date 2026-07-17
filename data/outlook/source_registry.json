@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "gefs": {
+      "citation": "NOAA NCEP Global Ensemble Forecast System via NOMADS",
+      "license": "U.S. government public data",
+      "latency": "forecast issue time",
+      "required_variables": [
+        "tmax_c",
+        "tmin_c",
+        "vapor_pressure_kpa",
+        "wind_m_s",
+        "solar_mj_m2_day",
+        "precip_mm"
+      ]
+    },
+    "openet_eta": {
+      "citation": "OpenET Consortium satellite actual evapotranspiration",
+      "license": "provider terms recorded in run receipt",
+      "latency": "recorded observed-date lag",
+      "required_variables": [
+        "eta_analysis_mm",
+        "observation_date",
+        "model"
+      ]
+    },
+    "usda_cdl": {
+      "citation": "USDA NASS Cropland Data Layer",
+      "license": "public domain",
+      "latency": "annual release",
+      "required_variables": [
+        "crop_code",
+        "source_year",
+        "confidence"
+      ]
+    }
+  }
+}
