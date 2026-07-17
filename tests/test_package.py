@@ -1,5 +1,12 @@
+from pathlib import Path
+
 import mlet
 from mlet import schema
+
+
+def test_mlet_imports_from_this_checkout() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    assert Path(mlet.__file__).resolve().is_relative_to(repo_root / "src")
 
 
 def test_version_is_a_string():
