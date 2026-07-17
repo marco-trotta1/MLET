@@ -256,6 +256,33 @@ def test_fixture_is_non_scientific_and_cli_returns_candidate_status(tmp_path: Pa
     assert "external_release_eligible: false" in output
 
 
+def test_documented_zero_case_fixture_command_writes_false_only_candidate(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Keep the README/protocol smoke-test command reproducible as documented."""
+    repository = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(repository)
+    report_path = tmp_path / "idaho_outlook_residual.md"
+
+    assert main([
+        "evaluate-outlook-residual",
+        "--cases",
+        "examples/outlook/hindcast_cases.json",
+        "--out",
+        str(report_path),
+    ]) == 1
+
+    authority_path = report_path.with_name("idaho_outlook_residual.authority_request.json")
+    request = json.loads(authority_path.read_text(encoding="utf-8"))
+    assert report_path.exists()
+    assert "software fixture" in report_path.read_text(encoding="utf-8").lower()
+    assert request["promotion"] is False
+    assert request["external_release_eligible"] is False
+    output = capsys.readouterr().out.lower()
+    assert "promotion: false" in output
+    assert "external_release_eligible: false" in output
+
+
 def test_cli_does_not_clobber_an_authority_request_destination(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

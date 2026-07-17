@@ -1,6 +1,6 @@
 # Idaho Outlook Residual-Model Protocol
 
-**Frozen:** 2026-07-17  
+**Frozen:** 2026-07-17
 **Status:** prospective, non-serving research protocol; it reports no model skill result.
 
 ## Purpose and boundary

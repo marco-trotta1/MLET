@@ -46,6 +46,10 @@ _TEMPORAL_GAP_DAYS = 1
 # declaration.  An archive cannot self-assign a new spatial fold label.
 _FROZEN_SPLITS = {
     "idaho-residual-v1-fold-4-djf": (("44:-116",), ("DJF",)),
+    # This is a separately allow-listed zero-case software-smoke-test split.
+    # It retains the same strict chronological invariant as real archives and
+    # cannot be supplied by a schema-v1 archive as a scientific fold.
+    "fixture-placeholder-no-split": (("fixture",), ("DJF",)),
 }
 
 
@@ -317,7 +321,7 @@ def _fixture_placeholder_report(raw_bytes: bytes) -> ResidualReport:
     split = FrozenSplit(
         split_id="fixture-placeholder-no-split",
         train_cutoff=datetime(1970, 1, 1, tzinfo=timezone.utc),
-        calibration_cutoff=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        calibration_cutoff=datetime(1970, 1, 2, tzinfo=timezone.utc),
         held_out_spatial_blocks=("fixture",),
         held_out_seasons=("DJF",),
     )
