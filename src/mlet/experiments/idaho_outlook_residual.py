@@ -32,12 +32,12 @@ from mlet.outlook.hindcast import evaluate_hindcast_evidence
 
 
 _AUTHORITY_BLOCKER = "requires_separately_trusted_release_authority"
+_ARCHIVE_AUTHORITY_BLOCKER = "requires_independently_reconstructed_archive_authority"
 _FIXTURE_BLOCKER = "software fixture is non-scientific and cannot support an ML claim"
 _COVERAGE_TARGET = 0.80
 _COVERAGE_TOLERANCE = 0.10
 _WORST_SEASON_TOLERANCE_MM = 0.0
 _MIN_CALIBRATION_PER_LEAD = 5
-_MIN_CALIBRATION_PER_SEASON = 20
 _MIN_TEST_PER_LEAD = 5
 _MIN_TEST_PER_SEASON = 20
 _TEMPORAL_GAP_DAYS = 1
@@ -121,7 +121,12 @@ class ResidualEvaluationReceipt:
 def evaluate_residual_evidence(path: Path) -> tuple[ResidualReport, ResidualEvaluationReceipt]:
     """Evaluate a frozen archive and construct a permanently false candidate."""
     report, digest = _evaluate(Path(path))
+    # The evaluator can check archive-local content addresses, but it cannot
+    # establish that caller-supplied rows were independently reconstructed from
+    # the raw Task 8/source archives.  That authority deliberately lives
+    # outside this Python process and repository threat boundary.
     report = _with_blocker(report, _AUTHORITY_BLOCKER)
+    report = _with_blocker(report, _ARCHIVE_AUTHORITY_BLOCKER)
     return report, ResidualEvaluationReceipt(
         report=report,
         evidence_path=Path(path).resolve(strict=True),
@@ -135,6 +140,7 @@ def write_residual_markdown(report: ResidualReport, destination: Path) -> Path:
         "# Idaho Outlook Residual-Model Experiment",
         "",
         "Promotion: **false**",
+        "External release eligibility: **false**",
         "Status: research candidate only; this does not modify the physics outlook or any Helios/Irrigant input.",
         "",
         "## Frozen experiment",
@@ -187,6 +193,7 @@ def write_residual_authority_request(receipt: object, destination: Path) -> Path
     if digest != receipt.evaluation_digest:
         raise ValueError("residual authority request refuses a receipt with a changed digest")
     rebuilt = _with_blocker(rebuilt, _AUTHORITY_BLOCKER)
+    rebuilt = _with_blocker(rebuilt, _ARCHIVE_AUTHORITY_BLOCKER)
     payload = {
         "schema_version": 1,
         "kind": "idaho_outlook_residual_release_authority_request",
@@ -194,8 +201,13 @@ def write_residual_authority_request(receipt: object, destination: Path) -> Path
         "candidate_report_sha256": _report_sha256(rebuilt),
         "promotion": False,
         "promotion_blockers": list(rebuilt.blockers),
-        "external_release_eligible": rebuilt.blockers == (_AUTHORITY_BLOCKER,),
-        "required_external_artifact": "separately_trusted_release_validation_receipt",
+        # This is a literal false-only local policy, not a conclusion drawn
+        # from mutable in-process rows, receipts, configuration, or globals.
+        "external_release_eligible": False,
+        "required_external_artifacts": [
+            "independently_reconstructed_archive_authority_receipt",
+            "separately_trusted_release_validation_receipt",
+        ],
     }
     return _write_new(destination, (_canonical_json(payload) + "\n").encode("utf-8"))
 
@@ -233,7 +245,7 @@ def _evaluate(path: Path) -> tuple[ResidualReport, str]:
     blockers: list[str] = []
     if classification == "software_fixture":
         blockers.append(_FIXTURE_BLOCKER)
-    metrics: tuple[ResidualMetric, ...] = ()
+    metrics = _unsupported_metrics(split)
     train = tuple(case for case in cases if case.role == "train")
     calibration = tuple(case for case in cases if case.role == "calibration")
     test = tuple(case for case in cases if case.role == "test")
@@ -246,17 +258,25 @@ def _evaluate(path: Path) -> tuple[ResidualReport, str]:
     calibration_details: dict[str, object] = {}
     if not blockers or blockers == [_FIXTURE_BLOCKER]:
         model = fit_residual_model(train, cutoff=split.train_cutoff)
-        calibration_width = _calibration_interval_inflation(model, calibration)
+        calibration_widths = _calibration_interval_inflation(model, calibration)
         calibration_details = {
-            "strategy": "split_conformal_absolute_residual_order_statistic",
+            "strategy": "lead_stratified_split_conformal_absolute_residual_order_statistic",
             "nominal_coverage": _COVERAGE_TARGET,
             "finite_sample_quantile": "k=ceil((n+1)*(1-alpha)); k=min(k,n); sorted_scores[k-1]",
-            "inflation_mm": calibration_width,
-            "case_ids": [case.case_id for case in calibration],
-            "case_sha256": [_case_digest(case) for case in calibration],
+            "inflation_mm_by_lead": calibration_widths,
+            "case_ids_by_lead": {
+                str(lead): [case.case_id for case in calibration if int(case.features[0]) == lead]
+                for lead in range(1, 21)
+            },
+            "case_sha256_by_lead": {
+                str(lead): [_case_digest(case) for case in calibration if int(case.features[0]) == lead]
+                for lead in range(1, 21)
+            },
         }
-        metrics = _score(model, test, calibration_width)
-        blockers.extend(_metric_blockers(metrics, calibration, test, split))
+        metrics = _score(model, test, calibration_widths, split)
+    # Even an unfittable archive must name every preregistered unsupported
+    # stratum instead of hiding it behind an aggregate failure message.
+    blockers.extend(_metric_blockers(metrics, calibration, test, split))
     report = ResidualReport(
         evidence_classification=cast(str, classification),
         split=split,
@@ -276,7 +296,12 @@ def _evaluate(path: Path) -> tuple[ResidualReport, str]:
             "split_rules": {
                 "temporal": "train <= train_cutoff; train_cutoff + 1 day <= calibration <= calibration_cutoff; test >= calibration_cutoff + 1 day",
                 "geographic_and_seasonal": "train/calibration exclude declared holds; every test row is in both declared holds",
-                "minimum_support": {"calibration_per_lead": _MIN_CALIBRATION_PER_LEAD, "calibration_per_season": _MIN_CALIBRATION_PER_SEASON, "test_per_lead": _MIN_TEST_PER_LEAD, "test_per_season": _MIN_TEST_PER_SEASON},
+                "minimum_support": {
+                    "calibration_per_lead": _MIN_CALIBRATION_PER_LEAD,
+                    "test_per_lead": _MIN_TEST_PER_LEAD,
+                    "test_per_held_out_season": _MIN_TEST_PER_SEASON,
+                },
+                "interval_calibration": "lead-stratified only; no season-conditioned calibration claim",
             },
             "case_sha256": [_case_digest(case) for case in cases],
             "hindcast_binding": hindcast_binding or {"classification": "software_fixture"},
@@ -425,12 +450,13 @@ def _parse_case(value: object) -> ResidualCase:
 def _verify_case_bindings(
     raw_cases: Sequence[object], cases: Sequence[ResidualCase], hindcast_binding: dict[str, object] | None, root: Path,
 ) -> dict[str, object]:
-    """Require each real ML row to cite a reconstructed Task 8 case digest.
+    """Validate archive-local diagnostics for each real ML row.
 
     The digest is not a signature or a local promotion authority.  It is a
-    content address for a Task 8 case already reconstructed from forecast,
-    target, source, holdout, and scenario receipts.  The ML archive therefore
-    cannot quietly swap in a row without changing its reviewed evidence.
+    content address for a Task 8 case.  These checks catch accidental archive
+    corruption, but are not independent provenance: the archive author can
+    still control the rows and receipts.  They must never authorize an
+    external-release-eligible claim in this evaluator.
     """
     if hindcast_binding is None:
         raise ValueError("real_archived residual cases require a hindcast binding")
@@ -480,9 +506,9 @@ def _verify_case_bindings(
                 raise ValueError("feature receipt value must be numeric") from error
             if receipt_value != case.features[index]:
                 raise ValueError("feature receipt value does not bind the evaluated feature")
-        # The complete row is content-addressed in the report.  Physical p50,
-        # target, issue time, fold and feature availability are all included in
-        # that case digest, so their mutation changes every review artifact.
+        # The complete row is content-addressed in the report for diagnostic
+        # replay.  A changed local row changes its review artifact; that is not
+        # proof the row came from the cited Task 8 case.
         if case.target_mm < 0 or case.physical_p50 < 0:
             raise ValueError("real_archived residual case physical values must be non-negative")
         bound[case.case_id] = {
@@ -551,23 +577,47 @@ def _validate_split_roles(cases: Sequence[ResidualCase], split: FrozenSplit) -> 
             raise ValueError("test cases do not cover every preregistered held-out season")
 
 
-def _calibration_interval_inflation(model: ResidualModel, calibration: Sequence[ResidualCase]) -> float:
+def _calibration_interval_inflation(model: ResidualModel, calibration: Sequence[ResidualCase]) -> dict[str, float]:
     if not calibration:
         raise ValueError("residual calibration requires a fitted model and cases")
-    residuals: list[float] = []
+    residuals_by_lead: dict[str, list[float]] = defaultdict(list)
     for case in calibration:
         predicted = predict_interval(model, case)
-        residuals.append(max(predicted.p10 - case.target_mm, case.target_mm - predicted.p90, 0.0))
-    ordered = sorted(residuals)
-    # Split conformal finite-sample convention: ceil((n + 1)(1-alpha))th
-    # order statistic, capped at n when nominal coverage is unattainable.
-    rank = min(len(ordered), int(np.ceil((len(ordered) + 1) * _COVERAGE_TARGET)))
-    return ordered[rank - 1]
+        lead = str(int(case.features[0]))
+        residuals_by_lead[lead].append(
+            max(predicted.p10 - case.target_mm, case.target_mm - predicted.p90, 0.0)
+        )
+    inflations: dict[str, float] = {}
+    for lead, residuals in sorted(residuals_by_lead.items(), key=lambda item: int(item[0])):
+        ordered = sorted(residuals)
+        # Split conformal finite-sample convention: ceil((n + 1)(1-alpha))th
+        # order statistic, capped at n when nominal coverage is unattainable.
+        rank = min(len(ordered), int(np.ceil((len(ordered) + 1) * _COVERAGE_TARGET)))
+        inflations[lead] = ordered[rank - 1]
+    return inflations
 
 
-def _score(model: ResidualModel, test: Sequence[ResidualCase], inflation: float) -> tuple[ResidualMetric, ...]:
+def _score(
+    model: ResidualModel, test: Sequence[ResidualCase], inflations: dict[str, float], split: FrozenSplit,
+) -> tuple[ResidualMetric, ...]:
+    """Score named preregistered strata, including unsupported ones.
+
+    Intervals are lead-stratified split-conformal intervals. They are not
+    presented as season-conditioned calibration; seasonal rows are held-out diagnostics
+    with their own test-support requirement.
+    """
     grouped: dict[tuple[str, str], list[tuple[ResidualCase, float, float, float]]] = defaultdict(list)
+    for lead in range(1, 21):
+        grouped[("lead_day", str(lead))]
+    for season in split.held_out_seasons:
+        grouped[("season", season)]
     for case in test:
+        inflation = inflations.get(str(int(case.features[0])))
+        if inflation is None:
+            # No interval or coverage claim is computed for a lead that lacks
+            # its preregistered calibration support; the named zero-count
+            # metric and explicit lead blocker remain visible below.
+            continue
         predicted = predict_interval(model, case)
         p10 = max(0.0, predicted.p10 - inflation)
         p90 = predicted.p90 + inflation
@@ -579,6 +629,19 @@ def _score(model: ResidualModel, test: Sequence[ResidualCase], inflation: float)
             minimum=_MIN_TEST_PER_LEAD if group == "lead_day" else _MIN_TEST_PER_SEASON,
         )
         for (group, key), values in sorted(grouped.items())
+    )
+
+
+def _unsupported_metrics(split: FrozenSplit) -> tuple[ResidualMetric, ...]:
+    """Render every preregistered diagnostic stratum when fitting is impossible."""
+    return tuple(
+        ResidualMetric(group="lead_day", key=str(lead), sample_count=0, physical_mae_mm=None,
+                       residual_mae_mm=None, coverage_p10_p90=None, interval_width_mm=None)
+        for lead in range(1, 21)
+    ) + tuple(
+        ResidualMetric(group="season", key=season, sample_count=0, physical_mae_mm=None,
+                       residual_mae_mm=None, coverage_p10_p90=None, interval_width_mm=None)
+        for season in split.held_out_seasons
     )
 
 
@@ -632,7 +695,6 @@ def _metric_blockers(
     if not lead_metrics:
         blockers.append("no held-out lead-day metrics were produced")
     calibration_by_lead = _counts_by(calibration, lambda case: str(int(case.features[0])))
-    calibration_by_season = _counts_by(calibration, lambda case: case.season)
     test_by_lead = _counts_by(test, lambda case: str(int(case.features[0])))
     test_by_season = _counts_by(test, lambda case: case.season)
     for lead in range(1, 21):
@@ -643,9 +705,6 @@ def _metric_blockers(
         if count < _MIN_TEST_PER_LEAD:
             blockers.append(f"insufficient held-out test support at lead {lead}: {count} < {_MIN_TEST_PER_LEAD}")
     for season in split.held_out_seasons:
-        count = calibration_by_season.get(season, 0)
-        if count < _MIN_CALIBRATION_PER_SEASON:
-            blockers.append(f"insufficient calibration support in season {season}: {count} < {_MIN_CALIBRATION_PER_SEASON}")
         count = test_by_season.get(season, 0)
         if count < _MIN_TEST_PER_SEASON:
             blockers.append(f"insufficient held-out test support in season {season}: {count} < {_MIN_TEST_PER_SEASON}")
@@ -688,6 +747,7 @@ def _report_payload(report: ResidualReport) -> dict[str, object]:
         "data_sha256": report.data_sha256,
         "model_parameters": report.model_parameters,
         "promotion": False,
+        "external_release_eligible": False,
     }
 
 

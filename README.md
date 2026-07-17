@@ -191,10 +191,12 @@ python3 -m mlet evaluate-outlook-residual \
   --out /private/tmp/idaho_outlook_residual.md
 ```
 
-That bundled input is a visibly non-scientific software fixture. Real residual
-evidence must bind every ML case and feature receipt to a checksummed Task 8
-hindcast archive; software tests and
-good experimental metrics alone are never a validated or production ML claim.
+That bundled input is a visibly non-scientific software fixture. Archive-local
+checksums for Task 8 cases and feature receipts are useful replay diagnostics,
+but are not independent provenance: an archive author can supply both the rows
+and receipts. An external archive-reconstruction authority must rebuild the
+rows from raw source artifacts before separate release review; this repository
+always emits `promotion: false` and `external_release_eligible: false`.
 
 ## Static research-candidate map
 

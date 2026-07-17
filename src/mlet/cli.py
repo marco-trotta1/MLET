@@ -184,6 +184,7 @@ def _run_outlook_residual(cases_path: str, destination: str) -> int:
     print(f"report: {report_path}")
     print(f"authority request: {authority_path}")
     print("promotion: false")
+    print("external_release_eligible: false")
     print("status: non-serving research candidate")
     return 1
 
