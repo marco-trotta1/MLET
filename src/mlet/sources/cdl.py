@@ -1,16 +1,171 @@
-"""Aggregate explicit CDL-to-weather-grid intersections with provenance."""
+"""Aggregate issue-time-eligible CDL intersections with frozen legend provenance."""
 
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timezone
+import hashlib
 import json
 import math
 from pathlib import Path
 
 
 _COVERAGE_THRESHOLD = 0.8
+CDL_2024_LEGEND_VERSION = "usda-nass-cdl-2024"
+CDL_2024_LEGEND_URL = (
+    "https://www.nass.usda.gov/Research_and_Science/Cropland/metadata/"
+    "metadata_Cropland-Data-Layer-2024.htm"
+)
+
+# The finite 2024 code set is transcribed from the official USDA NASS data
+# dictionary at ``CDL_2024_LEGEND_URL``.  It is deliberately not generalized to
+# other years: those require an explicit legend review and a new version label.
+_CDL_2024_CROP_CODES = frozenset(
+    {
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        10,
+        11,
+        12,
+        13,
+        14,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        74,
+        75,
+        76,
+        77,
+        92,
+        204,
+        205,
+        206,
+        207,
+        208,
+        209,
+        210,
+        211,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217,
+        218,
+        219,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226,
+        227,
+        228,
+        229,
+        230,
+        231,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        254,
+    }
+)
+_CDL_2024_NON_CROP_CODES = frozenset(
+    {
+        0,
+        61,
+        62,
+        63,
+        64,
+        65,
+        81,
+        82,
+        83,
+        87,
+        88,
+        111,
+        112,
+        121,
+        122,
+        123,
+        124,
+        131,
+        141,
+        142,
+        143,
+        152,
+        176,
+        190,
+        195,
+    }
+)
+_CDL_2024_ACCEPTED_CODES = _CDL_2024_CROP_CODES | _CDL_2024_NON_CROP_CODES
 
 
 @dataclass(frozen=True)
@@ -22,8 +177,20 @@ class GridCell:
 
 
 @dataclass(frozen=True)
+class CdlLayerMetadata:
+    """Immutable archived CDL layer evidence used at one historical issue time."""
+
+    source_year: int
+    layer_version: str
+    legend_version: str
+    release_at: str
+    upstream_uri: str
+    sha256: str
+
+
+@dataclass(frozen=True)
 class CropFraction:
-    """Area-weighted CDL crop contribution for one native weather-grid cell."""
+    """Area-weighted CDL contribution for one native weather-grid cell."""
 
     grid_id: str
     crop_code: str | None
@@ -32,37 +199,49 @@ class CropFraction:
     coverage_fraction: float
     source_year: int
     confidence_pct: float | None
+    layer_metadata: CdlLayerMetadata
     kc: float | None = None
 
 
 def aggregate_cdl(
-    cdl_path: Path, grid_cells: Sequence[GridCell], source_year: int
+    cdl_path: Path,
+    grid_cells: Sequence[GridCell],
+    source_year: int,
+    *,
+    issued_at: str,
+    layer_metadata: CdlLayerMetadata,
 ) -> list[CropFraction]:
-    """Aggregate a reproducible CDL intersection table by native weather cell.
+    """Aggregate a checksum-addressed 2024 CDL intersection table.
 
-    ``cdl_path`` is an archived JSON array or JSONL table created by the
-    spatial-intersection acquisition step.  Each row must retain the official
-    ``grid_id``, ``crop_code``, intersected ``area_m2``, confidence percentage,
-    and explicit ``source_year``.  This function cannot infer a crop layer from
-    a later release: every input row must exactly match ``source_year``.
+    Every row is checked against the same recorded source year before rows are
+    scoped to requested weather cells.  The immutable layer's release time must
+    already have passed at ``issued_at``; a later annual map therefore cannot be
+    silently introduced into a historical outlook.
     """
-    if not isinstance(source_year, int) or isinstance(source_year, bool) or source_year < 1:
-        raise ValueError("source_year must be a positive recorded integer")
+    issue_time = _parse_utc_timestamp(issued_at, "issued_at")
+    _validate_requested_source_year(source_year)
+    _validate_layer_metadata(layer_metadata, source_year, issue_time)
     cells = _validate_grid_cells(grid_cells)
-    rows = _load_rows(Path(cdl_path))
-    by_grid: dict[str, list[tuple[str, str, float, float]]] = defaultdict(list)
+    raw_bytes = _read_bytes(Path(cdl_path))
+    actual_sha256 = hashlib.sha256(raw_bytes).hexdigest()
+    if actual_sha256 != layer_metadata.sha256:
+        raise ValueError("CDL intersection table checksum does not match layer metadata")
+    rows = _load_rows(raw_bytes)
+    by_grid: dict[str, list[tuple[str | None, str, float, float]]] = defaultdict(list)
     for row_index, row in enumerate(rows):
-        grid_id = _require_text(row, "grid_id", row_index)
-        if grid_id not in cells:
-            continue
         row_source_year = _require_year(row, row_index)
         if row_source_year != source_year:
             raise ValueError(
                 "CDL row source_year does not match the explicitly requested source_year"
             )
-        crop_code = _require_crop_code(row, row_index)
-        crop_class = _optional_crop_class(row, crop_code, row_index)
-        area_m2 = _require_number(row, "area_m2", row_index, 0.0, float("inf"), strict_minimum=True)
+        grid_id = _require_text(row, "grid_id", row_index)
+        if grid_id not in cells:
+            continue
+        code = _require_2024_legend_code(row, row_index)
+        crop_code, crop_class = _classify_crop_code(row, code, row_index)
+        area_m2 = _require_number(
+            row, "area_m2", row_index, 0.0, float("inf"), strict_minimum=True
+        )
         confidence_pct = _require_number(row, "confidence", row_index, 0.0, 100.0)
         by_grid[grid_id].append((crop_code, crop_class, area_m2, confidence_pct))
 
@@ -90,11 +269,12 @@ def aggregate_cdl(
                     coverage_fraction=coverage_fraction,
                     source_year=source_year,
                     confidence_pct=mean_confidence,
+                    layer_metadata=layer_metadata,
                 )
             )
             continue
 
-        grouped: dict[tuple[str, str], tuple[float, float]] = {}
+        grouped: dict[tuple[str | None, str], tuple[float, float]] = {}
         for crop_code, crop_class, area_m2, confidence_pct in samples:
             existing_area, existing_weighted_confidence = grouped.get(
                 (crop_code, crop_class), (0.0, 0.0)
@@ -103,7 +283,14 @@ def aggregate_cdl(
                 existing_area + area_m2,
                 existing_weighted_confidence + area_m2 * confidence_pct,
             )
-        for (crop_code, crop_class), (area_m2, weighted_confidence) in sorted(grouped.items()):
+        for (crop_code, crop_class), (area_m2, weighted_confidence) in sorted(
+            grouped.items(),
+            key=lambda item: (
+                item[0][0] is None,
+                int(item[0][0]) if item[0][0] is not None else -1,
+                item[0][1],
+            ),
+        ):
             fraction = area_m2 / cell.area_m2
             if not 0.0 <= fraction <= 1.0:
                 raise ValueError("CDL crop fraction must be within [0, 1]")
@@ -116,9 +303,36 @@ def aggregate_cdl(
                     coverage_fraction=coverage_fraction,
                     source_year=source_year,
                     confidence_pct=weighted_confidence / area_m2,
+                    layer_metadata=layer_metadata,
                 )
             )
     return fractions
+
+
+def _validate_requested_source_year(source_year: int) -> None:
+    if not isinstance(source_year, int) or isinstance(source_year, bool):
+        raise ValueError("source_year must be a recorded integer")
+    if source_year != 2024:
+        raise ValueError("source_year is unsupported until its official CDL legend is pinned")
+
+
+def _validate_layer_metadata(
+    layer: CdlLayerMetadata, source_year: int, issue_time: datetime
+) -> None:
+    if not isinstance(layer, CdlLayerMetadata):
+        raise ValueError("layer_metadata must be an immutable CdlLayerMetadata record")
+    if layer.source_year != source_year:
+        raise ValueError("CDL layer metadata source_year must match the requested source_year")
+    if layer.legend_version != CDL_2024_LEGEND_VERSION:
+        raise ValueError("CDL layer metadata legend_version is not a pinned supported legend")
+    if not isinstance(layer.layer_version, str) or not layer.layer_version.strip():
+        raise ValueError("CDL layer metadata layer_version must be non-empty text")
+    release_time = _parse_utc_timestamp(layer.release_at, "CDL layer metadata release_at")
+    if release_time > issue_time:
+        raise ValueError("CDL layer metadata release_at is later than issued_at")
+    if not isinstance(layer.upstream_uri, str) or not layer.upstream_uri.startswith("https://"):
+        raise ValueError("CDL layer metadata upstream_uri must be an HTTPS URL")
+    _require_sha256(layer.sha256, "CDL layer metadata checksum")
 
 
 def _validate_grid_cells(grid_cells: Sequence[GridCell]) -> dict[str, GridCell]:
@@ -139,18 +353,26 @@ def _validate_grid_cells(grid_cells: Sequence[GridCell]) -> dict[str, GridCell]:
     return cells
 
 
-def _load_rows(path: Path) -> list[Mapping[str, object]]:
+def _read_bytes(path: Path) -> bytes:
     try:
-        contents = path.read_text(encoding="utf-8")
+        contents = path.read_bytes()
     except OSError as error:
         raise ValueError(f"cannot read CDL intersection table: {path}") from error
     if not contents.strip():
         raise ValueError("CDL intersection table is empty")
+    return contents
+
+
+def _load_rows(contents: bytes) -> list[Mapping[str, object]]:
     try:
-        decoded = json.loads(contents)
+        text = contents.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ValueError("CDL intersection table must be UTF-8") from error
+    try:
+        decoded = json.loads(text)
     except json.JSONDecodeError:
         decoded = []
-        for line_number, line in enumerate(contents.splitlines(), start=1):
+        for line_number, line in enumerate(text.splitlines(), start=1):
             if not line.strip():
                 continue
             try:
@@ -172,27 +394,40 @@ def _require_text(row: Mapping[str, object], name: str, row_index: int) -> str:
 def _require_year(row: Mapping[str, object], row_index: int) -> int:
     value = row.get("source_year")
     if not isinstance(value, int) or isinstance(value, bool) or value < 1:
-        raise ValueError(f"CDL row {row_index} field source_year must be a recorded positive integer")
+        raise ValueError(
+            f"CDL row {row_index} field source_year must be a recorded positive integer"
+        )
     return value
 
 
-def _require_crop_code(row: Mapping[str, object], row_index: int) -> str:
+def _require_2024_legend_code(row: Mapping[str, object], row_index: int) -> int:
     value = row.get("crop_code")
-    if isinstance(value, bool) or not isinstance(value, (str, int)):
-        raise ValueError(f"CDL row {row_index} field crop_code must be text or an integer")
-    result = str(value).strip()
-    if not result:
-        raise ValueError(f"CDL row {row_index} field crop_code must be non-empty")
-    return result
+    if isinstance(value, bool):
+        raise ValueError(f"CDL row {row_index} crop_code must be numeric for the 2024 legend")
+    if isinstance(value, int):
+        code = value
+    elif isinstance(value, str) and value.strip().isdigit():
+        code = int(value.strip())
+    else:
+        raise ValueError(f"CDL row {row_index} crop_code must be numeric for the 2024 legend")
+    if code not in _CDL_2024_ACCEPTED_CODES:
+        raise ValueError(f"CDL row {row_index} crop_code is not recognized by the 2024 legend")
+    return code
 
 
-def _optional_crop_class(row: Mapping[str, object], crop_code: str, row_index: int) -> str:
+def _classify_crop_code(
+    row: Mapping[str, object], code: int, row_index: int
+) -> tuple[str | None, str]:
     value = row.get("crop_class")
+    if code in _CDL_2024_NON_CROP_CODES:
+        if value is not None and value != "non_crop":
+            raise ValueError(f"CDL row {row_index} non-crop code cannot declare a crop_class")
+        return None, "non_crop"
     if value is None:
-        return f"cdl_{crop_code}"
+        return str(code), f"cdl_{code}"
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"CDL row {row_index} field crop_class must be non-empty text")
-    return value.strip()
+    return str(code), value.strip()
 
 
 def _require_number(
@@ -217,3 +452,25 @@ def _finite_float(value: object, label: str) -> float:
     if not math.isfinite(result):
         raise ValueError(f"{label} must be a finite number")
     return result
+
+
+def _parse_utc_timestamp(value: object, label: str) -> datetime:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise ValueError(f"{label} must be an explicit UTC ISO-8601 timestamp ending in Z")
+    try:
+        parsed = datetime.fromisoformat(f"{value[:-1]}+00:00")
+    except ValueError as error:
+        raise ValueError(
+            f"{label} must be an explicit UTC ISO-8601 timestamp ending in Z"
+        ) from error
+    if parsed.tzinfo is None or parsed.utcoffset() != timezone.utc.utcoffset(parsed):
+        raise ValueError(f"{label} must be an explicit UTC ISO-8601 timestamp ending in Z")
+    return parsed.astimezone(timezone.utc)
+
+
+def _require_sha256(value: object, label: str) -> str:
+    if not isinstance(value, str) or len(value) != 64:
+        raise ValueError(f"{label} must be a lowercase SHA-256 hex digest")
+    if any(character not in "0123456789abcdef" for character in value):
+        raise ValueError(f"{label} must be a lowercase SHA-256 hex digest")
+    return value

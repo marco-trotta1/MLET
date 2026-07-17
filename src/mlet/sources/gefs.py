@@ -1,15 +1,15 @@
-"""Normalize bounded GEFS daily weather rows into the outlook contract.
+"""Import versioned GEFS daily artifacts without pretending to decode GRIB.
 
-The downloader deliberately accepts only the project's canonical daily-row
-response.  Decoding NOAA GRIB is a separate acquisition concern; keeping it
-outside this module prevents a source-specific binary format from leaking into
-the ETo core.  The normalized JSONL and its source receipt are suitable for a
-live acquisition, an archive replay, or a conspicuously non-scientific fixture.
+This module deliberately has no live NOAA transport.  A reproducible external
+decoder must first produce the documented ``mlet.gefs.daily-artifact`` format
+from a pinned GRIB input.  The importer then validates that canonical daily
+artifact, caches the exact bytes it parsed, and atomically publishes its
+normalized weather rows and a complete provenance receipt.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict
 from datetime import date, datetime, timedelta, timezone
 import hashlib
@@ -18,14 +18,16 @@ import math
 import os
 from pathlib import Path
 import tempfile
-from typing import Mapping
-
-import requests
 
 from mlet.outlook.contracts import WeatherMember
 
 
-_GEFS_DAILY_URL = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gefs_atmos_0p50a.pl"
+_ARTIFACT_TYPE = "mlet.gefs.daily-artifact"
+_ARTIFACT_SCHEMA_VERSION = 1
+_TRANSFORM = {
+    "name": "noaa-gefs-grib-to-daily-asce-input",
+    "version": "1",
+}
 _WEATHER_FIELDS = frozenset(
     {
         "tmax_c",
@@ -53,14 +55,8 @@ _IDAHO_EXTENT = (-118.0, 41.0, -110.0, 50.0)
 def normalize_gefs_rows(
     rows: Iterable[dict[str, object]], issued_at: str
 ) -> list[WeatherMember]:
-    """Validate a complete 20-day GEFS daily ensemble without imputation.
-
-    A valid source has one and only one row for every
-    ``(grid_id, member_id, valid_date)`` and exactly the lead-day-1 through
-    lead-day-20 dates for each grid/member pair.  The required meteorological
-    fields are supplied in the units named by the source registry.
-    """
-    issued_datetime = _parse_utc_timestamp(issued_at)
+    """Validate a complete 20-day canonical daily ensemble without imputation."""
+    issued_datetime = _parse_utc_timestamp(issued_at, "issued_at")
     issue_date = issued_datetime.date()
     expected_dates = {issue_date + timedelta(days=lead) for lead in range(1, 21)}
     members: list[WeatherMember] = []
@@ -136,93 +132,174 @@ def fetch_gefs(
     idaho_bbox: tuple[float, float, float, float],
     destination: Path,
 ) -> Path:
-    """Fetch, validate, and atomically materialize bounded normalized GEFS rows.
+    """Refuse live GEFS acquisition until a pinned GRIB decoder is available.
 
-    ``idaho_bbox`` is ``(west, south, east, north)`` in WGS84 degrees.  This
-    function requests only the six registry weather variables.  It writes the
-    source response beneath ``data/cache`` and a checksum-addressable source
-    receipt alongside ``destination`` only after all rows pass completeness and
-    bounds checks.
+    This deliberately performs no HTTP request.  Use
+    :func:`materialize_gefs_daily_artifact` only after an external, documented
+    decoder has produced a canonical artifact with GRIB provenance.
     """
-    if not isinstance(issue_date, date) or isinstance(issue_date, datetime):
-        raise ValueError("issue_date must be a date")
-    west, south, east, north = _validate_idaho_bbox(idaho_bbox)
-    required_variables = _registry_weather_variables()
-    issued_at = datetime.combine(issue_date, datetime.min.time(), tzinfo=timezone.utc)
-    issued_at_text = _format_utc_timestamp(issued_at)
-    parameters: dict[str, object] = {
-        "bottomlat": south,
-        "issue_date": issue_date.isoformat(),
-        "leftlon": west,
-        "rightlon": east,
-        "toplat": north,
-        "variables": ",".join(required_variables),
-    }
-    response = requests.get(_GEFS_DAILY_URL, params=parameters, timeout=60)
-    response.raise_for_status()
-    try:
-        payload = response.json()
-    except (TypeError, ValueError) as error:
-        raise ValueError("GEFS response must be a canonical JSON array of daily rows") from error
-    if not isinstance(payload, list) or any(not isinstance(row, dict) for row in payload):
-        raise ValueError("GEFS response must be a canonical JSON array of daily rows")
-
-    rows: list[dict[str, object]] = payload
-    members = normalize_gefs_rows(rows, issued_at=issued_at_text)
-    for member in members:
-        if not (south <= member.latitude <= north and west <= member.longitude <= east):
-            raise ValueError("GEFS response contains a weather cell outside the Idaho bbox")
-
-    raw_bytes = response.content
-    if not isinstance(raw_bytes, bytes):
-        raise ValueError("GEFS response content must be bytes")
-    raw_sha256 = hashlib.sha256(raw_bytes).hexdigest()
-    cache_path = Path("data") / "cache" / f"gefs-{issue_date.isoformat()}-{raw_sha256[:16]}.json"
-    retrieved_at = _format_utc_timestamp(datetime.now(timezone.utc))
-    receipt = {
-        "name": "gefs",
-        "uri": str(getattr(response, "url", _GEFS_DAILY_URL)),
-        "retrieved_at": retrieved_at,
-        "sha256": raw_sha256,
-        "observed_through": None,
-        "source_issue_at": issued_at_text,
-        "idaho_bbox": [west, south, east, north],
-        "required_variables": required_variables,
-    }
-    normalized_text = "".join(
-        json.dumps(_weather_member_payload(member), sort_keys=True, separators=(",", ":"))
-        + "\n"
-        for member in members
+    del issue_date, idaho_bbox, destination
+    raise NotImplementedError(
+        "Live GEFS GRIB acquisition is disabled until a reproducible, versioned "
+        "GRIB decoder and archived-artifact verification are added; import a "
+        "mlet.gefs.daily-artifact instead."
     )
 
+
+def materialize_gefs_daily_artifact(artifact_path: Path, destination: Path) -> Path:
+    """Import one validated canonical daily artifact as a complete artifact set.
+
+    The raw cache stores the exact canonical-artifact bytes passed to
+    ``json.loads``.  The receipt is written last and records both that parsed
+    byte hash and the immutable upstream GRIB hash supplied by the producer.
+    """
+    artifact_path = Path(artifact_path)
+    try:
+        raw_bytes = artifact_path.read_bytes()
+    except OSError as error:
+        raise ValueError(f"cannot read GEFS daily artifact: {artifact_path}") from error
+    try:
+        payload = json.loads(raw_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("GEFS daily artifact must be UTF-8 JSON") from error
+
+    provenance, rows, declared_normalized_sha256 = _validate_daily_artifact(payload)
+    source_issue_at = _parse_utc_timestamp(
+        provenance["source_issue_at"], "GEFS provenance source_issue_at"
+    )
+    bbox = _validate_idaho_bbox(provenance["idaho_bbox"])
+    members = normalize_gefs_rows(rows, issued_at=_format_utc_timestamp(source_issue_at))
+    for member in members:
+        west, south, east, north = bbox
+        if not (south <= member.latitude <= north and west <= member.longitude <= east):
+            raise ValueError("GEFS daily artifact contains a weather cell outside the Idaho bbox")
+
+    normalized_bytes = _normalized_bytes(members)
+    normalized_sha256 = hashlib.sha256(normalized_bytes).hexdigest()
+    if normalized_sha256 != declared_normalized_sha256:
+        raise ValueError("GEFS daily artifact normalized_sha256 does not match rows")
+    raw_sha256 = hashlib.sha256(raw_bytes).hexdigest()
+
     destination = Path(destination)
+    cache_path = (
+        destination.parent
+        / "data"
+        / "cache"
+        / f"gefs-canonical-{source_issue_at.date().isoformat()}-{raw_sha256[:16]}.json"
+    )
     receipt_path = destination.with_suffix(f"{destination.suffix}.source.json")
-    _write_transactionally(cache_path, raw_bytes)
-    _write_transactionally(receipt_path, _canonical_json_bytes(receipt))
-    _write_transactionally(destination, normalized_text.encode("utf-8"))
+    receipt = {
+        "acquisition_mode": "imported_canonical_daily_artifact",
+        "artifact_schema_version": _ARTIFACT_SCHEMA_VERSION,
+        "artifact_type": _ARTIFACT_TYPE,
+        "idaho_bbox": list(bbox),
+        "name": "gefs",
+        "normalized_sha256": normalized_sha256,
+        "raw_sha256": raw_sha256,
+        "source_issue_at": _format_utc_timestamp(source_issue_at),
+        "transform": provenance["transform"],
+        "upstream_raw_sha256": provenance["upstream_raw_sha256"],
+        "uri": provenance["upstream_uri"],
+        "variables": provenance["variables"],
+    }
+    _write_artifact_set(
+        (
+            (cache_path, raw_bytes),
+            (destination, normalized_bytes),
+            (receipt_path, _canonical_json_bytes(receipt)),
+        )
+    )
     return destination
 
 
-def _registry_weather_variables() -> list[str]:
-    registry_path = Path(__file__).resolve().parents[3] / "data" / "outlook" / "source_registry.json"
+def _validate_daily_artifact(
+    payload: object,
+) -> tuple[Mapping[str, object], list[dict[str, object]], str]:
+    if not isinstance(payload, dict):
+        raise ValueError("GEFS daily artifact must be a JSON object")
+    if payload.get("artifact_type") != _ARTIFACT_TYPE:
+        raise ValueError(f"GEFS daily artifact type must be {_ARTIFACT_TYPE!r}")
+    if payload.get("schema_version") != _ARTIFACT_SCHEMA_VERSION:
+        raise ValueError(
+            f"GEFS daily artifact schema_version must be {_ARTIFACT_SCHEMA_VERSION}"
+        )
+    provenance = payload.get("provenance")
+    if not isinstance(provenance, dict):
+        raise ValueError("GEFS daily artifact provenance must be an object")
+    upstream_uri = provenance.get("upstream_uri")
+    if not isinstance(upstream_uri, str) or not upstream_uri.startswith("https://"):
+        raise ValueError("GEFS provenance upstream_uri must be an HTTPS URL")
+    _parse_utc_timestamp(provenance.get("source_issue_at"), "GEFS provenance source_issue_at")
+    _require_sha256(
+        provenance.get("upstream_raw_sha256"), "GEFS provenance upstream_raw_sha256"
+    )
+    _validate_idaho_bbox(provenance.get("idaho_bbox"))
+    variables = provenance.get("variables")
+    if variables != sorted(_WEATHER_FIELDS):
+        raise ValueError("GEFS provenance variables must be the six canonical weather fields")
+    transform = provenance.get("transform")
+    if transform != _TRANSFORM:
+        raise ValueError("GEFS provenance transform must name the pinned daily transformation")
+    rows = payload.get("rows")
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise ValueError("GEFS daily artifact rows must be an array of objects")
+    normalized_sha256 = _require_sha256(
+        payload.get("normalized_sha256"), "GEFS daily artifact normalized_sha256"
+    )
+    return provenance, rows, normalized_sha256
+
+
+def _write_artifact_set(entries: tuple[tuple[Path, bytes], ...]) -> None:
+    """Publish cache, normalized rows, and receipt as one rollback-capable set.
+
+    Files are staged before any target changes.  The receipt is committed last;
+    when any replace fails, every earlier target is restored (or removed when it
+    was newly created), so a failed import cannot be mistaken for a completed
+    receipt-backed acquisition.
+    """
+    targets = [path for path, _ in entries]
+    if len(set(targets)) != len(targets):
+        raise ValueError("GEFS artifact-set targets must be distinct")
+    staged: dict[Path, Path] = {}
+    originals: dict[Path, bytes | None] = {}
+    committed: list[Path] = []
     try:
-        registry = json.loads(registry_path.read_text(encoding="utf-8"))
-        required = registry["sources"]["gefs"]["required_variables"]
-    except (OSError, KeyError, TypeError, json.JSONDecodeError) as error:
-        raise ValueError("the GEFS source registry is unavailable or malformed") from error
-    if not isinstance(required, list) or set(required) != _WEATHER_FIELDS:
-        raise ValueError("the GEFS source registry must define exactly the required weather variables")
-    if any(not isinstance(variable, str) for variable in required):
-        raise ValueError("the GEFS source registry variables must be strings")
-    return sorted(required)
+        for target, contents in entries:
+            originals[target] = target.read_bytes() if target.exists() else None
+            staged[target] = _stage_bytes(target, contents)
+        for target, _ in entries:
+            os.replace(staged[target], target)
+            committed.append(target)
+    except OSError:
+        for target in reversed(committed):
+            original = originals[target]
+            if original is None:
+                target.unlink(missing_ok=True)
+            else:
+                rollback = _stage_bytes(target, original)
+                os.replace(rollback, target)
+        raise
+    finally:
+        for temporary_path in staged.values():
+            temporary_path.unlink(missing_ok=True)
 
 
-def _validate_idaho_bbox(
-    bbox: tuple[float, float, float, float],
-) -> tuple[float, float, float, float]:
-    if not isinstance(bbox, tuple) or len(bbox) != 4:
-        raise ValueError("idaho_bbox must be a (west, south, east, north) tuple")
-    values = tuple(_finite_float(item, "idaho_bbox") for item in bbox)
+def _stage_bytes(target: Path, contents: bytes) -> Path:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="wb", dir=target.parent, prefix=f".{target.name}.", delete=False
+    ) as handle:
+        temporary_path = Path(handle.name)
+        handle.write(contents)
+        handle.flush()
+        os.fsync(handle.fileno())
+    return temporary_path
+
+
+def _validate_idaho_bbox(value: object) -> tuple[float, float, float, float]:
+    if not isinstance(value, (tuple, list)) or len(value) != 4:
+        raise ValueError("idaho_bbox must be a (west, south, east, north) sequence")
+    values = tuple(_finite_float(item, "idaho_bbox") for item in value)
     west, south, east, north = values
     idaho_west, idaho_south, idaho_east, idaho_north = _IDAHO_EXTENT
     if not (
@@ -258,9 +335,7 @@ def _require_number(
 ) -> float:
     value = _finite_float(row[name], f"GEFS row {row_index} field {name}")
     if not minimum <= value <= maximum:
-        raise ValueError(
-            f"GEFS row {row_index} field {name} is outside its unit-safe range"
-        )
+        raise ValueError(f"GEFS row {row_index} field {name} is outside its unit-safe range")
     return value
 
 
@@ -273,15 +348,17 @@ def _finite_float(value: object, label: str) -> float:
     return result
 
 
-def _parse_utc_timestamp(value: str) -> datetime:
+def _parse_utc_timestamp(value: object, label: str) -> datetime:
     if not isinstance(value, str) or not value.endswith("Z"):
-        raise ValueError("issued_at must be an explicit UTC ISO-8601 timestamp ending in Z")
+        raise ValueError(f"{label} must be an explicit UTC ISO-8601 timestamp ending in Z")
     try:
         parsed = datetime.fromisoformat(f"{value[:-1]}+00:00")
     except ValueError as error:
-        raise ValueError("issued_at must be an explicit UTC ISO-8601 timestamp ending in Z") from error
+        raise ValueError(
+            f"{label} must be an explicit UTC ISO-8601 timestamp ending in Z"
+        ) from error
     if parsed.tzinfo is None or parsed.utcoffset() != timezone.utc.utcoffset(parsed):
-        raise ValueError("issued_at must be an explicit UTC ISO-8601 timestamp ending in Z")
+        raise ValueError(f"{label} must be an explicit UTC ISO-8601 timestamp ending in Z")
     return parsed.astimezone(timezone.utc)
 
 
@@ -289,6 +366,22 @@ def _format_utc_timestamp(value: datetime) -> str:
     if value.tzinfo is None or value.utcoffset() != timezone.utc.utcoffset(value):
         raise ValueError("timestamps must be UTC")
     return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _require_sha256(value: object, label: str) -> str:
+    if not isinstance(value, str) or len(value) != 64:
+        raise ValueError(f"{label} must be a lowercase SHA-256 hex digest")
+    if any(character not in "0123456789abcdef" for character in value):
+        raise ValueError(f"{label} must be a lowercase SHA-256 hex digest")
+    return value
+
+
+def _normalized_bytes(members: Iterable[WeatherMember]) -> bytes:
+    return "".join(
+        json.dumps(_weather_member_payload(member), sort_keys=True, separators=(",", ":"))
+        + "\n"
+        for member in members
+    ).encode("utf-8")
 
 
 def _weather_member_payload(member: WeatherMember) -> dict[str, object]:
@@ -300,21 +393,3 @@ def _weather_member_payload(member: WeatherMember) -> dict[str, object]:
 
 def _canonical_json_bytes(value: object) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
-
-
-def _write_transactionally(path: Path, contents: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path: Path | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb", dir=path.parent, prefix=f".{path.name}.", delete=False
-        ) as handle:
-            temporary_path = Path(handle.name)
-            handle.write(contents)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary_path, path)
-    except OSError:
-        if temporary_path is not None:
-            temporary_path.unlink(missing_ok=True)
-        raise

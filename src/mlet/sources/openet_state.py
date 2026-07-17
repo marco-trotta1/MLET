@@ -1,4 +1,4 @@
-"""Normalize delayed OpenET analyses without turning them into forecasts."""
+"""Normalize availability-gated OpenET analyses without turning them into forecasts."""
 
 from __future__ import annotations
 
@@ -10,11 +10,13 @@ import math
 
 @dataclass(frozen=True)
 class EtaAnalysis:
-    """One observed-date OpenET ETa analysis for a native weather grid cell."""
+    """One completed-day OpenET ETa analysis eligible at a recorded issue time."""
 
     grid_id: str
     eta_analysis_mm: float
     observed_through: date
+    issued_at: datetime
+    source_available_at: datetime
     retrieved_at: datetime
     latency_days: int
     model: str
@@ -22,14 +24,16 @@ class EtaAnalysis:
 
 
 def normalize_openet_state(
-    rows: Iterable[dict[str, object]], retrieved_at: str
+    rows: Iterable[dict[str, object]], *, issued_at: str, retrieved_at: str
 ) -> list[EtaAnalysis]:
-    """Return dated analyses, rejecting future observations and duplicate rows.
+    """Return only source-available completed-day analyses for ``issued_at``.
 
-    An empty source remains empty: this boundary never fills a missing state
-    from a later OpenET observation.
+    ``retrieved_at`` records when an archived artifact was obtained; it is not
+    an eligibility substitute.  Each immutable row must instead declare the
+    strict-UTC time at which that exact model/version observation was available.
     """
-    retrieval_time = _parse_utc_timestamp(retrieved_at)
+    issue_time = _parse_utc_timestamp(issued_at, "issued_at")
+    retrieval_time = _parse_utc_timestamp(retrieved_at, "retrieved_at")
     result: list[EtaAnalysis] = []
     seen_keys: set[tuple[str, str, str, date]] = set()
     for row_index, row in enumerate(rows):
@@ -39,8 +43,18 @@ def normalize_openet_state(
         model = _require_text(row, "model", row_index)
         model_version = _require_text(row, "model_version", row_index)
         observed_through = _require_date(row, "observation_date", row_index)
-        if observed_through > retrieval_time.date():
-            raise ValueError("OpenET observation date is later than retrieval/run time")
+        if observed_through >= issue_time.date():
+            raise ValueError(
+                "OpenET observation_date must be a completed day strictly before issued_at"
+            )
+        source_available_at = _parse_utc_timestamp(
+            row.get("source_available_at"),
+            f"OpenET row {row_index} field source_available_at",
+        )
+        if source_available_at > issue_time:
+            raise ValueError(
+                "OpenET row source_available_at is later than the historical issued_at cutoff"
+            )
         eta_analysis_mm = _require_nonnegative_number(row, "eta_analysis_mm", row_index)
         key = (grid_id, model, model_version, observed_through)
         if key in seen_keys:
@@ -51,8 +65,10 @@ def normalize_openet_state(
                 grid_id=grid_id,
                 eta_analysis_mm=eta_analysis_mm,
                 observed_through=observed_through,
+                issued_at=issue_time,
+                source_available_at=source_available_at,
                 retrieved_at=retrieval_time,
-                latency_days=(retrieval_time.date() - observed_through).days,
+                latency_days=(issue_time.date() - observed_through).days,
                 model=model,
                 model_version=model_version,
             )
@@ -68,15 +84,17 @@ def normalize_openet_state(
     )
 
 
-def _parse_utc_timestamp(value: str) -> datetime:
+def _parse_utc_timestamp(value: object, label: str) -> datetime:
     if not isinstance(value, str) or not value.endswith("Z"):
-        raise ValueError("retrieved_at must be an explicit UTC ISO-8601 timestamp ending in Z")
+        raise ValueError(f"{label} must be an explicit UTC ISO-8601 timestamp ending in Z")
     try:
         parsed = datetime.fromisoformat(f"{value[:-1]}+00:00")
     except ValueError as error:
-        raise ValueError("retrieved_at must be an explicit UTC ISO-8601 timestamp ending in Z") from error
+        raise ValueError(
+            f"{label} must be an explicit UTC ISO-8601 timestamp ending in Z"
+        ) from error
     if parsed.tzinfo is None or parsed.utcoffset() != timezone.utc.utcoffset(parsed):
-        raise ValueError("retrieved_at must be an explicit UTC ISO-8601 timestamp ending in Z")
+        raise ValueError(f"{label} must be an explicit UTC ISO-8601 timestamp ending in Z")
     return parsed.astimezone(timezone.utc)
 
 

@@ -1,19 +1,33 @@
-"""Non-scientific checks for the Idaho GEFS normalization boundary."""
+"""Software-only tests for the imported GEFS daily-artifact boundary."""
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import date, timedelta
 import hashlib
 import json
 from pathlib import Path
+import socket
 
 import pytest
 
-from mlet.sources.gefs import fetch_gefs, normalize_gefs_rows
+from mlet.sources.gefs import (
+    fetch_gefs,
+    materialize_gefs_daily_artifact,
+    normalize_gefs_rows,
+)
 
 
 ISSUED_AT = "2026-07-16T00:00:00Z"
 IDAHO_BBOX = (-117.25, 42.0, -111.0, 49.0)
+VARIABLES = [
+    "precip_mm",
+    "solar_mj_m2_day",
+    "tmax_c",
+    "tmin_c",
+    "vapor_pressure_kpa",
+    "wind_m_s",
+]
 
 
 def _gefs_rows() -> list[dict[str, object]]:
@@ -39,6 +53,45 @@ def _gefs_rows() -> list[dict[str, object]]:
                 }
             )
     return rows
+
+
+def _normalized_bytes(rows: list[dict[str, object]]) -> bytes:
+    payloads: list[dict[str, object]] = []
+    for member in normalize_gefs_rows(rows, issued_at=ISSUED_AT):
+        payload = asdict(member)
+        payload["issued_at"] = ISSUED_AT
+        payload["valid_date"] = member.valid_date.isoformat()
+        payloads.append(payload)
+    return "".join(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+        for payload in payloads
+    ).encode("utf-8")
+
+
+def _write_daily_artifact(path: Path, rows: list[dict[str, object]]) -> bytes:
+    normalized = _normalized_bytes(rows)
+    artifact = {
+        "artifact_type": "mlet.gefs.daily-artifact",
+        "schema_version": 1,
+        "provenance": {
+            "idaho_bbox": list(IDAHO_BBOX),
+            "source_issue_at": ISSUED_AT,
+            "transform": {
+                "name": "noaa-gefs-grib-to-daily-asce-input",
+                "version": "1",
+            },
+            "upstream_raw_sha256": hashlib.sha256(b"fixture-grib-bytes").hexdigest(),
+            "upstream_uri": "https://example.test/archived-gefs.grib2",
+            "variables": VARIABLES,
+        },
+        "normalized_sha256": hashlib.sha256(normalized).hexdigest(),
+        "rows": rows,
+    }
+    artifact_bytes = json.dumps(artifact, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
+    path.write_bytes(artifact_bytes)
+    return artifact_bytes
 
 
 def test_gefs_normalizer_requires_twenty_distinct_daily_leads() -> None:
@@ -94,76 +147,135 @@ def test_weather_fixture_is_conspicuously_non_scientific_and_complete() -> None:
     assert len(normalize_gefs_rows(rows, issued_at=ISSUED_AT)) == 60
 
 
-def test_fetch_gefs_writes_atomic_normalized_file_and_source_receipt(
+def test_fetch_gefs_refuses_live_grib_without_attempting_network(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    payload = json.dumps(_gefs_rows()).encode("utf-8")
+    attempted = False
 
-    class Response:
-        content = payload
-        url = "https://example.test/gefs?bounded=true"
+    def deny_network(*args: object, **kwargs: object) -> object:
+        nonlocal attempted
+        attempted = True
+        raise AssertionError("network access must not be attempted")
 
-        def raise_for_status(self) -> None:
-            return None
+    monkeypatch.setattr(socket, "create_connection", deny_network)
 
-        def json(self) -> list[dict[str, object]]:
-            return json.loads(payload)
+    with pytest.raises(NotImplementedError, match="GRIB decoder"):
+        fetch_gefs(date(2026, 7, 16), IDAHO_BBOX, tmp_path / "weather.jsonl")
 
-    captured: dict[str, object] = {}
+    assert attempted is False
 
-    def fake_get(url: str, *, params: dict[str, object], timeout: int) -> Response:
-        captured["url"] = url
-        captured["params"] = params
-        captured["timeout"] = timeout
-        return Response()
 
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("mlet.sources.gefs.requests.get", fake_get)
+def test_imported_daily_artifact_caches_exact_parsed_bytes_and_publishes_hashes(
+    tmp_path: Path,
+) -> None:
+    artifact_path = tmp_path / "fixture.daily-artifact.json"
+    artifact_bytes = _write_daily_artifact(artifact_path, _gefs_rows())
     destination = tmp_path / "weather_members.jsonl"
 
-    output = fetch_gefs(date(2026, 7, 16), IDAHO_BBOX, destination)
+    output = materialize_gefs_daily_artifact(artifact_path, destination)
 
     assert output == destination
     assert len(destination.read_text().splitlines()) == 60
     receipt = json.loads(destination.with_suffix(".jsonl.source.json").read_text())
-    assert receipt["uri"] == Response.url
-    assert receipt["sha256"] == hashlib.sha256(payload).hexdigest()
+    assert receipt["raw_sha256"] == hashlib.sha256(artifact_bytes).hexdigest()
+    assert receipt["normalized_sha256"] == hashlib.sha256(destination.read_bytes()).hexdigest()
+    assert receipt["upstream_raw_sha256"] == hashlib.sha256(b"fixture-grib-bytes").hexdigest()
     assert receipt["source_issue_at"] == ISSUED_AT
-    assert captured["params"] == {
-        "bottomlat": 42.0,
-        "issue_date": "2026-07-16",
-        "leftlon": -117.25,
-        "rightlon": -111.0,
-        "toplat": 49.0,
-        "variables": "precip_mm,solar_mj_m2_day,tmax_c,tmin_c,vapor_pressure_kpa,wind_m_s",
+    assert receipt["idaho_bbox"] == list(IDAHO_BBOX)
+    assert receipt["variables"] == VARIABLES
+    assert receipt["artifact_schema_version"] == 1
+    assert receipt["transform"] == {
+        "name": "noaa-gefs-grib-to-daily-asce-input",
+        "version": "1",
     }
-    assert len(list((tmp_path / "data" / "cache").glob("*.json"))) == 1
+    cache_paths = list((tmp_path / "data" / "cache").glob("*.json"))
+    assert len(cache_paths) == 1
+    assert cache_paths[0].read_bytes() == artifact_bytes
 
 
-def test_fetch_gefs_leaves_no_normalized_artifact_when_weather_is_incomplete(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_imported_daily_artifact_rejects_mismatched_declared_normalized_hash(
+    tmp_path: Path,
 ) -> None:
-    incomplete = _gefs_rows()[:-1]
-    payload = json.dumps(incomplete).encode("utf-8")
+    artifact_path = tmp_path / "fixture.daily-artifact.json"
+    _write_daily_artifact(artifact_path, _gefs_rows())
+    payload = json.loads(artifact_path.read_text())
+    payload["normalized_sha256"] = "0" * 64
+    artifact_path.write_text(json.dumps(payload), encoding="utf-8")
 
-    class Response:
-        content = payload
-        url = "https://example.test/gefs?incomplete=true"
+    with pytest.raises(ValueError, match="normalized_sha256"):
+        materialize_gefs_daily_artifact(artifact_path, tmp_path / "weather_members.jsonl")
 
-        def raise_for_status(self) -> None:
-            return None
 
-        def json(self) -> list[dict[str, object]]:
-            return json.loads(payload)
-
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(
-        "mlet.sources.gefs.requests.get", lambda *args, **kwargs: Response()
-    )
+@pytest.mark.parametrize("failed_target", ("cache", "normalized", "receipt"))
+def test_imported_daily_artifact_rolls_back_every_write_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failed_target: str
+) -> None:
+    artifact_path = tmp_path / "fixture.daily-artifact.json"
+    _write_daily_artifact(artifact_path, _gefs_rows())
     destination = tmp_path / "weather_members.jsonl"
 
-    with pytest.raises(ValueError, match="exactly 20 daily leads"):
-        fetch_gefs(date(2026, 7, 16), IDAHO_BBOX, destination)
+    from mlet.sources import gefs
+
+    original_replace = gefs.os.replace
+    failed = False
+
+    def fail_one_stage(source: Path | str, target: Path | str) -> None:
+        nonlocal failed
+        target_path = Path(target)
+        is_target = (
+            (failed_target == "normalized" and target_path == destination)
+            or (
+                failed_target == "receipt"
+                and target_path == destination.with_suffix(".jsonl.source.json")
+            )
+            or (failed_target == "cache" and target_path.parent.name == "cache")
+        )
+        if is_target and not failed:
+            failed = True
+            raise OSError("injected write-stage failure")
+        original_replace(source, target)
+
+    monkeypatch.setattr("mlet.sources.gefs.os.replace", fail_one_stage)
+
+    with pytest.raises(OSError, match="injected write-stage failure"):
+        materialize_gefs_daily_artifact(artifact_path, destination)
 
     assert not destination.exists()
     assert not destination.with_suffix(".jsonl.source.json").exists()
+    assert not list((tmp_path / "data" / "cache").glob("*.json"))
+
+
+def test_imported_daily_artifact_preserves_previous_completed_set_on_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first_artifact = tmp_path / "first.daily-artifact.json"
+    _write_daily_artifact(first_artifact, _gefs_rows())
+    destination = tmp_path / "weather_members.jsonl"
+    materialize_gefs_daily_artifact(first_artifact, destination)
+    previous_normalized = destination.read_bytes()
+    previous_receipt = destination.with_suffix(".jsonl.source.json").read_bytes()
+
+    revised_rows = _gefs_rows()
+    revised_rows[0]["tmax_c"] = 31.5
+    revised_artifact = tmp_path / "revised.daily-artifact.json"
+    _write_daily_artifact(revised_artifact, revised_rows)
+
+    from mlet.sources import gefs
+
+    original_replace = gefs.os.replace
+    failed = False
+
+    def fail_receipt(source: Path | str, target: Path | str) -> None:
+        nonlocal failed
+        if Path(target) == destination.with_suffix(".jsonl.source.json") and not failed:
+            failed = True
+            raise OSError("injected receipt failure")
+        original_replace(source, target)
+
+    monkeypatch.setattr("mlet.sources.gefs.os.replace", fail_receipt)
+
+    with pytest.raises(OSError, match="injected receipt failure"):
+        materialize_gefs_daily_artifact(revised_artifact, destination)
+
+    assert destination.read_bytes() == previous_normalized
+    assert destination.with_suffix(".jsonl.source.json").read_bytes() == previous_receipt

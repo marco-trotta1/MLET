@@ -27,6 +27,14 @@ does not make its content eligible. A later reanalysis, later crop map, or
 satellite value may not be substituted into a historical issue unless it was
 demonstrably available then.
 
+For OpenET, each selected immutable model/version row records a strict-UTC
+`source_available_at` no later than `issued_at`; the observation date must be a
+completed day strictly before the issue date. Latency is whole days from the
+issue date, not from a potentially later archive retrieval. For CDL, the
+archived intersection table records a checksum plus source year, layer version,
+pinned official legend version, release time, and upstream URI. The release
+time must be no later than `issued_at`; no unpinned legend year is eligible.
+
 The forecast target range is lead days 1 through 20 inclusive, each mapped to
 an Idaho local `valid_date`. Daily outputs retain `p10`, `p50`, and `p90`; all
 metrics are computed by lead day before any pooled summary is reported.
