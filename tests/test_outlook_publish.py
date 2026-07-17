@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
@@ -17,6 +18,35 @@ from mlet.outlook.publish import publish_outlook
 WEATHER_FIXTURE = Path("examples/outlook/weather_members.jsonl")
 STATE_FIXTURE = Path("examples/outlook/state.jsonl")
 CROP_FIXTURE = Path("examples/outlook/crop_grid.jsonl")
+
+
+class _VisibleStatusText(HTMLParser):
+    """Extract the document title and user-visible status element text."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._in_title = False
+        self._in_status = False
+        self.title_parts: list[str] = []
+        self.status_parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "title":
+            self._in_title = True
+        if tag == "p" and ("class", "status") in attrs:
+            self._in_status = True
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "title":
+            self._in_title = False
+        if tag == "p":
+            self._in_status = False
+
+    def handle_data(self, data: str) -> None:
+        if self._in_title:
+            self.title_parts.append(data)
+        if self._in_status:
+            self.status_parts.append(data)
 
 
 def _fixture_run(tmp_path: Path) -> Path:
@@ -79,12 +109,23 @@ def test_publish_writes_a_standalone_non_scientific_research_candidate(
         assert label in index
 
 
+def test_fixture_map_visibly_identifies_itself_as_non_scientific(tmp_path: Path) -> None:
+    result = publish_outlook(_fixture_run(tmp_path), out_dir=tmp_path / "map")
+    visible = _VisibleStatusText()
+    visible.feed(result.index_path.read_text(encoding="utf-8"))
+
+    assert "NON-SCIENTIFIC SOFTWARE FIXTURE" in "".join(visible.title_parts)
+    assert "NON-SCIENTIFIC SOFTWARE FIXTURE" in "".join(visible.status_parts)
+    assert "not a forecast or scientific evidence" in "".join(visible.status_parts)
+
+
 def test_publisher_forces_false_status_even_if_an_in_memory_source_claims_promotion(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     run = _fixture_run(tmp_path)
     verified = read_published_run(tmp_path, run.name)
     altered = json.loads(verified.artifact_bytes("outlook.json"))
+    altered["fixture_non_scientific"] = False
     altered["promotion"] = True
     altered["promotion_status"] = "promoted"
     altered["validation_status"] = "validated"
@@ -104,6 +145,11 @@ def test_publisher_forces_false_status_even_if_an_in_memory_source_claims_promot
     assert contract["promotion"] is False
     assert contract["promotion_status"] == "not_promoted"
     assert contract["validation_status"] == "validation_pending"
+    visible = _VisibleStatusText()
+    visible.feed(result.index_path.read_text(encoding="utf-8"))
+    assert "research candidate" in "".join(visible.title_parts).lower()
+    assert "RESEARCH CANDIDATE" in "".join(visible.status_parts)
+    assert "validation pending" in "".join(visible.status_parts)
 
 
 def test_publisher_refuses_a_run_with_a_mutated_validation_receipt(tmp_path: Path) -> None:

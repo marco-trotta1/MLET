@@ -328,8 +328,13 @@ def _render_index(
 ) -> str:
     """Return a standalone HTML document: no package install or network fetch."""
     fixture = bool(candidate["fixture_non_scientific"])
+    document_title = (
+        "Idaho ET outlook — NON-SCIENTIFIC SOFTWARE FIXTURE"
+        if fixture
+        else "Idaho ET outlook research candidate"
+    )
     fixture_notice = (
-        "NON-SCIENTIFIC SOFTWARE FIXTURE — this is a map software test only; it is not a forecast or scientific evidence."
+        "NON-SCIENTIFIC SOFTWARE FIXTURE — map software test only; not a forecast or scientific evidence."
         if fixture
         else "RESEARCH CANDIDATE — validation pending; this is not a validated or operational product."
     )
@@ -341,11 +346,11 @@ def _render_index(
     return f"""<!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Idaho ET outlook research candidate</title>
+<title>{html.escape(document_title)}</title>
 <style>
 body{{font-family:system-ui,sans-serif;margin:0;color:#15231b;background:#f7faf7}}main{{max-width:980px;margin:auto;padding:24px}}.status{{padding:12px;background:#fff3cd;border:1px solid #d39e00;font-weight:700}}.warning{{font-weight:700}}label{{display:inline-block;margin:14px 12px 8px 0}}select{{padding:6px}}svg{{width:100%;height:430px;background:#dfeff4;border:1px solid #9fb8be}}.dot{{stroke:#15231b;stroke-width:1}}#detail{{background:white;padding:14px;border:1px solid #ced8d0}}small{{color:#445}}
 </style></head><body><main>
-<h1>Idaho regional ET outlook</h1><p class="status">{html.escape(fixture_notice)}</p>
+<h1>Idaho regional ET outlook</h1><p class="status" role="status">{html.escape(fixture_notice)}</p>
 <p><strong>Run ID:</strong> {html.escape(str(candidate['run_id']))}<br><strong>Issue time:</strong> {html.escape(str(candidate['issued_at']))}<br><strong>Resolution:</strong> native weather grid</p>
 <p class="warning">{html.escape(_REGIONAL_WARNING)}</p>
 <p>Weather-grid reference points are shown only when retained by the source contract; they are not field boundaries or synthetic cell polygons. Uncertainty is shown as p10, p50, and p90 where applicable.</p>
