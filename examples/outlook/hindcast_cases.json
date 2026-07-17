@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "fixture_non_scientific": true,
+  "note": "Deterministic software fixture only. It is not a hindcast, operational forecast, or scientific validation evidence.",
+  "cases": []
+}
