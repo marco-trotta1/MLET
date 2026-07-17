@@ -14,6 +14,7 @@ from mlet.experiments.idaho_outlook_residual import (
     FrozenSplit,
     ResidualMetric,
     _parse_case,
+    _calibration_interval_inflation,
     _verify_target_receipt,
     _metric_blockers,
     evaluate_residual_evidence,
@@ -154,6 +155,31 @@ def test_target_availability_is_cutoff_gated(
     selected["target_available_at"] = available_at
     with pytest.raises(ValueError, match=message):
         evaluate_residual_evidence(_write(tmp_path / f"{role}-target-leak.json", evidence))
+
+
+def test_calibration_inflation_rechecks_target_cutoff_before_predicting() -> None:
+    """The calibration helper cannot be called with a future target receipt."""
+    train = tuple(
+        _parse_case(_case(f"train-{index}", "train", target=3.5 + index / 10))
+        for index in range(2)
+    )
+    model = fit_residual_model(
+        train,
+        cutoff=datetime(2023, 5, 1, tzinfo=timezone.utc),
+    )
+    late_calibration = _parse_case(_case("calibration-late", "calibration"))
+    object.__setattr__(
+        late_calibration,
+        "target_available_at",
+        datetime(2099, 1, 1, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(ValueError, match="calibration target_available_at"):
+        _calibration_interval_inflation(
+            model,
+            (late_calibration,),
+            cutoff=datetime(2023, 6, 3, tzinfo=timezone.utc),
+        )
 
 
 def _target_receipt_payload(case: ResidualCase, *, hindcast_case_sha256: str = "a" * 64) -> dict[str, object]:

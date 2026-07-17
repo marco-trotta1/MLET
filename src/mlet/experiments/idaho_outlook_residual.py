@@ -263,7 +263,11 @@ def _evaluate(path: Path) -> tuple[ResidualReport, str]:
     calibration_details: dict[str, object] = {}
     if not blockers or blockers == [_FIXTURE_BLOCKER]:
         model = fit_residual_model(train, cutoff=split.train_cutoff)
-        calibration_widths = _calibration_interval_inflation(model, calibration)
+        calibration_widths = _calibration_interval_inflation(
+            model,
+            calibration,
+            cutoff=split.calibration_cutoff,
+        )
         calibration_details = {
             "strategy": "lead_stratified_split_conformal_absolute_residual_order_statistic",
             "nominal_coverage": _COVERAGE_TARGET,
@@ -683,9 +687,24 @@ def _validate_split_roles(cases: Sequence[ResidualCase], split: FrozenSplit) -> 
             raise ValueError("test cases do not cover every preregistered held-out season")
 
 
-def _calibration_interval_inflation(model: ResidualModel, calibration: Sequence[ResidualCase]) -> dict[str, float]:
+def _calibration_interval_inflation(
+    model: ResidualModel,
+    calibration: Sequence[ResidualCase],
+    *,
+    cutoff: datetime,
+) -> dict[str, float]:
+    """Fit split-conformal inflation only from calibration targets available by cutoff.
+
+    The evaluator validates the frozen split before calling this helper, but the
+    helper is also an internal fitting boundary in its own right.  Requiring the
+    cutoff here prevents a direct caller from passing a future target receipt and
+    bypassing the temporal calibration contract.
+    """
+    normalized_cutoff = _parse_utc(cutoff, "calibration cutoff")
     if not calibration:
         raise ValueError("residual calibration requires a fitted model and cases")
+    if any(case.target_available_at > normalized_cutoff for case in calibration):
+        raise ValueError("calibration target_available_at is after frozen calibration_cutoff")
     residuals_by_lead: dict[str, list[float]] = defaultdict(list)
     for case in calibration:
         predicted = predict_interval(model, case)
