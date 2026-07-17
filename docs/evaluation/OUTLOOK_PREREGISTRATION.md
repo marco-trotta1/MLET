@@ -104,7 +104,7 @@ python3 -m mlet hindcast-outlook \
   --out docs/results/idaho_outlook_hindcast.md
 ```
 
-The input is a version-2 **evidence bundle**, not a table of caller-supplied
+The input is a version-3 **evidence bundle**, not a table of caller-supplied
 scores. It declares `evidence_classification` as either `real_archived` or
 `software_fixture`, plus a versioned, checksummed provenance receipt. Every
 case names a strict-UTC `issue_time`; the exact forecast `run_id`; bytes and
@@ -117,14 +117,21 @@ evaluator verifies the manifest/run/artifact identity, then reconstructs
 quantiles from `outlook.json` and truth from the target bytes. Inline `rows`,
 even if perfect, are rejected and can never promote a release.
 
-Each case also contains source receipts bound by name/URI/hash to the verified
-run manifest, all selected as of the issue time; fold assignment, training and
-calibration cutoffs, held-out season, and training folds/seasons; and
-checksummed water, crop, precipitation, and soil assumption receipts. A late
-source, target, assumption, fold/season overlap, or cutoff reaching a held-out
-target blocks promotion. The release gate requires all five spatial folds and
-all four calendar seasons, as well as lead-day coverage. An offset, naive, or
-otherwise ambiguous timestamp is invalid.
+Each case names separate, content-addressed JSON receipt artifacts for every
+source, the fold/cutoff declaration, and each water, crop, precipitation, and
+soil assumption. Their exact bytes and SHA-256 hashes are part of the canonical
+evaluation digest. Every receipt carries immutable URI, version, checksum and
+availability fields plus the case and forecast run identifiers. Inline-only
+source availability, folds, cutoffs, or scenario declarations are rejected.
+A late source, target, assumption, fold/season overlap, or cutoff reaching a
+held-out target blocks promotion. The release gate requires all five spatial
+folds and all four calendar seasons, as well as lead-day coverage. An offset,
+naive, or otherwise ambiguous timestamp is invalid.
+
+The exact forecast contract must say `fixture_non_scientific: false`,
+`publication_classification: "production"`, and
+`validation_status: "validated"`. Missing, non-boolean, fixture, or other
+classification states are permanent promotion blockers.
 
 The report contains sample count, MAE, RMSE, bias, empirical closed-interval
 coverage, and interval width by layer/lead, month, season, and spatial block.
@@ -140,3 +147,32 @@ scenario target kinds; they cannot be recast as observed actual ET.
 to test software behavior and is never a result, a hindcast, or evidence for a
 forecast claim. This document reports no numerical skill result until an
 archived non-fixture data set satisfies all of the gates above.
+
+## External promotion authority
+
+Passing computational gates does not itself authorize a public promotion. The
+evaluator canonicalizes the verified forecast, manifest, target, receipt-byte
+hashes, case/run identifiers, classification, fold/cutoff, and scenario
+evidence into an `evaluation_digest`. An external release authority must attest
+to that digest **and** the reconstructed report digest with HMAC-SHA-256. The
+secret is injected only at runtime through `MLET_HINDCAST_PROMOTION_HMAC_KEY`
+(at least 32 bytes) and is never committed. The evaluator and the validation
+writer independently reconstruct the report and canonical digest from the
+evidence path, then verify the report binding and MAC; an in-memory report or
+receipt object has no authority to assert `promotion: true`.
+
+An authorized operator creates the reviewable object separately:
+
+```bash
+MLET_HINDCAST_PROMOTION_HMAC_KEY='runtime-only-secret-with-at-least-32-bytes' \
+  python3 -m mlet attest-hindcast-outlook \
+  --cases ARCHIVED_CASES.json \
+  --out /private/tmp/idaho_outlook_attestation.json
+```
+
+The operator embeds that exact JSON object as `promotion_attestation` in the
+evidence bundle and reruns `hindcast-outlook` with the same runtime authority
+configuration. If the key is absent, the attestation is absent or altered, the
+digest/report mismatches, or the classification is not production/validated,
+the recorded result remains non-promotable. Software fixtures have no signing
+path and remain non-promotable even if a key is present.

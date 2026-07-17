@@ -13,6 +13,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
 import hashlib
+import hmac
 import json
 import math
 import os
@@ -47,6 +48,9 @@ _SEASONS = {
     10: "SON",
     11: "SON",
 }
+_PROMOTION_KEY_ENV = "MLET_HINDCAST_PROMOTION_HMAC_KEY"
+_PROMOTION_KEY_ID_ENV = "MLET_HINDCAST_PROMOTION_KEY_ID"
+_ATTESTATION_KIND = "idaho_outlook_hindcast_promotion_attestation"
 
 
 @dataclass(frozen=True)
@@ -266,16 +270,19 @@ class HindcastReport:
 
 
 @dataclass(frozen=True)
-class _EvaluationReceipt:
-    """Opaque, content-bound release authority made only by this module."""
+class EvaluationReceipt:
+    """Content-bound evaluation result whose promotion needs external authority.
 
-    _authority: object
+    This type is deliberately not a security boundary.  It is public data that
+    can be reconstructed by any caller.  ``write_hindcast_validation`` checks
+    a separately held HMAC authority before it will serialize a true promotion.
+    """
+
     report: HindcastReport
-    evidence_sha256: str
+    evidence_path: Path
+    evaluation_digest: str
     case_sha256: tuple[str, ...]
-
-
-_RECEIPT_AUTHORITY = object()
+    attestation: dict[str, object] | None
 
 
 def select_inputs_as_of(
@@ -376,27 +383,73 @@ def _aggregate_hindcast(
     )
 
 
-def evaluate_hindcast_evidence(path: Path) -> tuple[HindcastReport, _EvaluationReceipt]:
-    """Evaluate a version-2 archived-evidence bundle and issue its receipt.
+def evaluate_hindcast_evidence(path: Path) -> tuple[HindcastReport, EvaluationReceipt]:
+    """Evaluate a version-3 archived-evidence bundle.
 
-    Version 2 deliberately has no inline score rows.  Each case names an
-    immutable run manifest plus its forecast artifact and a separate immutable
-    target artifact.  Quantiles and truths are reconstructed from those bytes
-    after hashes, run identity, source receipts, holdouts, and scenario
-    assumptions have all been checked.
+    The evaluator can make a transparent non-promotable report without a key.
+    A true promotion additionally needs an HMAC attestation made by the holder
+    of ``MLET_HINDCAST_PROMOTION_HMAC_KEY`` over the exact evidence digest and
+    the independently reconstructed report digest.
     """
+    report, digest, case_hashes, attestation = _evaluate_evidence_bundle(path)
+    authority_error = _verify_promotion_attestation(attestation, digest, report)
+    if authority_error is not None:
+        report = _with_blockers(report, [authority_error])
+    return report, EvaluationReceipt(
+        report=report,
+        evidence_path=Path(path).resolve(strict=True),
+        evaluation_digest=digest,
+        case_sha256=case_hashes,
+        attestation=attestation,
+    )
+
+
+def build_promotion_attestation(path: Path) -> dict[str, object]:
+    """Make an externally-authorized HMAC attestation for an eligible bundle.
+
+    This command is intentionally separate from evaluation.  The signing key
+    is injected at runtime and must never be committed.  Operators embed the
+    returned object as ``promotion_attestation`` in the same evidence bundle;
+    that field is excluded from the signed evidence digest to avoid a cycle.
+    """
+    report, digest, _case_hashes, _attestation = _evaluate_evidence_bundle(path)
+    if not report.promotion:
+        raise ValueError("cannot attest a hindcast that fails the frozen release gates")
+    key = _configured_authority_key()
+    if key is None:
+        raise ValueError(f"promotion authority key is unavailable: set {_PROMOTION_KEY_ENV}")
+    payload: dict[str, object] = {
+        "schema_version": 1,
+        "kind": _ATTESTATION_KIND,
+        "algorithm": "hmac-sha256",
+        "key_id": os.environ.get(_PROMOTION_KEY_ID_ENV, "runtime-configured-hmac-authority"),
+        "evaluation_digest": digest,
+        "report_sha256": _report_sha256(report),
+        "promotion": True,
+    }
+    payload["mac"] = hmac.new(key, _canonical_json(payload).encode("utf-8"), hashlib.sha256).hexdigest()
+    return payload
+
+
+def _evaluate_evidence_bundle(
+    path: Path,
+) -> tuple[HindcastReport, str, tuple[str, ...], dict[str, object] | None]:
+    """Reconstruct a report and canonical digest without consulting authority."""
     evidence_path = Path(path).resolve(strict=True)
     root = evidence_path.parent
     raw = _load_json_bytes(evidence_path.read_bytes(), "hindcast evidence")
-    if not isinstance(raw, dict) or raw.get("schema_version") != 2:
-        raise ValueError("hindcast evidence must be a schema_version 2 object")
+    if not isinstance(raw, dict) or raw.get("schema_version") != 3:
+        raise ValueError("hindcast evidence must be a schema_version 3 object")
     _require_exact_keys(
         raw,
-        {"schema_version", "evidence_classification", "provenance", "cases"},
+        {
+            "schema_version", "evidence_classification", "provenance", "cases",
+            "promotion_attestation",
+        },
         "hindcast evidence",
     )
     classification = raw["evidence_classification"]
-    if classification not in {"real_archived", "software_fixture"}:
+    if type(classification) is not str or classification not in {"real_archived", "software_fixture"}:
         raise ValueError("evidence_classification must be real_archived or software_fixture")
     provenance = raw["provenance"]
     _parse_real_provenance(provenance, required=classification == "real_archived")
@@ -405,11 +458,13 @@ def evaluate_hindcast_evidence(path: Path) -> tuple[HindcastReport, _EvaluationR
         raise ValueError("hindcast evidence cases must be a list")
     cases: list[HindcastCase] = []
     case_hashes: list[str] = []
+    case_material: list[dict[str, object]] = []
     blockers: list[str] = []
     for index, raw_case in enumerate(raw_cases):
-        case, digest, case_blockers, held_fold, held_season = _parse_verified_case(raw_case, root, index)
+        case, digest, material, case_blockers, held_fold, held_season = _parse_verified_case(raw_case, root, index)
         cases.append(case)
         case_hashes.append(digest)
+        case_material.append(material)
         blockers.extend(case_blockers)
         # A one-fold or one-season score is a diagnostic, not the frozen
         # geographically and seasonally held-out validation protocol.
@@ -439,13 +494,20 @@ def evaluate_hindcast_evidence(path: Path) -> tuple[HindcastReport, _EvaluationR
             fixture_reason=report.fixture_reason,
             promotion_blockers=tuple(_deduplicate([*report.promotion_blockers, *blockers])),
         )
-    evidence_sha256 = hashlib.sha256(_canonical_json(raw).encode("utf-8")).hexdigest()
-    return report, _EvaluationReceipt(
-        _authority=_RECEIPT_AUTHORITY,
-        report=report,
-        evidence_sha256=evidence_sha256,
-        case_sha256=tuple(case_hashes),
-    )
+    digest = hashlib.sha256(
+        _canonical_json(
+            {
+                "schema_version": 1,
+                "evidence_classification": classification,
+                "provenance": raw["provenance"],
+                "cases": case_material,
+            }
+        ).encode("utf-8")
+    ).hexdigest()
+    attestation = raw["promotion_attestation"]
+    if attestation is not None and not isinstance(attestation, dict):
+        raise ValueError("promotion_attestation must be an object or null")
+    return report, digest, tuple(case_hashes), attestation
 
 
 def load_hindcast_cases(path: Path) -> tuple[tuple[HindcastCase, ...], str | None]:
@@ -477,15 +539,32 @@ def load_hindcast_cases(path: Path) -> tuple[tuple[HindcastCase, ...], str | Non
 
 
 def write_hindcast_validation(receipt: object, destination: Path) -> Path:
-    """Publish only a module-issued, hash-bound evaluation receipt.
+    """Write a validation record, independently rejecting unauthorised truth.
 
-    A public ``HindcastReport`` has no authority, even if a caller forges its
-    ``promotion`` field.  This makes the validation file a result of verified
-    artifact evaluation rather than a serialization of caller-controlled rows.
+    This verifier never trusts Python object identity or a private attribute:
+    a caller-made receipt/report may be written only as non-promotable.  A
+    requested true promotion must carry a valid runtime-key attestation over
+    both the canonical evidence digest and the exact report bytes.
     """
-    if not isinstance(receipt, _EvaluationReceipt) or receipt._authority is not _RECEIPT_AUTHORITY:
-        raise ValueError("hindcast validation requires a verified evaluation receipt")
+    if not isinstance(receipt, EvaluationReceipt):
+        raise ValueError("hindcast validation requires an evaluation receipt")
     _validate_evaluation_receipt(receipt)
+    if receipt.report.promotion:
+        authority_error = _verify_promotion_attestation(
+            receipt.attestation, receipt.evaluation_digest, receipt.report
+        )
+        if authority_error is not None:
+            raise ValueError(f"hindcast validation refuses unauthorised promotion: {authority_error}")
+        rebuilt, rebuilt_digest, rebuilt_cases, _attestation = _evaluate_evidence_bundle(
+            receipt.evidence_path
+        )
+        if (
+            rebuilt_digest != receipt.evaluation_digest
+            or rebuilt_cases != receipt.case_sha256
+            or _canonical_json(rebuilt.validation_record())
+            != _canonical_json(receipt.report.validation_record())
+        ):
+            raise ValueError("hindcast validation refuses a receipt not reconstructed from evidence")
     encoded = (
         json.dumps(_receipt_payload(receipt), sort_keys=True, separators=(",", ":"), allow_nan=False)
         + "\n"
@@ -627,17 +706,18 @@ def _parse_row(value: object) -> HindcastRow:
 
 def _parse_verified_case(
     value: object, root: Path, case_index: int
-) -> tuple[HindcastCase, str, list[str], int, str]:
+) -> tuple[HindcastCase, str, dict[str, object], list[str], int, str]:
     if not isinstance(value, dict):
         raise ValueError("each evidence case must be an object")
     _require_exact_keys(
         value,
         {
-            "issue_time", "forecast", "target", "source_receipts", "holdout",
-            "scenario_assumptions",
+            "case_id", "issue_time", "forecast", "target", "source_receipt_artifacts",
+            "holdout_receipt", "scenario_receipt_artifacts",
         },
         "evidence case",
     )
+    case_id = _require_text(value["case_id"], "case_id")
     issue = _parse_utc(value["issue_time"], "case issue_time")
     forecast = value["forecast"]
     target = value["target"]
@@ -670,8 +750,7 @@ def _parse_verified_case(
         raise ValueError("forecast artifact run_id does not match manifest")
     if forecast_payload.get("issued_at") != _format_utc(issue):
         raise ValueError("forecast artifact issued_at does not match case issue_time")
-    if forecast_payload.get("fixture_non_scientific") is True:
-        raise ValueError("fixture forecast artifacts cannot be used as scientific evidence")
+    forecast_blockers = _forecast_classification_blockers(forecast_payload, case_index)
     target_bytes = _read_evidence_file(root, target["path"], "target artifact")
     _require_digest(target_bytes, target["sha256"], "target artifact")
     target_available = _parse_utc(target["available_at"], "target available_at")
@@ -680,24 +759,40 @@ def _parse_verified_case(
         source_version=target["source_version"], sha256=target["sha256"], uri=target["uri"],
     )
     target_payload = _load_json_bytes(target_bytes, "target artifact")
-    _bind_target_receipt(target_payload, target, target_available)
+    _bind_target_receipt(target_payload, target, target_available, case_id, manifest.run_id)
     rows = _rows_from_verified_artifacts(
         forecast_payload, target_payload, issue, target_available, case_index
     )
-    source_receipts = _parse_and_bind_source_receipts(value["source_receipts"], manifest, issue)
-    blockers, held_fold, held_season = _validate_holdout(value["holdout"], rows, issue, case_index)
-    blockers.extend(_validate_scenario_assumptions(value["scenario_assumptions"], issue, rows, case_index))
-    digest = hashlib.sha256(
-        _canonical_json(
-            {
-                "case": value,
-                "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
-                "forecast_sha256": hashlib.sha256(forecast_bytes).hexdigest(),
-                "target_sha256": hashlib.sha256(target_bytes).hexdigest(),
-            }
-        ).encode("utf-8")
-    ).hexdigest()
-    return HindcastCase(issue_time=issue, records=source_receipts, rows=rows), digest, blockers, held_fold, held_season
+    source_receipts, source_hashes = _parse_and_bind_source_receipt_artifacts(
+        value["source_receipt_artifacts"], root, manifest, issue, case_id
+    )
+    holdout, holdout_hash = _read_receipt_artifact(
+        root, value["holdout_receipt"], "idaho_outlook_hindcast_holdout_receipt", case_id,
+        manifest.run_id, "holdout receipt",
+    )
+    blockers, held_fold, held_season = _validate_holdout(holdout, rows, issue, case_index)
+    scenario_receipts, scenario_hashes = _read_scenario_receipt_artifacts(
+        value["scenario_receipt_artifacts"], root, issue, rows, case_index, case_id,
+        manifest.run_id,
+    )
+    del scenario_receipts
+    blockers = [*forecast_blockers, *blockers]
+    material: dict[str, object] = {
+        "case_id": case_id,
+        "run_id": manifest.run_id,
+        "issue_time": _format_utc(issue),
+        "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+        "forecast_sha256": hashlib.sha256(forecast_bytes).hexdigest(),
+        "target_sha256": hashlib.sha256(target_bytes).hexdigest(),
+        "source_receipt_sha256": source_hashes,
+        "holdout_receipt_sha256": holdout_hash,
+        "scenario_receipt_sha256": scenario_hashes,
+    }
+    digest = hashlib.sha256(_canonical_json(material).encode("utf-8")).hexdigest()
+    return (
+        HindcastCase(issue_time=issue, records=source_receipts, rows=rows), digest,
+        material, blockers, held_fold, held_season,
+    )
 
 
 def _rows_from_verified_artifacts(
@@ -764,16 +859,24 @@ def _rows_from_verified_artifacts(
     return tuple(rows)
 
 
-def _bind_target_receipt(target_payload: object, target_receipt: dict[object, object], available_at: datetime) -> None:
+def _bind_target_receipt(
+    target_payload: object, target_receipt: dict[object, object], available_at: datetime,
+    case_id: str, run_id: str,
+) -> None:
     """Require availability/version/URI claims to be inside hashed target bytes."""
     if not isinstance(target_payload, dict):
         raise ValueError("target artifact must be an object")
     receipt = target_payload.get("receipt")
     if not isinstance(receipt, dict):
         raise ValueError("target artifact must embed its immutable receipt")
-    _require_exact_keys(receipt, {"uri", "source_version", "available_at"}, "target artifact receipt")
+    _require_exact_keys(
+        receipt, {"case_id", "run_id", "uri", "source_version", "available_at"},
+        "target artifact receipt",
+    )
     if (
-        receipt["uri"] != target_receipt["uri"]
+        receipt["case_id"] != case_id
+        or receipt["run_id"] != run_id
+        or receipt["uri"] != target_receipt["uri"]
         or receipt["source_version"] != target_receipt["source_version"]
         or receipt["available_at"] != _format_utc(available_at)
     ):
@@ -800,22 +903,39 @@ def _summarize_rows(
     )
 
 
-def _parse_and_bind_source_receipts(
-    value: object, manifest: RunManifest, issue: datetime
-) -> tuple[AvailableRecord, ...]:
+def _parse_and_bind_source_receipt_artifacts(
+    value: object, root: Path, manifest: RunManifest, issue: datetime, case_id: str,
+) -> tuple[tuple[AvailableRecord, ...], list[str]]:
     if not isinstance(value, list):
-        raise ValueError("source_receipts must be a list")
-    records = tuple(_parse_record(item) for item in value)
+        raise ValueError("source_receipt_artifacts must be a list")
+    records: list[AvailableRecord] = []
+    artifact_hashes: list[str] = []
+    for descriptor in value:
+        payload, artifact_hash = _read_receipt_artifact(
+            root, descriptor, "idaho_outlook_hindcast_source_receipt", case_id, manifest.run_id,
+            "source receipt artifact",
+        )
+        _require_exact_keys(
+            payload,
+            {
+                "schema_version", "kind", "case_id", "run_id", "name", "uri",
+                "source_version", "sha256", "available_at",
+            },
+            "source receipt artifact",
+        )
+        records.append(_parse_record(payload))
+        artifact_hashes.append(artifact_hash)
+    records_tuple = tuple(records)
     manifest_sources = {source.name: source for source in manifest.sources}
-    if {record.name for record in records} != set(manifest_sources) or len(records) != len(manifest_sources):
+    if {record.name for record in records_tuple} != set(manifest_sources) or len(records_tuple) != len(manifest_sources):
         raise ValueError("source receipts must bind every manifest source exactly once")
-    for record in records:
+    for record in records_tuple:
         source = manifest_sources[record.name]
         if record.sha256 != source.sha256 or record.uri != source.uri:
             raise ValueError("source receipt identity does not match verified manifest source")
         if record.available_at > issue:
             raise ValueError("source receipt was available after case issue_time")
-    return records
+    return records_tuple, sorted(artifact_hashes)
 
 
 def _validate_holdout(value: object, rows: Sequence[HindcastRow], issue: datetime, index: int) -> tuple[list[str], int, str]:
@@ -823,7 +943,11 @@ def _validate_holdout(value: object, rows: Sequence[HindcastRow], issue: datetim
         raise ValueError("holdout must be an object")
     _require_exact_keys(
         value,
-        {"spatial_block", "fold", "held_out_fold", "training_folds", "held_out_season", "training_seasons", "training_cutoff", "calibration_cutoff"},
+        {
+            "schema_version", "kind", "case_id", "run_id", "uri", "source_version", "sha256",
+            "available_at", "spatial_block", "fold", "held_out_fold", "training_folds",
+            "held_out_season", "training_seasons", "training_cutoff", "calibration_cutoff",
+        },
         "holdout",
     )
     block = value["spatial_block"]
@@ -856,26 +980,41 @@ def _validate_holdout(value: object, rows: Sequence[HindcastRow], issue: datetim
     return _deduplicate(blockers), held, held_season
 
 
-def _validate_scenario_assumptions(
-    value: object, issue: datetime, rows: Sequence[HindcastRow], index: int
-) -> list[str]:
+def _read_scenario_receipt_artifacts(
+    value: object, root: Path, issue: datetime, rows: Sequence[HindcastRow], index: int,
+    case_id: str, run_id: str,
+) -> tuple[dict[str, AvailableRecord], dict[str, str]]:
     if not isinstance(value, dict):
-        raise ValueError("scenario_assumptions must be an object")
+        raise ValueError("scenario_receipt_artifacts must be an object")
     expected = {"water", "crop", "precip", "soil"}
     if set(value) != expected:
-        raise ValueError("scenario_assumptions must contain water, crop, precip, and soil receipts")
+        raise ValueError("scenario_receipt_artifacts must contain water, crop, precip, and soil receipts")
     requires_scenarios = any(row.layer.startswith("eta_") for row in rows)
-    blockers: list[str] = []
+    records: dict[str, AvailableRecord] = {}
+    hashes: dict[str, str] = {}
     for name in sorted(expected):
-        try:
-            receipt = _parse_record(value[name])
-        except ValueError as error:
-            raise ValueError(f"scenario assumption {name} is invalid: {error}") from error
+        payload, artifact_hash = _read_receipt_artifact(
+            root, value[name], "idaho_outlook_hindcast_scenario_receipt", case_id, run_id,
+            f"scenario receipt {name}",
+        )
+        _require_exact_keys(
+            payload,
+            {
+                "schema_version", "kind", "case_id", "run_id", "name", "uri",
+                "source_version", "sha256", "available_at",
+            },
+            f"scenario receipt {name}",
+        )
+        if payload["name"] != name:
+            raise ValueError(f"scenario receipt {name} has the wrong name")
+        receipt = _parse_record(payload)
         if receipt.available_at > issue:
-            blockers.append(f"case {index} scenario assumption {name} was available after issue_time")
+            raise ValueError(f"case {index} scenario assumption {name} was available after issue_time")
         if requires_scenarios and not receipt.sha256:
-            blockers.append(f"case {index} scenario assumption {name} lacks immutable identity")
-    return blockers
+            raise ValueError(f"case {index} scenario assumption {name} lacks immutable identity")
+        records[name] = receipt
+        hashes[name] = artifact_hash
+    return records, hashes
 
 
 def _read_evidence_file(root: Path, supplied: object, label: str) -> bytes:
@@ -889,6 +1028,55 @@ def _read_evidence_file(root: Path, supplied: object, label: str) -> bytes:
     if not candidate.is_file() or candidate.is_symlink():
         raise ValueError(f"{label} must name a regular evidence file")
     return candidate.read_bytes()
+
+
+def _read_receipt_artifact(
+    root: Path, descriptor: object, kind: str, case_id: str, run_id: str, label: str,
+) -> tuple[dict[str, object], str]:
+    """Read a separately hashed receipt; inline declarations are never evidence."""
+    _require_exact_keys(descriptor, {"path", "sha256"}, f"{label} descriptor")
+    assert isinstance(descriptor, dict)
+    content = _read_evidence_file(root, descriptor["path"], label)
+    _require_digest(content, descriptor["sha256"], label)
+    payload = _load_json_bytes(content, label)
+    if not isinstance(payload, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    required_base = {
+        "schema_version", "kind", "case_id", "run_id", "uri", "source_version", "sha256",
+        "available_at",
+    }
+    if not required_base.issubset(payload):
+        raise ValueError(f"{label} lacks immutable receipt fields")
+    if payload.get("schema_version") != 1 or payload.get("kind") != kind:
+        raise ValueError(f"{label} has an unsupported receipt schema")
+    if payload.get("case_id") != case_id or payload.get("run_id") != run_id:
+        raise ValueError(f"{label} does not link to its case and run")
+    try:
+        AvailableRecord(
+            name=str(payload.get("name", kind)), uri=payload["uri"],
+            source_version=payload["source_version"], sha256=payload["sha256"],
+            available_at=_parse_utc(payload["available_at"], f"{label} available_at"),
+        )
+    except ValueError as error:
+        raise ValueError(f"{label} has invalid immutable receipt fields: {error}") from error
+    return payload, hashlib.sha256(content).hexdigest()
+
+
+def _forecast_classification_blockers(forecast: dict[object, object], case_index: int) -> list[str]:
+    """Treat every non-exact production/validated state as non-promotable."""
+    fixture = forecast.get("fixture_non_scientific")
+    publication = forecast.get("publication_classification")
+    validation = forecast.get("validation_status")
+    blockers: list[str] = []
+    if type(fixture) is not bool:
+        blockers.append(f"case {case_index} forecast fixture_non_scientific is missing or non-boolean")
+    elif fixture:
+        blockers.append(f"case {case_index} forecast is a software fixture")
+    if publication != "production":
+        blockers.append(f"case {case_index} forecast publication_classification is not production")
+    if validation != "validated":
+        blockers.append(f"case {case_index} forecast validation_status is not validated")
+    return blockers
 
 
 def _require_digest(content: bytes, supplied: object, label: str) -> None:
@@ -938,25 +1126,97 @@ def _parse_real_provenance(value: object, *, required: bool) -> None:
         raise ValueError("real_archived evidence requires verified non-fixture provenance")
 
 
-def _receipt_payload(receipt: _EvaluationReceipt) -> dict[str, object]:
+def _receipt_payload(receipt: EvaluationReceipt) -> dict[str, object]:
     payload = receipt.report.validation_record()
     payload.update({
-        "schema_version": 2,
+        "schema_version": 3,
         "kind": "idaho_outlook_hindcast_evaluation_receipt",
-        "evidence_sha256": receipt.evidence_sha256,
+        "evaluation_digest": receipt.evaluation_digest,
         "case_sha256": list(receipt.case_sha256),
-        "publication_authority": "verified_artifact_evaluation",
+        "promotion_attestation": receipt.attestation,
+        "publication_authority": "external_hmac_attested_evaluation",
     })
     return payload
 
 
-def _validate_evaluation_receipt(receipt: _EvaluationReceipt) -> None:
-    if len(receipt.evidence_sha256) != 64 or any(ch not in "0123456789abcdef" for ch in receipt.evidence_sha256):
-        raise ValueError("evaluation receipt evidence hash is invalid")
+def _validate_evaluation_receipt(receipt: EvaluationReceipt) -> None:
+    if not isinstance(receipt.evidence_path, Path):
+        raise ValueError("evaluation receipt evidence path is invalid")
+    if len(receipt.evaluation_digest) != 64 or any(ch not in "0123456789abcdef" for ch in receipt.evaluation_digest):
+        raise ValueError("evaluation receipt digest is invalid")
     if len(receipt.case_sha256) != receipt.report.case_count:
         raise ValueError("evaluation receipt case hashes do not match the report")
     if any(len(item) != 64 or any(ch not in "0123456789abcdef" for ch in item) for item in receipt.case_sha256):
         raise ValueError("evaluation receipt case hash is invalid")
+    if receipt.attestation is not None and not isinstance(receipt.attestation, dict):
+        raise ValueError("evaluation receipt attestation is invalid")
+
+
+def _with_blockers(report: HindcastReport, blockers: Iterable[str]) -> HindcastReport:
+    """Return the same diagnostic aggregates with deduplicated gate failures."""
+    return HindcastReport(
+        metrics=report.metrics,
+        source_latency=report.source_latency,
+        input_audit=report.input_audit,
+        case_count=report.case_count,
+        fixture_non_scientific=report.fixture_non_scientific,
+        fixture_reason=report.fixture_reason,
+        promotion_blockers=tuple(_deduplicate([*report.promotion_blockers, *blockers])),
+    )
+
+
+def _report_sha256(report: HindcastReport) -> str:
+    return hashlib.sha256(_canonical_json(report.validation_record()).encode("utf-8")).hexdigest()
+
+
+def _configured_authority_key() -> bytes | None:
+    """Load a runtime-only authority secret without ever persisting it."""
+    text = os.environ.get(_PROMOTION_KEY_ENV)
+    if text is None:
+        return None
+    key = text.encode("utf-8")
+    # A short convenience value is not an adequate research-release authority.
+    return key if len(key) >= 32 else None
+
+
+def _verify_promotion_attestation(
+    value: dict[str, object] | None, evaluation_digest: str, report: HindcastReport,
+) -> str | None:
+    """Return a gate failure or verify the attested content with the external key."""
+    if not report.promotion:
+        return "hindcast metrics or evidence gates did not qualify for promotion"
+    if value is None:
+        return "promotion requires an external attestation"
+    expected = {
+        "schema_version", "kind", "algorithm", "key_id", "evaluation_digest",
+        "report_sha256", "promotion", "mac",
+    }
+    if set(value) != expected:
+        return "promotion attestation schema is invalid"
+    if (
+        value.get("schema_version") != 1
+        or value.get("kind") != _ATTESTATION_KIND
+        or value.get("algorithm") != "hmac-sha256"
+        or type(value.get("key_id")) is not str
+        or not value["key_id"].strip()
+        or value.get("evaluation_digest") != evaluation_digest
+        or value.get("report_sha256") != _report_sha256(report)
+        or value.get("promotion") is not True
+        or not _is_sha256(value.get("mac"))
+    ):
+        return "promotion attestation does not bind the verified evaluation"
+    key = _configured_authority_key()
+    if key is None:
+        return f"promotion authority key is unavailable: set {_PROMOTION_KEY_ENV}"
+    signed = {key: item for key, item in value.items() if key != "mac"}
+    expected_mac = hmac.new(key, _canonical_json(signed).encode("utf-8"), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(str(value["mac"]), expected_mac):
+        return "promotion attestation MAC is invalid"
+    return None
+
+
+def _is_sha256(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(ch in "0123456789abcdef" for ch in value)
 
 
 def _summarize_source_latency(
