@@ -306,3 +306,22 @@ def test_resolve_published_run_rejects_a_symlinked_output_ancestor(tmp_path: Pat
 
     with pytest.raises(ValueError, match="symlinked ancestor"):
         resolve_published_run(linked_root, result.run_id)
+
+
+def test_build_outlook_refuses_to_write_through_a_symlinked_ancestor(
+    tmp_path: Path,
+) -> None:
+    real_root = tmp_path / "real-output"
+    real_root.mkdir()
+    linked_root = tmp_path / "linked-output"
+    linked_root.symlink_to(real_root, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="symlinked ancestor"):
+        build_outlook(
+            weather_path=WEATHER_FIXTURE,
+            state_path=STATE_FIXTURE,
+            crop_path=CROP_FIXTURE,
+            out_dir=linked_root / "outlooks",
+        )
+
+    assert not (real_root / "outlooks").exists()

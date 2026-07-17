@@ -269,6 +269,19 @@ def _reject_symlinked_ancestors(path: Path) -> None:
             raise ValueError(f"published outlook path has a symlinked ancestor: {current}")
 
 
+def _reject_symlinked_existing_ancestors(path: Path) -> None:
+    """Reject an existing link before ``mkdir`` can traverse it for a write."""
+    current = Path(path.anchor)
+    for component in path.parts[1:]:
+        current /= component
+        try:
+            mode = current.lstat().st_mode
+        except FileNotFoundError:
+            return
+        if stat.S_ISLNK(mode):
+            raise ValueError(f"out_dir has a symlinked ancestor: {current}")
+
+
 def _require_real_directory(path: Path, label: str) -> None:
     try:
         mode = path.lstat().st_mode
@@ -677,11 +690,11 @@ def _require_regular_file(path: Path, label: str) -> Path:
 
 
 def _prepare_output_root(path: Path) -> Path:
-    root = Path(path)
-    if root.is_symlink():
-        raise ValueError("out_dir must not be a symlink")
+    root = _absolute_path(Path(path))
+    _reject_symlinked_existing_ancestors(root)
     root.mkdir(parents=True, exist_ok=True)
-    if root.is_symlink() or not root.is_dir():
+    _reject_symlinked_ancestors(root)
+    if not root.is_dir():
         raise ValueError("out_dir must be a real directory")
     return root
 
