@@ -16,7 +16,6 @@ from mlet.experiments import phase2_openet_value
 from mlet.loader import load_site_series
 from mlet.outlook.build import build_outlook
 from mlet.outlook.hindcast import (
-    build_promotion_attestation,
     evaluate_hindcast_evidence,
     write_hindcast_markdown,
     write_hindcast_validation,
@@ -67,12 +66,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     hindcast.add_argument("--cases", required=True)
     hindcast.add_argument("--out", required=True)
-    attest = subparsers.add_parser(
-        "attest-hindcast-outlook",
-        help="Create an externally-keyed promotion attestation for an eligible evidence bundle.",
-    )
-    attest.add_argument("--cases", required=True)
-    attest.add_argument("--out", required=True)
     args = parser.parse_args(argv)
     if args.command == "validate-csv":
         return _run_validate(args.path)
@@ -87,8 +80,6 @@ def main(argv: list[str] | None = None) -> int:
         return _run_build_outlook(args.weather, args.state, args.crop, args.out)
     if args.command == "hindcast-outlook":
         return _run_hindcast_outlook(args.cases, args.out)
-    if args.command == "attest-hindcast-outlook":
-        return _run_attest_hindcast_outlook(args.cases, args.out)
     result = phase2_openet_value.run(args.interim, args.landcover)
     _write_report(args.out, result)
     print(f"decision: {result['decision']}")
@@ -145,25 +136,6 @@ def _run_hindcast_outlook(cases_path: str, destination: str) -> int:
     print(f"validation: {report_path.parent / 'validation.json'}")
     print(f"promotion: {'true' if report.promotion else 'false'}")
     return 0 if report.promotion else 1
-
-
-def _run_attest_hindcast_outlook(cases_path: str, destination: str) -> int:
-    """Use a runtime-only key to write one reviewable promotion attestation."""
-    try:
-        output = _trusted_hindcast_output(Path(destination))
-        attestation = build_promotion_attestation(Path(cases_path))
-        encoded = json.dumps(attestation, sort_keys=True, separators=(",", ":")) + "\n"
-        descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(encoded)
-            handle.flush()
-            os.fsync(handle.fileno())
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
-        print(f"error: cannot attest outlook hindcast: {exc}", file=sys.stderr)
-        return 2
-    print(f"attestation: {output}")
-    print("embed this object as promotion_attestation in the evidence bundle before evaluation")
-    return 0
 
 
 def _trusted_hindcast_output(destination: Path) -> Path:

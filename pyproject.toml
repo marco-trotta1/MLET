@@ -19,6 +19,7 @@ dependencies = [
     "requests>=2.31",
     "urllib3>=2.0",
     "rasterio>=1.3",
+    "cryptography>=42.0",
 ]
 
 [project.scripts]
@@ -26,6 +27,9 @@ mlet = "mlet.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src", "vendor/pyfao56/src"]
+
+[tool.setuptools.package-data]
+"mlet.outlook" = ["promotion_authority.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
+import base64
 import hashlib
-import hmac
 import json
 from pathlib import Path
 
 import pytest
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
+import mlet.outlook.hindcast as hindcast_module
 from mlet.outlook.hindcast import (
     AvailableRecord,
-    EvaluationReceipt,
+    _PinnedPromotionAuthority,
+    _attestation_message,
+    build_promotion_attestation_request,
     evaluate_hindcast_evidence,
     HindcastCase,
     HindcastRow,
@@ -77,15 +81,21 @@ def _complete_case() -> HindcastCase:
     )
 
 
-def _write_verified_evidence(tmp_path: Path, *, classification: str = "real_archived") -> Path:
+def _write_verified_evidence(
+    tmp_path: Path,
+    *,
+    classification: str = "real_archived",
+    issue_time: datetime = ISSUE_TIME,
+    held_out_fold: int = 1,
+) -> Path:
     """Create an archived byte bundle; values are never inline in the case file."""
     source = tmp_path / "source.bin"
     source.write_bytes(b"archived source")
-    issue = ISSUE_TIME.strftime("%Y-%m-%dT%H:%M:%SZ")
+    issue = issue_time.strftime("%Y-%m-%dT%H:%M:%SZ")
     collections = []
     target_values = []
     for lead in range(1, 21):
-        valid = (ISSUE_TIME.date() + timedelta(days=lead)).isoformat()
+        valid = (issue_time.date() + timedelta(days=lead)).isoformat()
         layers = {}
         for layer, kind in {
             "eto_mm": "independent_asce_short_reference_eto",
@@ -104,12 +114,14 @@ def _write_verified_evidence(tmp_path: Path, *, classification: str = "real_arch
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text(manifest.to_json(), encoding="utf-8")
     target = tmp_path / "targets.json"
-    case_id = "jja-fold-1-2026-07-01"
-    target.write_text(json.dumps({"schema_version": 1, "kind": "idaho_outlook_hindcast_target", "receipt": {"case_id": case_id, "run_id": manifest.run_id, "uri": "https://archive.example.org/targets", "source_version": "target-v1", "available_at": "2026-07-23T00:00:00Z"}, "values": target_values}), encoding="utf-8")
+    case_id = f"{issue_time.strftime('%b').lower()}-fold-{held_out_fold}-{issue_time.date().isoformat()}"
+    target_available = (issue_time + timedelta(days=22)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    target.write_text(json.dumps({"schema_version": 1, "kind": "idaho_outlook_hindcast_target", "receipt": {"case_id": case_id, "run_id": manifest.run_id, "uri": "https://archive.example.org/targets", "source_version": "target-v1", "available_at": target_available}, "values": target_values}), encoding="utf-8")
     receipt = {"schema_version": 1, "kind": "idaho_outlook_hindcast_source_receipt", "case_id": case_id, "run_id": manifest.run_id, "name": "weather", "available_at": issue, "source_version": "test-revision", "sha256": hashlib.sha256(source.read_bytes()).hexdigest(), "uri": source.resolve().as_uri()}
     source_receipt_path = tmp_path / "source-receipt.json"
     source_receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
-    holdout = {"schema_version": 1, "kind": "idaho_outlook_hindcast_holdout_receipt", "case_id": case_id, "run_id": manifest.run_id, "uri": "https://archive.example.org/folds/v1", "source_version": "folds-v1", "sha256": "c" * 64, "available_at": issue, "spatial_block": "43:-117", "fold": 1, "held_out_fold": 1, "training_folds": [0, 2, 3, 4], "held_out_season": "JJA", "training_seasons": ["DJF", "MAM", "SON"], "training_cutoff": issue, "calibration_cutoff": issue}
+    held_out_season = {1: "DJF", 4: "MAM", 7: "JJA", 10: "SON"}[issue_time.month]
+    holdout = {"schema_version": 1, "kind": "idaho_outlook_hindcast_holdout_receipt", "case_id": case_id, "run_id": manifest.run_id, "uri": "https://archive.example.org/folds/v1", "source_version": "folds-v1", "sha256": "c" * 64, "available_at": issue, "spatial_block": "43:-117", "fold": held_out_fold, "held_out_fold": held_out_fold, "training_folds": [fold for fold in range(5) if fold != held_out_fold], "held_out_season": held_out_season, "training_seasons": [season for season in ("DJF", "MAM", "JJA", "SON") if season != held_out_season], "training_cutoff": issue, "calibration_cutoff": issue}
     holdout_path = tmp_path / "holdout-receipt.json"
     holdout_path.write_text(json.dumps(holdout), encoding="utf-8")
     assumptions = {}
@@ -127,13 +139,63 @@ def _write_verified_evidence(tmp_path: Path, *, classification: str = "real_arch
             "case_id": case_id,
             "issue_time": issue,
             "forecast": {"run_id": manifest.run_id, "manifest_path": "manifest.json", "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(), "artifact_path": "outlook.json", "artifact_sha256": hashlib.sha256(forecast.read_bytes()).hexdigest()},
-            "target": {"path": "targets.json", "uri": "https://archive.example.org/targets", "source_version": "target-v1", "sha256": hashlib.sha256(target.read_bytes()).hexdigest(), "available_at": "2026-07-23T00:00:00Z"},
+            "target": {"path": "targets.json", "uri": "https://archive.example.org/targets", "source_version": "target-v1", "sha256": hashlib.sha256(target.read_bytes()).hexdigest(), "available_at": target_available},
             "source_receipt_artifacts": [{"path": source_receipt_path.name, "sha256": hashlib.sha256(source_receipt_path.read_bytes()).hexdigest()}],
             "holdout_receipt": {"path": holdout_path.name, "sha256": hashlib.sha256(holdout_path.read_bytes()).hexdigest()},
             "scenario_receipt_artifacts": assumptions,
         }],
     }
     evidence_path = tmp_path / "evidence.json"
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    return evidence_path
+
+
+def _write_qualifying_verified_evidence(tmp_path: Path) -> Path:
+    """Build the complete five-fold/four-season archive required for promotion."""
+    cases: list[dict[str, object]] = []
+    for month in (1, 4, 7, 10):
+        for fold in range(5):
+            directory = f"case-{month:02d}-fold-{fold}"
+            child = tmp_path / directory
+            child.mkdir()
+            child_evidence = _write_verified_evidence(
+                child,
+                issue_time=datetime(2026, month, 1, tzinfo=timezone.utc),
+                held_out_fold=fold,
+            )
+            case = json.loads(child_evidence.read_text(encoding="utf-8"))["cases"][0]
+            assert isinstance(case, dict)
+            forecast = case["forecast"]
+            target = case["target"]
+            source_receipts = case["source_receipt_artifacts"]
+            holdout = case["holdout_receipt"]
+            scenarios = case["scenario_receipt_artifacts"]
+            assert isinstance(forecast, dict) and isinstance(target, dict)
+            assert isinstance(source_receipts, list) and isinstance(holdout, dict) and isinstance(scenarios, dict)
+            forecast["manifest_path"] = f"{directory}/{forecast['manifest_path']}"
+            forecast["artifact_path"] = f"{directory}/{forecast['artifact_path']}"
+            target["path"] = f"{directory}/{target['path']}"
+            for receipt in source_receipts:
+                assert isinstance(receipt, dict)
+                receipt["path"] = f"{directory}/{receipt['path']}"
+            holdout["path"] = f"{directory}/{holdout['path']}"
+            for receipt in scenarios.values():
+                assert isinstance(receipt, dict)
+                receipt["path"] = f"{directory}/{receipt['path']}"
+            cases.append(case)
+    evidence = {
+        "schema_version": 3,
+        "evidence_classification": "real_archived",
+        "provenance": {
+            "uri": "https://archive.example.org/idaho",
+            "version": "archive-v1",
+            "sha256": "b" * 64,
+            "available_at": "2026-01-01T00:00:00Z",
+        },
+        "promotion_attestation": None,
+        "cases": cases,
+    }
+    evidence_path = tmp_path / "qualifying-evidence.json"
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
     return evidence_path
 
@@ -306,6 +368,13 @@ def test_hindcast_cli_reports_invalid_case_input_without_traceback(
     assert "cannot run outlook hindcast" in capsys.readouterr().err
 
 
+def test_hindcast_cli_has_no_local_promotion_signing_command() -> None:
+    with pytest.raises(SystemExit) as error:
+        main(["attest-hindcast-outlook"])
+
+    assert error.value.code == 2
+
+
 def test_hindcast_cli_accepts_the_documented_private_tmp_verification_root() -> None:
     assert _trusted_hindcast_output(Path("/private/tmp/idaho_hindcast.md")) == Path(
         "/private/tmp/idaho_hindcast.md"
@@ -420,34 +489,66 @@ def test_altered_receipt_bytes_and_inline_receipts_are_rejected(tmp_path: Path) 
         evaluate_hindcast_evidence(evidence_path)
 
 
-def test_external_hmac_is_required_and_binds_the_report_and_digest(
+def test_external_ed25519_attestation_promotes_only_the_exact_qualified_bundle(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    report = replace(run_hindcast((_complete_case(),)), promotion_blockers=())
-    key = "a-runtime-only-key-that-is-definitely-long-enough"
-    base = {
-        "schema_version": 1,
-        "kind": "idaho_outlook_hindcast_promotion_attestation",
-        "algorithm": "hmac-sha256",
-        "key_id": "test-authority",
-        "evaluation_digest": "a" * 64,
-        "report_sha256": hashlib.sha256(
-            json.dumps(report.validation_record(), sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
-        ).hexdigest(),
-        "promotion": True,
+    evidence_path = _write_qualifying_verified_evidence(tmp_path)
+    external_private_key = Ed25519PrivateKey.generate()
+    public_key = external_private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+    monkeypatch.setattr(
+        hindcast_module,
+        "_PINNED_PROMOTION_AUTHORITY",
+        _PinnedPromotionAuthority("test-external-authority", "ed25519", public_key),
+    )
+
+    request = build_promotion_attestation_request(evidence_path)
+    signature = external_private_key.sign(
+        _attestation_message(str(request["evaluation_digest"]), str(request["report_sha256"]))
+    )
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["promotion_attestation"] = {
+        **request,
+        "signature": base64.b64encode(signature).decode("ascii"),
     }
-    base["mac"] = hmac.new(key.encode(), json.dumps(base, sort_keys=True, separators=(",", ":"), allow_nan=False).encode(), hashlib.sha256).hexdigest()
-    forged = EvaluationReceipt(report=report, evidence_path=tmp_path / "forged-evidence.json", evaluation_digest="a" * 64, case_sha256=("b" * 64,), attestation=base)
-    with pytest.raises(ValueError, match="unauthorised promotion"):
-        write_hindcast_validation(forged, tmp_path / "missing-key.json")
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
 
-    monkeypatch.setenv("MLET_HINDCAST_PROMOTION_HMAC_KEY", key)
-    with pytest.raises(FileNotFoundError):
-        write_hindcast_validation(forged, tmp_path / "authorized.json")
+    report, receipt = evaluate_hindcast_evidence(evidence_path)
+    validation_path = write_hindcast_validation(receipt, tmp_path / "validation.json")
 
-    mismatched = replace(forged, evaluation_digest="c" * 64)
-    with pytest.raises(ValueError, match="unauthorised promotion"):
-        write_hindcast_validation(mismatched, tmp_path / "mismatched.json")
+    assert report.promotion is True
+    assert json.loads(validation_path.read_text(encoding="utf-8"))["promotion"] is True
+
+    # The signature is over this exact evidence digest: reordering otherwise
+    # valid cases or altering bytes cannot replay it across an archive.
+    replayed = json.loads(evidence_path.read_text(encoding="utf-8"))
+    replayed["cases"].reverse()
+    evidence_path.write_text(json.dumps(replayed), encoding="utf-8")
+    replayed_report, _receipt = evaluate_hindcast_evidence(evidence_path)
+    assert replayed_report.promotion is False
+    assert any("does not bind" in blocker for blocker in replayed_report.promotion_blockers)
+
+    altered = json.loads(evidence_path.read_text(encoding="utf-8"))
+    altered["cases"].reverse()
+    altered["promotion_attestation"]["signature"] += "x"
+    evidence_path.write_text(json.dumps(altered), encoding="utf-8")
+    altered_report, _receipt = evaluate_hindcast_evidence(evidence_path)
+    assert altered_report.promotion is False
+    assert any("signature is invalid" in blocker for blocker in altered_report.promotion_blockers)
+
+    # Runtime-selected material is ignored; an attacker cannot replace the
+    # committed verifier identity with an environment value or a new key ID.
+    monkeypatch.setenv("MLET_HINDCAST_PROMOTION_PUBLIC_KEY", base64.b64encode(public_key).decode("ascii"))
+    attacker_private_key = Ed25519PrivateKey.generate()
+    altered["promotion_attestation"]["key_id"] = "attacker-selected-key"
+    altered["promotion_attestation"]["signature"] = base64.b64encode(
+        attacker_private_key.sign(
+            _attestation_message(str(request["evaluation_digest"]), str(request["report_sha256"]))
+        )
+    ).decode("ascii")
+    evidence_path.write_text(json.dumps(altered), encoding="utf-8")
+    attacked_report, _receipt = evaluate_hindcast_evidence(evidence_path)
+    assert attacked_report.promotion is False
+    assert any("does not bind" in blocker for blocker in attacked_report.promotion_blockers)
 
 
 def test_held_out_training_leakage_blocks_promotion(tmp_path: Path) -> None:

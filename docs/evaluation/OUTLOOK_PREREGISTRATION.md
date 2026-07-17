@@ -154,25 +154,36 @@ Passing computational gates does not itself authorize a public promotion. The
 evaluator canonicalizes the verified forecast, manifest, target, receipt-byte
 hashes, case/run identifiers, classification, fold/cutoff, and scenario
 evidence into an `evaluation_digest`. An external release authority must attest
-to that digest **and** the reconstructed report digest with HMAC-SHA-256. The
-secret is injected only at runtime through `MLET_HINDCAST_PROMOTION_HMAC_KEY`
-(at least 32 bytes) and is never committed. The evaluator and the validation
-writer independently reconstruct the report and canonical digest from the
-evidence path, then verify the report binding and MAC; an in-memory report or
-receipt object has no authority to assert `promotion: true`.
+to that digest **and** the reconstructed report digest with Ed25519. The
+accepted identity, key ID, algorithm, and public key are committed in
+`src/mlet/outlook/promotion_authority.json`. MLET has no private key, no
+environment-variable key override, and no `attest-hindcast-outlook` signing
+command. Changing the authority requires a reviewed repository change to that
+public verifier configuration.
 
-An authorized operator creates the reviewable object separately:
+The evaluator exposes a verification request only; it does not sign it:
 
-```bash
-MLET_HINDCAST_PROMOTION_HMAC_KEY='runtime-only-secret-with-at-least-32-bytes' \
-  python3 -m mlet attest-hindcast-outlook \
-  --cases ARCHIVED_CASES.json \
-  --out /private/tmp/idaho_outlook_attestation.json
+```python
+from pathlib import Path
+from mlet.outlook.hindcast import build_promotion_attestation_request
+
+request = build_promotion_attestation_request(Path("ARCHIVED_CASES.json"))
 ```
 
-The operator embeds that exact JSON object as `promotion_attestation` in the
-evidence bundle and reruns `hindcast-outlook` with the same runtime authority
-configuration. If the key is absent, the attestation is absent or altered, the
-digest/report mismatches, or the classification is not production/validated,
-the recorded result remains non-promotable. Software fixtures have no signing
-path and remain non-promotable even if a key is present.
+The external release authority independently checks the archived evidence,
+then signs exactly these binary bytes with its offline/private Ed25519 key:
+
+```text
+ASCII "MLET-IDAHO-OUTLOOK-HINDCAST-ATTESTATION" + 0x00 + 0x01
++ 32 raw bytes of evaluation_digest (hex-decoded)
++ 32 raw bytes of report_sha256 (hex-decoded)
+```
+
+It returns a `promotion_attestation` object with exactly
+`schema_version`, `algorithm`, `key_id`, `evaluation_digest`, `report_sha256`,
+and base64 `signature`. The operator embeds that object in the evidence bundle
+and reruns `hindcast-outlook`. The evaluator and validation writer independently
+reconstruct the report and digest, require the exact pinned key identity, and
+verify the signature. Missing, altered, replayed, cross-bundle, or
+attacker-selected-key attestations remain non-promotable. Software fixtures
+have no signing path and remain non-promotable.

@@ -12,13 +12,16 @@ from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
+import base64
 import hashlib
-import hmac
 import json
 import math
 import os
 from pathlib import Path
 from urllib.parse import urlparse
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from mlet.outlook.manifest import RunManifest
 
@@ -48,9 +51,41 @@ _SEASONS = {
     10: "SON",
     11: "SON",
 }
-_PROMOTION_KEY_ENV = "MLET_HINDCAST_PROMOTION_HMAC_KEY"
-_PROMOTION_KEY_ID_ENV = "MLET_HINDCAST_PROMOTION_KEY_ID"
-_ATTESTATION_KIND = "idaho_outlook_hindcast_promotion_attestation"
+_ATTESTATION_PROTOCOL = b"MLET-IDAHO-OUTLOOK-HINDCAST-ATTESTATION\x00\x01"
+
+
+@dataclass(frozen=True)
+class _PinnedPromotionAuthority:
+    """Committed, verification-only release-authority configuration."""
+
+    key_id: str
+    algorithm: str
+    public_key: bytes
+
+
+def _load_pinned_promotion_authority() -> _PinnedPromotionAuthority:
+    """Load the repository-pinned public verification key, never a signer."""
+    path = Path(__file__).with_name("promotion_authority.json")
+    try:
+        raw = _load_json_bytes(path.read_bytes(), "promotion authority configuration")
+    except OSError as error:
+        raise RuntimeError("committed promotion authority configuration is unavailable") from error
+    _require_exact_keys(
+        raw,
+        {"schema_version", "algorithm", "key_id", "public_key_base64"},
+        "promotion authority configuration",
+    )
+    assert isinstance(raw, dict)
+    key_id = raw["key_id"]
+    encoded = raw["public_key_base64"]
+    if raw["schema_version"] != 1 or raw["algorithm"] != "ed25519" or not isinstance(key_id, str) or not key_id.strip() or not isinstance(encoded, str):
+        raise RuntimeError("committed promotion authority configuration is invalid")
+    try:
+        public_key = base64.b64decode(encoded, validate=True)
+        Ed25519PublicKey.from_public_bytes(public_key)
+    except (ValueError, TypeError) as error:
+        raise RuntimeError("committed promotion authority public key is invalid") from error
+    return _PinnedPromotionAuthority(key_id=key_id, algorithm="ed25519", public_key=public_key)
 
 
 @dataclass(frozen=True)
@@ -275,7 +310,8 @@ class EvaluationReceipt:
 
     This type is deliberately not a security boundary.  It is public data that
     can be reconstructed by any caller.  ``write_hindcast_validation`` checks
-    a separately held HMAC authority before it will serialize a true promotion.
+    a separately held external Ed25519 attestation before it will serialize a
+    true promotion.  This repository contains only the pinned public key.
     """
 
     report: HindcastReport
@@ -387,9 +423,9 @@ def evaluate_hindcast_evidence(path: Path) -> tuple[HindcastReport, EvaluationRe
     """Evaluate a version-3 archived-evidence bundle.
 
     The evaluator can make a transparent non-promotable report without a key.
-    A true promotion additionally needs an HMAC attestation made by the holder
-    of ``MLET_HINDCAST_PROMOTION_HMAC_KEY`` over the exact evidence digest and
-    the independently reconstructed report digest.
+    A true promotion additionally needs an external Ed25519 attestation over
+    the exact evidence digest and the independently reconstructed report
+    digest.  The verifier has only its committed public key.
     """
     report, digest, case_hashes, attestation = _evaluate_evidence_bundle(path)
     authority_error = _verify_promotion_attestation(attestation, digest, report)
@@ -404,31 +440,23 @@ def evaluate_hindcast_evidence(path: Path) -> tuple[HindcastReport, EvaluationRe
     )
 
 
-def build_promotion_attestation(path: Path) -> dict[str, object]:
-    """Make an externally-authorized HMAC attestation for an eligible bundle.
+def build_promotion_attestation_request(path: Path) -> dict[str, object]:
+    """Prepare a verification request for an external release authority.
 
-    This command is intentionally separate from evaluation.  The signing key
-    is injected at runtime and must never be committed.  Operators embed the
-    returned object as ``promotion_attestation`` in the same evidence bundle;
-    that field is excluded from the signed evidence digest to avoid a cycle.
+    This helper performs no signing and has no private-key configuration.  The
+    authority signs :func:`_attestation_message` outside MLET, then embeds the
+    returned signature with these exact fields in the evidence bundle.
     """
     report, digest, _case_hashes, _attestation = _evaluate_evidence_bundle(path)
     if not report.promotion:
-        raise ValueError("cannot attest a hindcast that fails the frozen release gates")
-    key = _configured_authority_key()
-    if key is None:
-        raise ValueError(f"promotion authority key is unavailable: set {_PROMOTION_KEY_ENV}")
-    payload: dict[str, object] = {
+        raise ValueError("cannot request an attestation for a hindcast that fails the frozen release gates")
+    return {
         "schema_version": 1,
-        "kind": _ATTESTATION_KIND,
-        "algorithm": "hmac-sha256",
-        "key_id": os.environ.get(_PROMOTION_KEY_ID_ENV, "runtime-configured-hmac-authority"),
+        "algorithm": _PINNED_PROMOTION_AUTHORITY.algorithm,
+        "key_id": _PINNED_PROMOTION_AUTHORITY.key_id,
         "evaluation_digest": digest,
         "report_sha256": _report_sha256(report),
-        "promotion": True,
     }
-    payload["mac"] = hmac.new(key, _canonical_json(payload).encode("utf-8"), hashlib.sha256).hexdigest()
-    return payload
 
 
 def _evaluate_evidence_bundle(
@@ -543,8 +571,8 @@ def write_hindcast_validation(receipt: object, destination: Path) -> Path:
 
     This verifier never trusts Python object identity or a private attribute:
     a caller-made receipt/report may be written only as non-promotable.  A
-    requested true promotion must carry a valid runtime-key attestation over
-    both the canonical evidence digest and the exact report bytes.
+    requested true promotion must carry a valid externally signed attestation
+    over both the canonical evidence digest and the exact report bytes.
     """
     if not isinstance(receipt, EvaluationReceipt):
         raise ValueError("hindcast validation requires an evaluation receipt")
@@ -1134,7 +1162,7 @@ def _receipt_payload(receipt: EvaluationReceipt) -> dict[str, object]:
         "evaluation_digest": receipt.evaluation_digest,
         "case_sha256": list(receipt.case_sha256),
         "promotion_attestation": receipt.attestation,
-        "publication_authority": "external_hmac_attested_evaluation",
+        "publication_authority": "externally_attested_ed25519_evaluation",
     })
     return payload
 
@@ -1169,16 +1197,6 @@ def _report_sha256(report: HindcastReport) -> str:
     return hashlib.sha256(_canonical_json(report.validation_record()).encode("utf-8")).hexdigest()
 
 
-def _configured_authority_key() -> bytes | None:
-    """Load a runtime-only authority secret without ever persisting it."""
-    text = os.environ.get(_PROMOTION_KEY_ENV)
-    if text is None:
-        return None
-    key = text.encode("utf-8")
-    # A short convenience value is not an adequate research-release authority.
-    return key if len(key) >= 32 else None
-
-
 def _verify_promotion_attestation(
     value: dict[str, object] | None, evaluation_digest: str, report: HindcastReport,
 ) -> str | None:
@@ -1187,36 +1205,48 @@ def _verify_promotion_attestation(
         return "hindcast metrics or evidence gates did not qualify for promotion"
     if value is None:
         return "promotion requires an external attestation"
-    expected = {
-        "schema_version", "kind", "algorithm", "key_id", "evaluation_digest",
-        "report_sha256", "promotion", "mac",
-    }
+    expected = {"schema_version", "algorithm", "key_id", "evaluation_digest", "report_sha256", "signature"}
     if set(value) != expected:
         return "promotion attestation schema is invalid"
     if (
         value.get("schema_version") != 1
-        or value.get("kind") != _ATTESTATION_KIND
-        or value.get("algorithm") != "hmac-sha256"
-        or type(value.get("key_id")) is not str
-        or not value["key_id"].strip()
+        or value.get("algorithm") != _PINNED_PROMOTION_AUTHORITY.algorithm
+        or value.get("key_id") != _PINNED_PROMOTION_AUTHORITY.key_id
         or value.get("evaluation_digest") != evaluation_digest
         or value.get("report_sha256") != _report_sha256(report)
-        or value.get("promotion") is not True
-        or not _is_sha256(value.get("mac"))
     ):
         return "promotion attestation does not bind the verified evaluation"
-    key = _configured_authority_key()
-    if key is None:
-        return f"promotion authority key is unavailable: set {_PROMOTION_KEY_ENV}"
-    signed = {key: item for key, item in value.items() if key != "mac"}
-    expected_mac = hmac.new(key, _canonical_json(signed).encode("utf-8"), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(str(value["mac"]), expected_mac):
-        return "promotion attestation MAC is invalid"
+    signature_value = value.get("signature")
+    if not isinstance(signature_value, str):
+        return "promotion attestation signature is invalid"
+    try:
+        signature = base64.b64decode(signature_value, validate=True)
+        Ed25519PublicKey.from_public_bytes(_PINNED_PROMOTION_AUTHORITY.public_key).verify(
+            signature, _attestation_message(evaluation_digest, _report_sha256(report))
+        )
+    except (ValueError, TypeError, InvalidSignature):
+        return "promotion attestation signature is invalid"
     return None
+
+
+def _attestation_message(evaluation_digest: str, report_digest: str) -> bytes:
+    """Return the fixed binary protocol that an external authority signs.
+
+    The payload contains two 32-byte SHA-256 values and a versioned prefix;
+    it never delegates protocol meaning to mutable JSON ``kind`` text.
+    """
+    if not _is_sha256(evaluation_digest) or not _is_sha256(report_digest):
+        raise ValueError("attestation message requires SHA-256 digests")
+    return _ATTESTATION_PROTOCOL + bytes.fromhex(evaluation_digest) + bytes.fromhex(report_digest)
 
 
 def _is_sha256(value: object) -> bool:
     return isinstance(value, str) and len(value) == 64 and all(ch in "0123456789abcdef" for ch in value)
+
+
+# This is evaluated from a committed file when the verifier imports.  There is
+# deliberately no environment variable, CLI option, or runtime key selection.
+_PINNED_PROMOTION_AUTHORITY = _load_pinned_promotion_authority()
 
 
 def _summarize_source_latency(
