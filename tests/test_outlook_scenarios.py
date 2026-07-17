@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, datetime, timezone
 
 import pytest
 
 from mlet.outlook.scenarios import (
+    ScenarioProjection,
     project_no_irrigation,
     project_no_irrigation_from_state,
     project_well_watered,
@@ -30,6 +32,25 @@ def _provenance() -> StateProvenance:
         source_uri="https://example.test/soil-water",
         observed_date=date(2026, 7, 16),
         source_available_at=datetime(2026, 7, 16, 18, tzinfo=timezone.utc),
+    )
+
+
+def _direct_no_irrigation_projection() -> ScenarioProjection:
+    """Return a replay-consistent direct construction for boundary checks."""
+    return ScenarioProjection(
+        scenario="no_irrigation",
+        eta_mm=0.675,
+        depletion_mm=75.675,
+        initial_depletion_mm=75.0,
+        taw_mm=80.0,
+        raw_mm=40.0,
+        ks=0.125,
+        potential_et_mm=5.4,
+        precip_mm=0.0,
+        assumptions=("no_irrigation_after_issue_time",),
+        state_provenance=_provenance(),
+        issued_at=_ISSUED_AT,
+        unavailable_reason=None,
     )
 
 
@@ -123,6 +144,61 @@ def test_no_irrigation_stress_coefficient_stays_bounded() -> None:
 
     assert 0.0 <= output.ks <= 1.0
     assert output.eta_mm == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("scenario", "actual_et_forecast", "scenario must be exactly"),
+        ("potential_et_mm", -0.1, "potential_et_mm"),
+        ("precip_mm", float("nan"), "precip_mm"),
+        ("eta_mm", 5.5, "eta_mm must not exceed potential_et_mm"),
+        ("taw_mm", 0.0, "taw_mm"),
+        ("raw_mm", 81.0, "raw_mm must not exceed taw_mm"),
+        ("initial_depletion_mm", -0.1, "initial_depletion_mm"),
+        ("depletion_mm", 80.1, "depletion_mm"),
+        ("ks", 1.1, "ks"),
+        ("assumptions", ("crop_water_not_limiting",), "assumptions"),
+        ("unavailable_reason", "forged unavailable", "unavailable_reason"),
+    ),
+)
+def test_direct_scenario_projection_rejects_out_of_contract_fields(
+    field: str, value: object, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        replace(_direct_no_irrigation_projection(), **{field: value})
+
+
+def test_direct_scenario_projection_rejects_forged_recurrence() -> None:
+    with pytest.raises(ValueError, match="recurrence"):
+        replace(_direct_no_irrigation_projection(), eta_mm=0.5)
+
+
+def test_direct_scenario_projection_rejects_unavailable_branch_without_reason() -> None:
+    with pytest.raises(ValueError, match="unavailable_reason"):
+        ScenarioProjection(
+            scenario="no_irrigation",
+            eta_mm=None,
+            depletion_mm=None,
+            initial_depletion_mm=None,
+            taw_mm=80.0,
+            raw_mm=40.0,
+            ks=None,
+            potential_et_mm=5.4,
+            precip_mm=0.0,
+            assumptions=("no_irrigation_after_issue_time",),
+            state_provenance=_provenance(),
+            issued_at=_ISSUED_AT,
+            unavailable_reason=None,
+        )
+
+
+def test_scenario_projection_serialization_revalidates_a_forged_record() -> None:
+    projection = _direct_no_irrigation_projection()
+    object.__setattr__(projection, "eta_mm", 0.5)
+
+    with pytest.raises(ValueError, match="recurrence"):
+        projection.to_record()
 
 
 def test_missing_openet_state_remains_missing_instead_of_becoming_an_analysis() -> None:

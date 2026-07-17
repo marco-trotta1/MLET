@@ -10,6 +10,7 @@ import pytest
 from mlet.outlook.crop import (
     CropCoefficientAssignment,
     CropCoefficientInput,
+    PotentialEtcRecord,
     apply_crop_coefficients,
     potential_et_c,
 )
@@ -113,6 +114,56 @@ def test_potential_et_is_coverage_weighted_over_known_crop_fractions() -> None:
         "potential_et_c_mm": 3.0,
         "source_year": 2024,
     }
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("grid_id", "forged-idaho-grid", "grid_id must match"),
+        ("eto_mm", -0.1, "eto_mm"),
+        ("potential_et_c_mm", 4.0, "potential_et_c_mm"),
+        ("coverage_fraction", 0.5, "coverage_fraction must match"),
+        ("known_coverage_fraction", 0.5, "known_coverage_fraction must match"),
+        ("source_year", 2023, "source_year must match"),
+        (
+            "layer_metadata",
+            CdlLayerMetadata(
+                source_year=2024,
+                layer_version="forged-layer",
+                legend_version="usda-nass-cdl-2024",
+                release_at="2025-02-27T00:00:00Z",
+                upstream_uri="https://example.test/cdl",
+                sha256="b" * 64,
+            ),
+            "layer_metadata must match",
+        ),
+    ),
+)
+def test_direct_potential_etc_record_rejects_forged_replay_terms(
+    field: str, value: object, message: str
+) -> None:
+    valid_record = potential_et_c(5.0, _assignment(_fraction(kc=1.0)))
+
+    with pytest.raises(ValueError, match=message):
+        replace(valid_record, **{field: value})
+
+
+def test_direct_potential_etc_record_serialization_revalidates_forged_terms() -> None:
+    valid_record = potential_et_c(5.0, _assignment(_fraction(kc=1.0)))
+    record = PotentialEtcRecord(
+        grid_id=valid_record.grid_id,
+        eto_mm=valid_record.eto_mm,
+        potential_et_c_mm=valid_record.potential_et_c_mm,
+        coverage_fraction=valid_record.coverage_fraction,
+        known_coverage_fraction=valid_record.known_coverage_fraction,
+        source_year=valid_record.source_year,
+        layer_metadata=valid_record.layer_metadata,
+        crop_coefficient_assignment=valid_record.crop_coefficient_assignment,
+    )
+    object.__setattr__(record, "potential_et_c_mm", 4.0)
+
+    with pytest.raises(ValueError, match="potential_et_c_mm"):
+        record.to_record()
 
 
 def test_potential_et_rejects_unknown_coverage_without_a_dated_coefficient() -> None:

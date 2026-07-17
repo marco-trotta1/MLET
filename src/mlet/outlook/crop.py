@@ -13,6 +13,7 @@ from mlet.sources.cdl import CdlLayerMetadata, CropFraction
 _MIN_KC = 0.0
 _MAX_KC = 1.4
 _COVERAGE_TOLERANCE = 1e-9
+_CALCULATION_TOLERANCE = 1e-9
 
 
 @dataclass(frozen=True)
@@ -184,11 +185,37 @@ class PotentialEtcRecord:
     layer_metadata: CdlLayerMetadata
     crop_coefficient_assignment: CropCoefficientAssignment
 
+    def __post_init__(self) -> None:
+        """Reject direct records whose replay fields do not match their assignment."""
+        values = _validate_potential_etc_record(
+            grid_id=self.grid_id,
+            eto_mm=self.eto_mm,
+            potential_et_c_mm=self.potential_et_c_mm,
+            coverage_fraction=self.coverage_fraction,
+            known_coverage_fraction=self.known_coverage_fraction,
+            source_year=self.source_year,
+            layer_metadata=self.layer_metadata,
+            crop_coefficient_assignment=self.crop_coefficient_assignment,
+        )
+        for field_name, value in values.items():
+            object.__setattr__(self, field_name, value)
+
+    def assert_valid(self) -> None:
+        """Recheck direct or mutated records before serializing an ETc artifact."""
+        _validate_potential_etc_record(
+            grid_id=self.grid_id,
+            eto_mm=self.eto_mm,
+            potential_et_c_mm=self.potential_et_c_mm,
+            coverage_fraction=self.coverage_fraction,
+            known_coverage_fraction=self.known_coverage_fraction,
+            source_year=self.source_year,
+            layer_metadata=self.layer_metadata,
+            crop_coefficient_assignment=self.crop_coefficient_assignment,
+        )
+
     def to_record(self) -> dict[str, object]:
         """Return every grid and CDL coverage term needed to replay ETc."""
-        if not isinstance(self.crop_coefficient_assignment, CropCoefficientAssignment):
-            raise ValueError("potential ET record requires a CropCoefficientAssignment")
-        self.crop_coefficient_assignment.assert_valid()
+        self.assert_valid()
         layer = self.layer_metadata
         return {
             "grid_id": self.grid_id,
@@ -225,6 +252,88 @@ def potential_et_c(
     eto = _require_finite_nonnegative(eto_mm, "eto_mm")
     if not isinstance(crop_coefficient_assignment, CropCoefficientAssignment):
         raise ValueError("potential ET requires a CropCoefficientAssignment")
+    (
+        grid_id,
+        coverage_fraction,
+        known_coverage_fraction,
+        source_year,
+        layer_metadata,
+        effective_kc,
+    ) = _derive_potential_etc_terms(crop_coefficient_assignment)
+    return PotentialEtcRecord(
+        grid_id=grid_id,
+        eto_mm=eto,
+        potential_et_c_mm=eto * effective_kc,
+        coverage_fraction=coverage_fraction,
+        known_coverage_fraction=known_coverage_fraction,
+        source_year=source_year,
+        layer_metadata=layer_metadata,
+        crop_coefficient_assignment=crop_coefficient_assignment,
+    )
+
+
+def _validate_potential_etc_record(
+    *,
+    grid_id: object,
+    eto_mm: object,
+    potential_et_c_mm: object,
+    coverage_fraction: object,
+    known_coverage_fraction: object,
+    source_year: object,
+    layer_metadata: object,
+    crop_coefficient_assignment: object,
+) -> dict[str, object]:
+    """Validate persisted ETc fields against their sole eligible calculation input."""
+    if not isinstance(crop_coefficient_assignment, CropCoefficientAssignment):
+        raise ValueError("potential ET record requires a CropCoefficientAssignment")
+    (
+        expected_grid_id,
+        expected_coverage,
+        expected_known_coverage,
+        expected_source_year,
+        expected_layer_metadata,
+        effective_kc,
+    ) = _derive_potential_etc_terms(crop_coefficient_assignment)
+    actual_grid_id = _require_text(grid_id, "grid_id")
+    if actual_grid_id != expected_grid_id:
+        raise ValueError("potential ET record grid_id must match its crop coefficient assignment")
+    eto = _require_finite_nonnegative(eto_mm, "eto_mm")
+    actual_et_c = _require_finite_nonnegative(potential_et_c_mm, "potential_et_c_mm")
+    actual_coverage = _require_fraction(coverage_fraction, "coverage_fraction")
+    actual_known_coverage = _require_fraction(
+        known_coverage_fraction, "known_coverage_fraction"
+    )
+    if not _is_close(actual_coverage, expected_coverage):
+        raise ValueError("coverage_fraction must match its crop coefficient assignment")
+    if not _is_close(actual_known_coverage, expected_known_coverage):
+        raise ValueError("known_coverage_fraction must match its crop coefficient assignment")
+    if not isinstance(source_year, int) or isinstance(source_year, bool) or source_year < 1:
+        raise ValueError("source_year must be a recorded positive integer")
+    if source_year != expected_source_year:
+        raise ValueError("source_year must match its crop coefficient assignment")
+    if not isinstance(layer_metadata, CdlLayerMetadata):
+        raise ValueError("layer_metadata must be a CdlLayerMetadata record")
+    if layer_metadata != expected_layer_metadata:
+        raise ValueError("layer_metadata must match its crop coefficient assignment")
+    expected_et_c = eto * effective_kc
+    if not math.isfinite(expected_et_c) or not _is_close(actual_et_c, expected_et_c):
+        raise ValueError("potential_et_c_mm must equal eto_mm times the effective Kc")
+    return {
+        "grid_id": actual_grid_id,
+        "eto_mm": eto,
+        "potential_et_c_mm": actual_et_c,
+        "coverage_fraction": actual_coverage,
+        "known_coverage_fraction": actual_known_coverage,
+        "source_year": source_year,
+        "layer_metadata": layer_metadata,
+        "crop_coefficient_assignment": crop_coefficient_assignment,
+    }
+
+
+def _derive_potential_etc_terms(
+    crop_coefficient_assignment: CropCoefficientAssignment,
+) -> tuple[str, float, float, int, CdlLayerMetadata, float]:
+    """Return the only native-cell ETc terms reproducible from one assignment."""
     crop_coefficient_assignment.assert_valid()
     cell_fractions = crop_coefficient_assignment.fractions
     if not cell_fractions:
@@ -240,12 +349,7 @@ def potential_et_c(
         raise ValueError("potential ET fractions must share one source_year")
     coverage_fraction = cell_fractions[0].coverage_fraction
     if any(
-        not math.isclose(
-            fraction.coverage_fraction,
-            coverage_fraction,
-            rel_tol=0.0,
-            abs_tol=_COVERAGE_TOLERANCE,
-        )
+        not _is_close(fraction.coverage_fraction, coverage_fraction)
         for fraction in cell_fractions[1:]
     ):
         raise ValueError("potential ET fractions must share one coverage_fraction")
@@ -254,38 +358,25 @@ def potential_et_c(
         raise ValueError("potential ET fractions must share identical CDL layer metadata")
 
     fraction_sum = sum(fraction.fraction for fraction in cell_fractions)
-    if not math.isclose(
-        fraction_sum,
-        coverage_fraction,
-        rel_tol=0.0,
-        abs_tol=_COVERAGE_TOLERANCE,
-    ):
+    if not _is_close(fraction_sum, coverage_fraction):
         raise ValueError(
             "potential ET crop fractions must sum to declared coverage within "
             f"{_COVERAGE_TOLERANCE:g}"
         )
-
-    active: list[CropFraction] = []
-    for fraction in cell_fractions:
-        if fraction.crop_class != "unknown":
-            _require_kc(fraction.kc)
-            active.append(fraction)
+    active = [fraction for fraction in cell_fractions if fraction.crop_class != "unknown"]
     if not active:
         raise ValueError("potential ET requires known crop coverage")
-
-    covered_fraction = sum(fraction.fraction for fraction in active)
-    if covered_fraction <= 0.0:
+    known_coverage_fraction = sum(fraction.fraction for fraction in active)
+    if known_coverage_fraction <= 0.0:
         raise ValueError("potential ET requires positive known crop coverage")
-    weighted_kc = sum(fraction.fraction * float(fraction.kc) for fraction in active)
-    return PotentialEtcRecord(
-        grid_id=next(iter(grid_ids)),
-        eto_mm=eto,
-        potential_et_c_mm=eto * weighted_kc / covered_fraction,
-        coverage_fraction=coverage_fraction,
-        known_coverage_fraction=covered_fraction,
-        source_year=next(iter(source_years)),
-        layer_metadata=next(iter(layer_metadata)),
-        crop_coefficient_assignment=crop_coefficient_assignment,
+    weighted_kc = sum(fraction.fraction * _require_kc(fraction.kc) for fraction in active)
+    return (
+        next(iter(grid_ids)),
+        coverage_fraction,
+        known_coverage_fraction,
+        next(iter(source_years)),
+        next(iter(layer_metadata)),
+        weighted_kc / known_coverage_fraction,
     )
 
 
@@ -438,3 +529,7 @@ def _require_finite_nonnegative(value: object, label: str) -> float:
     if not math.isfinite(result) or result < 0.0:
         raise ValueError(f"{label} must be a finite non-negative number")
     return result
+
+
+def _is_close(left: float, right: float) -> bool:
+    return math.isclose(left, right, rel_tol=0.0, abs_tol=_CALCULATION_TOLERANCE)
