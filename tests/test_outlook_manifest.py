@@ -170,6 +170,48 @@ def test_manifest_rejects_unsupported_schema_version(tmp_path: Path) -> None:
         RunManifest.from_json(_manifest_json_with_valid_run_id(payload))
 
 
+def test_manifest_to_json_rejects_directly_constructed_unsupported_schema_version(
+    tmp_path: Path,
+) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    provisional = RunManifest(
+        schema_version=99,
+        run_id="",
+        issued_at=manifest.issued_at,
+        retrieved_at=manifest.retrieved_at,
+        git_revision=manifest.git_revision,
+        sources=manifest.sources,
+    )
+    unsupported_manifest = dataclasses.replace(
+        provisional,
+        run_id=hashlib.sha256(
+            json.dumps(
+                provisional._payload_without_run_id(),
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()[:16],
+    )
+
+    with pytest.raises(ValueError, match="schema_version is not supported"):
+        unsupported_manifest.to_json()
+
+
+def test_manifest_to_json_round_trips_valid_direct_construction(tmp_path: Path) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    direct_manifest = RunManifest(
+        schema_version=manifest.schema_version,
+        run_id=manifest.run_id,
+        issued_at=manifest.issued_at,
+        retrieved_at=manifest.retrieved_at,
+        git_revision=manifest.git_revision,
+        sources=manifest.sources,
+    )
+
+    assert RunManifest.from_json(direct_manifest.to_json()) == direct_manifest
+
+
 def test_manifest_rejects_missing_identity_source_field(tmp_path: Path) -> None:
     manifest = _two_source_manifest(tmp_path)
     payload = json.loads(manifest.to_json())

@@ -99,6 +99,7 @@ class RunManifest:
 
     def to_json(self) -> str:
         """Return canonical JSON suitable for an immutable run receipt."""
+        _require_supported_schema_version(self.schema_version)
         _require_strictly_sorted_sources(self.sources)
         payload = self._payload_without_run_id()
         expected_run_id = _run_id(payload)
@@ -125,9 +126,7 @@ class RunManifest:
             if not isinstance(source_payloads, list):
                 raise TypeError("sources must be a list")
             sources = tuple(_source_from_payload(item) for item in source_payloads)
-            schema_version = _required_int(payload, "schema_version")
-            if schema_version != _SCHEMA_VERSION:
-                raise ValueError("manifest schema_version is not supported")
+            schema_version = _require_supported_schema_version(payload["schema_version"])
             manifest = cls(
                 schema_version=schema_version,
                 run_id=_required_str(payload, "run_id"),
@@ -215,10 +214,12 @@ def _required_str(payload: Mapping[str, object], name: str) -> str:
     return value
 
 
-def _required_int(payload: Mapping[str, object], name: str) -> int:
-    value = payload[name]
+def _require_supported_schema_version(value: object) -> int:
+    """Require the one schema version this receipt implementation can emit."""
     if not isinstance(value, int) or isinstance(value, bool):
-        raise TypeError(f"{name} must be an integer")
+        raise ValueError("manifest schema_version is not supported")
+    if value != _SCHEMA_VERSION:
+        raise ValueError("manifest schema_version is not supported")
     return value
 
 
