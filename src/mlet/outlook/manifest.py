@@ -13,6 +13,24 @@ from mlet.outlook.contracts import SourceRecord
 
 
 _SCHEMA_VERSION = 1
+_MANIFEST_FIELDS = frozenset(
+    {
+        "schema_version",
+        "run_id",
+        "issued_at",
+        "retrieved_at",
+        "git_revision",
+        "sources",
+    }
+)
+_SOURCE_FIELDS = frozenset(
+    {"name", "uri", "retrieved_at", "sha256", "observed_through"}
+)
+
+
+def _normalize_zulu_timestamp(value: str) -> str:
+    """Translate the explicit UTC-Z suffix to Python 3.9-compatible syntax."""
+    return f"{value[:-1]}+00:00"
 
 
 def _parse_utc_timestamp(value: str) -> datetime:
@@ -20,7 +38,7 @@ def _parse_utc_timestamp(value: str) -> datetime:
     if not isinstance(value, str) or not value.endswith("Z"):
         raise ValueError("timestamps must be explicit UTC ISO-8601 values ending in Z")
     try:
-        parsed = datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(_normalize_zulu_timestamp(value))
     except ValueError as error:
         raise ValueError("timestamps must be explicit UTC ISO-8601 values ending in Z") from error
     if parsed.tzinfo is None or parsed.utcoffset() != timezone.utc.utcoffset(parsed):
@@ -89,12 +107,16 @@ class RunManifest:
             raise ValueError("manifest must be a JSON object")
 
         try:
+            _require_exact_fields(payload, _MANIFEST_FIELDS, "manifest")
             source_payloads = payload["sources"]
             if not isinstance(source_payloads, list):
                 raise TypeError("sources must be a list")
             sources = tuple(_source_from_payload(item) for item in source_payloads)
+            schema_version = _required_int(payload, "schema_version")
+            if schema_version != _SCHEMA_VERSION:
+                raise ValueError("manifest schema_version is not supported")
             manifest = cls(
-                schema_version=_required_int(payload, "schema_version"),
+                schema_version=schema_version,
                 run_id=_required_str(payload, "run_id"),
                 issued_at=_parse_utc_timestamp(_required_str(payload, "issued_at")),
                 retrieved_at=_parse_utc_timestamp(_required_str(payload, "retrieved_at")),
@@ -104,8 +126,11 @@ class RunManifest:
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError("manifest does not satisfy the run receipt schema") from error
 
-        if [source.name for source in sources] != sorted(source.name for source in sources):
-            raise ValueError("manifest sources must be sorted by name")
+        source_names = [source.name for source in sources]
+        if source_names != sorted(source_names) or len(source_names) != len(
+            set(source_names)
+        ):
+            raise ValueError("manifest sources must be strictly sorted by name")
         expected_run_id = _run_id(manifest._payload_without_run_id())
         if manifest.run_id != expected_run_id:
             raise ValueError("manifest run_id does not match its canonical content")
@@ -155,6 +180,7 @@ def build_manifest(
 def _source_from_payload(value: object) -> SourceRecord:
     if not isinstance(value, dict):
         raise TypeError("source record must be an object")
+    _require_exact_fields(value, _SOURCE_FIELDS, "source record")
     observed_through = value.get("observed_through")
     if observed_through is not None:
         if not isinstance(observed_through, str):
@@ -183,6 +209,20 @@ def _required_int(payload: Mapping[str, object], name: str) -> int:
     if not isinstance(value, int) or isinstance(value, bool):
         raise TypeError(f"{name} must be an integer")
     return value
+
+
+def _require_exact_fields(
+    payload: Mapping[str, object], expected_fields: frozenset[str], label: str
+) -> None:
+    """Reject omitted or unknown fields before deriving a content address."""
+    payload_fields = set(payload)
+    missing_fields = sorted(expected_fields - payload_fields)
+    unknown_fields = sorted(payload_fields - expected_fields)
+    if missing_fields or unknown_fields:
+        raise ValueError(
+            f"{label} fields must match the schema exactly; "
+            f"missing={missing_fields}, unknown={unknown_fields}"
+        )
 
 
 def _run_id(payload_without_run_id: Mapping[str, object]) -> str:

@@ -1,5 +1,7 @@
 import dataclasses
 from datetime import date, datetime, timezone
+import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -10,7 +12,43 @@ from mlet.outlook.contracts import (
     SourceRecord,
     WeatherMember,
 )
-from mlet.outlook.manifest import RunManifest, build_manifest
+from mlet.outlook.manifest import (
+    RunManifest,
+    _normalize_zulu_timestamp,
+    build_manifest,
+)
+
+
+def _manifest_json_with_valid_run_id(payload: dict[str, object]) -> str:
+    """Serialize a deliberately modified payload with its matching digest."""
+    identity_payload = dict(payload)
+    identity_payload.pop("run_id")
+    payload["run_id"] = hashlib.sha256(
+        json.dumps(
+            identity_payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode("utf-8")
+    ).hexdigest()[:16]
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def _two_source_manifest(tmp_path: Path) -> RunManifest:
+    alpha = tmp_path / "alpha.jsonl"
+    zulu = tmp_path / "zulu.jsonl"
+    alpha.write_text('{"fixture": "alpha", "non_scientific": true}\n')
+    zulu.write_text('{"fixture": "zulu", "non_scientific": true}\n')
+    return build_manifest(
+        "2026-07-16T00:00:00Z",
+        {"zulu": zulu, "alpha": alpha},
+        "abc123",
+        "2026-07-16T00:05:00Z",
+    )
+
+
+def test_zulu_timestamp_is_normalized_before_datetime_parsing() -> None:
+    assert (
+        _normalize_zulu_timestamp("2026-07-16T00:00:00Z")
+        == "2026-07-16T00:00:00+00:00"
+    )
 
 
 def test_identical_inputs_produce_identical_run_id(tmp_path: Path) -> None:
@@ -71,6 +109,63 @@ def test_manifest_round_trip_preserves_explicit_utc_timestamps(tmp_path: Path) -
     assert restored == manifest
     assert '"issued_at":"2026-07-16T00:00:00Z"' in manifest.to_json()
     assert '"retrieved_at":"2026-07-16T00:05:00Z"' in manifest.to_json()
+
+
+def test_manifest_rejects_unknown_top_level_json_field(tmp_path: Path) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    payload = json.loads(manifest.to_json())
+    payload["unexpected"] = "not part of the manifest schema"
+
+    with pytest.raises(ValueError, match="schema"):
+        RunManifest.from_json(_manifest_json_with_valid_run_id(payload))
+
+
+def test_manifest_rejects_unsupported_schema_version(tmp_path: Path) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    payload = json.loads(manifest.to_json())
+    payload["schema_version"] = 99
+
+    with pytest.raises(ValueError, match="schema"):
+        RunManifest.from_json(_manifest_json_with_valid_run_id(payload))
+
+
+def test_manifest_rejects_missing_identity_source_field(tmp_path: Path) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    payload = json.loads(manifest.to_json())
+    source_payloads = payload["sources"]
+    assert isinstance(source_payloads, list)
+    source_payloads[0].pop("observed_through")
+
+    with pytest.raises(ValueError, match="schema"):
+        RunManifest.from_json(_manifest_json_with_valid_run_id(payload))
+
+
+def test_manifest_sorts_source_names_deterministically(tmp_path: Path) -> None:
+    manifest = _two_source_manifest(tmp_path)
+
+    assert [source.name for source in manifest.sources] == ["alpha", "zulu"]
+
+
+def test_manifest_rejects_unsorted_serialized_sources(tmp_path: Path) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    payload = json.loads(manifest.to_json())
+    source_payloads = payload["sources"]
+    assert isinstance(source_payloads, list)
+    payload["sources"] = list(reversed(source_payloads))
+
+    with pytest.raises(ValueError, match="strictly sorted"):
+        RunManifest.from_json(_manifest_json_with_valid_run_id(payload))
+
+
+def test_manifest_rejects_duplicate_serialized_sources(tmp_path: Path) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    payload = json.loads(manifest.to_json())
+    source_payloads = payload["sources"]
+    assert isinstance(source_payloads, list)
+    payload["sources"] = [source_payloads[0], source_payloads[0]]
+
+    with pytest.raises(ValueError, match="strictly sorted"):
+        RunManifest.from_json(_manifest_json_with_valid_run_id(payload))
 
 
 @pytest.mark.parametrize(
