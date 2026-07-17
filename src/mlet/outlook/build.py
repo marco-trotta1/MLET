@@ -22,6 +22,7 @@ from pathlib import Path
 import secrets
 import stat
 import subprocess
+import sys
 from types import MappingProxyType
 from typing import Iterable, Mapping, Sequence
 
@@ -60,6 +61,13 @@ _FIXTURE_KC_BY_CROP_CODE = {
 _FIXTURE_STATE_PROVENANCE_URI = "https://example.invalid/mlet-fixture-state"
 _FIXTURE_CDL_URI = "https://example.invalid/mlet-fixture-cdl"
 _FIXTURE_KC_SOURCE = "mlet-fixture-kc-table"
+_ACL_XATTR_NAMES = frozenset(
+    {
+        "com.apple.acl.text",
+        "system.posix_acl_access",
+        "system.posix_acl_default",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -205,8 +213,8 @@ def build_outlook(
         raise
     finally:
         if private_generation is not None:
-            os.close(private_generation.fd)
-        os.close(output_root.fd)
+            _close_descriptor(private_generation.fd)
+        _close_descriptor(output_root.fd)
     return BuildResult(
         run_id=manifest.run_id,
         output_root=output_root.path,
@@ -295,9 +303,9 @@ def read_published_run(output_root: Path, run_id: str) -> PublishedRun:
                 artifacts=MappingProxyType(artifacts),
             )
         finally:
-            os.close(generation.fd)
+            _close_descriptor(generation.fd)
     finally:
-        os.close(root.fd)
+        _close_descriptor(root.fd)
 
 
 def resolve_published_run(output_root: Path, run_id: str) -> PublishedRun:
@@ -399,6 +407,22 @@ def _no_follow_open_flags(base_flags: int) -> int:
     return base_flags | nofollow
 
 
+def _close_descriptor(descriptor: int) -> None:
+    """Close a best-effort cleanup FD without masking the primary operation.
+
+    File-descriptor cleanup is deliberately non-throwing.  All descriptors in
+    this module are private implementation resources, and an ``OSError`` from
+    one close must neither obscure the build/read failure that triggered
+    cleanup nor prevent the next pinned descriptor from being closed.  POSIX
+    callers must still treat a close that reports an error as having an
+    indeterminate descriptor lifetime, so retrying it here would be unsafe.
+    """
+    try:
+        os.close(descriptor)
+    except OSError:
+        pass
+
+
 def _open_output_root(path: Path, *, create: bool) -> _OpenedDirectory:
     """Open one trusted absolute root component-by-component without links.
 
@@ -425,11 +449,11 @@ def _open_output_root(path: Path, *, create: bool) -> _OpenedDirectory:
                 child = _open_child_directory(descriptor, component)
             except FileNotFoundError as error:
                 raise ValueError(f"out_dir does not exist: {root}") from error
-            os.close(descriptor)
+            _close_descriptor(descriptor)
             descriptor = child
         return _OpenedDirectory(path=root, fd=descriptor)
     except Exception:
-        os.close(descriptor)
+        _close_descriptor(descriptor)
         raise
 
 
@@ -445,18 +469,21 @@ def _open_child_directory(parent_fd: int, name: str) -> int:
         _require_trusted_directory_fd(descriptor)
         return descriptor
     except Exception:
-        os.close(descriptor)
+        _close_descriptor(descriptor)
         raise
 
 
 def _require_trusted_directory_fd(descriptor: int) -> os.stat_result:
     """Require one directory FD to satisfy the trusted-output-root policy.
 
-    Root-owned, non-group/other-writable system ancestors are accepted so a
-    normal absolute path such as ``/private/var/...`` can be rooted at ``/``.
-    The final output root and any user-owned ancestors must be owned by the
-    effective user. Group- or world-writable directories (including sticky
-    temporary directories) are intentionally unsupported publication roots.
+    The supported trusted-root policy is deliberately narrow: Darwin and
+    Linux only.  It checks the owner, mode bits, and observable ACL metadata
+    for every opened component.  A root-owned, non-group/other-writable
+    component is accepted as a system-owned component; this includes a final
+    root for read-only consumption, though a non-root builder will naturally
+    fail if it cannot create within it.  Any platform where that ACL check
+    cannot be performed fails closed rather than treating mode bits as proof
+    that another principal cannot write the directory.
     """
     metadata = os.fstat(descriptor)
     if not stat.S_ISDIR(metadata.st_mode):
@@ -471,7 +498,93 @@ def _require_trusted_directory_fd(descriptor: int) -> os.stat_result:
         raise ValueError(
             "out_dir must use a trusted output root without group/other write access"
         )
+    _require_no_acl_metadata(descriptor)
     return metadata
+
+
+def _require_no_acl_metadata(descriptor: int) -> None:
+    """Reject ACL-bearing trusted-root components on supported platforms.
+
+    POSIX mode bits alone do not describe every writer authorized by ACLs.
+    Darwin's Python runtime has no ``os.listxattr`` API, so it uses the system
+    ``xattr`` tool against the pinned descriptor.  Linux uses its descriptor
+    xattr API and rejects either POSIX access/default ACL marker.  The policy
+    intentionally supports no other platform: an unverifiable trust boundary
+    is not safe enough for immutable publication.
+    """
+    if sys.platform == "darwin":
+        names = _darwin_acl_xattr_names(descriptor)
+    elif sys.platform.startswith("linux"):
+        names = _linux_acl_xattr_names(descriptor)
+    else:
+        raise OSError(
+            "outlook publication trust boundary is unsupported: ACL inspection "
+            "is available only on Darwin and Linux"
+        )
+    present = sorted(_ACL_XATTR_NAMES.intersection(names))
+    if present:
+        raise ValueError(
+            "out_dir must use a trusted output root without ACL metadata: "
+            + ", ".join(present)
+        )
+
+
+def _darwin_acl_xattr_names(descriptor: int) -> tuple[str, ...]:
+    """Return Darwin ACL xattr names for a pinned FD, or fail closed."""
+    try:
+        completed = subprocess.run(
+            ["/usr/bin/xattr", "-l", f"/dev/fd/{descriptor}"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+            pass_fds=(descriptor,),
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise OSError(
+            "outlook publication trust boundary is unsupported: cannot inspect "
+            "Darwin ACL metadata"
+        ) from error
+    if completed.returncode != 0:
+        raise OSError(
+            "outlook publication trust boundary is unsupported: cannot inspect "
+            "Darwin ACL metadata"
+        )
+    try:
+        text = completed.stdout.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as error:
+        raise OSError(
+            "outlook publication trust boundary is unsupported: cannot decode "
+            "Darwin ACL metadata"
+        ) from error
+    return tuple(
+        line.split(":", 1)[0]
+        for line in text.splitlines()
+        if line.startswith("com.apple.acl.") and ":" in line
+    )
+
+
+def _linux_acl_xattr_names(descriptor: int) -> tuple[str, ...]:
+    """Return Linux POSIX ACL xattr names for a pinned FD, or fail closed."""
+    listxattr = getattr(os, "listxattr", None)
+    if not callable(listxattr):
+        raise OSError(
+            "outlook publication trust boundary is unsupported: cannot inspect "
+            "Linux ACL metadata"
+        )
+    try:
+        names = listxattr(descriptor)
+    except OSError as error:
+        raise OSError(
+            "outlook publication trust boundary is unsupported: cannot inspect "
+            "Linux ACL metadata"
+        ) from error
+    if not all(isinstance(name, str) for name in names):
+        raise OSError(
+            "outlook publication trust boundary is unsupported: cannot inspect "
+            "Linux ACL metadata"
+        )
+    return tuple(names)
 
 
 def _stat_child_directory(parent_fd: int, name: str) -> os.stat_result:
@@ -503,7 +616,7 @@ def _open_pinned_child_directory(
             st_ino=opened.st_ino,
         )
     except Exception:
-        os.close(descriptor)
+        _close_descriptor(descriptor)
         raise
 
 
@@ -552,7 +665,7 @@ def _create_private_generation(root_fd: int, run_id: str) -> _PinnedDirectory:
         except Exception:
             # A replacement may own this name.  Do not path-clean it.
             if descriptor is not None:
-                os.close(descriptor)
+                _close_descriptor(descriptor)
             raise
     raise ValueError("cannot allocate a unique private outlook generation")
 
@@ -605,7 +718,7 @@ def _read_regular_at(directory_fd: int, filename: str) -> bytes:
             chunks.append(chunk)
         return b"".join(chunks)
     finally:
-        os.close(descriptor)
+        _close_descriptor(descriptor)
 
 
 def _load_fixture_inputs(
@@ -1071,7 +1184,7 @@ def _write_new_bytes_at(directory_fd: int, filename: str, contents: bytes) -> No
             total += os.write(descriptor, contents[total:])
         os.fsync(descriptor)
     finally:
-        os.close(descriptor)
+        _close_descriptor(descriptor)
 
 
 def _fsync_directory_fd(descriptor: int) -> None:

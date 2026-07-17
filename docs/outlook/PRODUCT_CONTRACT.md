@@ -79,10 +79,11 @@ publishes `true`, `non_production_fixture`, `not_promoted`, and
 A builder writes and fsyncs a private artifact directory before publishing the
 stable `run_id` as an exclusively-created relative symlink. The exclusive
 creation fails rather than replaces any existing filesystem entry at that run
-id, including an empty directory created by another publisher. This procedure
-assumes the output root is on a single local POSIX filesystem with atomic
-exclusive `symlink(2)` creation and durable directory `fsync`; network or
-object-store paths are not supported publication targets.
+id, including an empty directory created by another publisher. Operators must
+place the output root on one local POSIX filesystem where exclusive
+`symlink(2)` creation is atomic and directory `fsync` is durable. Network and
+object-store paths are not supported publication targets. MLET cannot prove
+those filesystem properties at runtime; they are deployment preconditions.
 
 The stable symlink is a discovery handle, not a completed artifact path.
 `build_outlook` returns only its `run_id` and output-root reference; it never
@@ -100,35 +101,44 @@ recorded artifact whose SHA-256 does not match its receipt. A private
 generation replacement before either builder or reader descriptor pinning is
 rejected. A replacement after pinning cannot redirect the pinned descriptor.
 
-This publication protocol requires a local POSIX filesystem supporting
-descriptor-relative operations, `O_DIRECTORY`, `O_NOFOLLOW`, exclusive
-`symlink(2)` creation, and durable directory `fsync`; network/object-store
-paths and platforms without those semantics are unsupported. MLET detects
-these capabilities only when the outlook builder or reader is invoked and
-raises a clear unsupported-POSIX error if they are unavailable.
+This publication protocol also requires descriptor-relative operations,
+`O_DIRECTORY`, and `O_NOFOLLOW`. MLET checks those Python/OS interfaces only
+when the builder or reader is invoked and fails clearly if they are absent. It
+does not claim that successful interface checks establish local-storage,
+exclusive-symlink, or durable-`fsync` semantics; operators must supply those
+preconditions.
 
 ### Trusted output-root threat model
 
 The output root is a security boundary, not a general shared scratch path.
 Before either a build or read, MLET traverses every existing absolute component
-through non-following directory descriptors. Each must be a directory owned by
-the effective user, or a root-owned system ancestor, and must have neither
-group nor other write permission. Root ownership is accepted only for such
-non-writable system ancestors; the actual output directory is normally
-effective-user owned. Group- or world-writable paths—including sticky temporary
-directories—and symlinked components are rejected. Operators must provision a
-trusted per-publisher root instead of attempting publication directly in a
-hostile writable spool.
+through non-following directory descriptors. The supported ACL-inspection
+platforms are Darwin and Linux. Every component must be a directory owned by
+the effective user or by root, have neither group nor other write permission,
+and contain none of the observable ACL markers: `com.apple.acl.text` on
+Darwin, or `system.posix_acl_access` / `system.posix_acl_default` on Linux.
+Missing or failed ACL inspection—and every other platform—fails closed. This
+strict policy rejects any ACL-bearing component rather than attempting to infer
+whether an individual ACL entry grants write access.
 
-That invariant is what makes later writer/link attacks outside the pinned
-descriptors out of scope: no independent hostile principal can mutate a
-trusted directory entry. The descriptor checks still fail closed for detectable
-corruption such as symlink or inode substitution. Portable POSIX cannot
-distinguish a perfectly identical directory substituted before its first open
-inside an attacker-writable root; MLET makes no security claim for that
-unsupported configuration. Readers independently verify the manifest run ID
-and every recorded SHA-256 from the exact pinned bytes they return, so the
-stable relative link remains discovery-only under this trusted-root model.
+Root-owned non-writable components are accepted by the implementation even
+when one is the final output root. That is an ownership-trust decision, not a
+promise a non-root publisher can create there; such a builder will still fail
+normally for lack of filesystem permission. In normal operation the final
+publisher root is effective-user owned. Group- or world-writable paths,
+including sticky temporary directories, and symlinked components are rejected.
+Operators must provision a trusted per-publisher root instead of attempting
+publication directly in a hostile writable spool.
+
+The ownership, mode, and ACL checks define a narrow supported trust boundary;
+mode bits alone are not represented as proof that no hostile writer exists.
+Within that boundary, descriptor checks fail closed for detectable corruption
+such as symlink or inode substitution. Portable POSIX cannot distinguish a
+perfectly identical directory substituted before its first open inside an
+attacker-writable root; MLET makes no security claim for that unsupported
+configuration. Readers independently verify the manifest run ID and every
+recorded SHA-256 from the exact pinned bytes they return, so the stable relative
+link remains discovery-only under this trusted-root model.
 
 If the final directory `fsync` fails after an exclusive public claim,
 durability is uncertain. The builder deliberately does not attempt a

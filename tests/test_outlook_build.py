@@ -282,6 +282,101 @@ def test_reader_rejects_a_group_writable_output_root(tmp_path: Path) -> None:
         read_published_run(tmp_path, result.run_id)
 
 
+def test_trusted_root_rejects_observable_darwin_acl_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Darwin ACL marker is rejected even when mode bits look private."""
+    from mlet.outlook import build as outlook_build
+
+    descriptor = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    monkeypatch.setattr(outlook_build.sys, "platform", "darwin")
+    monkeypatch.setattr(
+        outlook_build,
+        "_darwin_acl_xattr_names",
+        lambda fd: ("com.apple.acl.text",),
+    )
+    try:
+        with pytest.raises(ValueError, match="without ACL metadata: com.apple.acl.text"):
+            outlook_build._require_trusted_directory_fd(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def test_trusted_root_fails_closed_when_darwin_acl_query_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed Darwin ACL query cannot silently reduce the trust check to modes."""
+    from mlet.outlook import build as outlook_build
+
+    descriptor = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    monkeypatch.setattr(outlook_build.sys, "platform", "darwin")
+
+    def fail_acl_query(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        raise OSError("injected xattr query failure")
+
+    monkeypatch.setattr(outlook_build.subprocess, "run", fail_acl_query)
+    try:
+        with pytest.raises(OSError, match="cannot inspect Darwin ACL metadata"):
+            outlook_build._require_trusted_directory_fd(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def test_trusted_root_rejects_observable_linux_posix_acl_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Linux POSIX ACL marker is rejected even when mode bits look private."""
+    from mlet.outlook import build as outlook_build
+
+    descriptor = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    monkeypatch.setattr(outlook_build.sys, "platform", "linux")
+    monkeypatch.setattr(
+        outlook_build.os,
+        "listxattr",
+        lambda fd: ("system.posix_acl_access",),
+        raising=False,
+    )
+    try:
+        with pytest.raises(
+            ValueError, match="without ACL metadata: system.posix_acl_access"
+        ):
+            outlook_build._require_trusted_directory_fd(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def test_trusted_root_fails_closed_when_acl_inspection_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A supported ACL platform never silently falls back to mode bits alone."""
+    from mlet.outlook import build as outlook_build
+
+    descriptor = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    monkeypatch.setattr(outlook_build.sys, "platform", "linux")
+    monkeypatch.delattr(outlook_build.os, "listxattr", raising=False)
+    try:
+        with pytest.raises(OSError, match="trust boundary is unsupported: cannot inspect Linux ACL"):
+            outlook_build._require_trusted_directory_fd(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def test_trusted_root_rejects_platform_without_acl_policy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Unknown POSIX platforms are not treated as a verified trust boundary."""
+    from mlet.outlook import build as outlook_build
+
+    descriptor = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    monkeypatch.setattr(outlook_build.sys, "platform", "freebsd13")
+    try:
+        with pytest.raises(OSError, match="trust boundary is unsupported: ACL inspection"):
+            outlook_build._require_trusted_directory_fd(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def test_build_outlook_closes_output_root_fd_when_private_creation_fails(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -358,6 +453,61 @@ def test_build_outlook_closes_root_and_generation_fds_when_publish_collides(
 
     assert len(opened_fds) == 2
     for descriptor in opened_fds:
+        with pytest.raises(OSError):
+            os.fstat(descriptor)
+
+
+def test_build_outlook_preserves_primary_error_and_closes_every_directory_fd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Close errors cannot hide a publish error or strand ancestor/root/generation FDs."""
+    from mlet.outlook import build as outlook_build
+
+    nested_root = tmp_path / "trusted" / "outlooks"
+    original_open = os.open
+    original_close = os.close
+    opened_directory_fds: list[int] = []
+
+    def capture_directory_open(
+        path: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        flags: int,
+        mode: int = 0o777,
+        *,
+        dir_fd: int | None = None,
+    ) -> int:
+        if dir_fd is None:
+            descriptor = original_open(path, flags, mode)
+        else:
+            descriptor = original_open(path, flags, mode, dir_fd=dir_fd)
+        if flags & os.O_DIRECTORY:
+            opened_directory_fds.append(descriptor)
+        return descriptor
+
+    def close_then_report_error(descriptor: int) -> None:
+        original_close(descriptor)
+        if descriptor in opened_directory_fds:
+            raise OSError("injected close reporting error")
+
+    def fail_publish(
+        root_fd: int, private_generation: object, run_id: str
+    ) -> None:
+        del root_fd, private_generation, run_id
+        raise RuntimeError("primary publish failure")
+
+    monkeypatch.setattr("mlet.outlook.build.os.open", capture_directory_open)
+    monkeypatch.setattr("mlet.outlook.build.os.close", close_then_report_error)
+    monkeypatch.setattr("mlet.outlook.build._publish_private_artifact", fail_publish)
+
+    with pytest.raises(RuntimeError, match="primary publish failure"):
+        build_outlook(
+            weather_path=WEATHER_FIXTURE,
+            state_path=STATE_FIXTURE,
+            crop_path=CROP_FIXTURE,
+            out_dir=nested_root,
+        )
+
+    assert opened_directory_fds
+    for descriptor in opened_directory_fds:
         with pytest.raises(OSError):
             os.fstat(descriptor)
 
