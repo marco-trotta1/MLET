@@ -201,8 +201,8 @@ class HindcastReport:
     This public value deliberately is *not* a publication authority.  It is
     useful for exploratory summaries and tests, but a caller can construct it
     (or rows feeding it), so :func:`write_hindcast_validation` refuses it.
-    Only the private, hash-bound receipt made by
-    :func:`evaluate_hindcast_evidence` may assert a promotion decision.
+    A hash-bound receipt made by :func:`evaluate_hindcast_evidence` can support
+    external review, but this evaluator never asserts a promotion decision.
     """
 
     metrics: tuple[HindcastMetric, ...]
@@ -226,49 +226,61 @@ class HindcastReport:
 
     def validation_record(self) -> dict[str, object]:
         """Return a non-authoritative diagnostic record, never a release receipt."""
-        return {
-            "schema_version": 1,
-            "kind": "idaho_outlook_hindcast_validation",
-            "fixture_non_scientific": self.fixture_non_scientific,
-            "fixture_reason": self.fixture_reason,
-            "case_count": self.case_count,
-            "promotion": self.promotion,
-            "promotion_blockers": list(self.promotion_blockers),
-            "metrics": [
-                {
-                    "layer": metric.layer,
-                    "group": metric.group,
-                    "key": metric.key,
-                    "sample_count": metric.sample_count,
-                    "mae_mm": metric.mae_mm,
-                    "rmse_mm": metric.rmse_mm,
-                    "bias_mm": metric.bias_mm,
-                    "p10_p90_coverage": metric.p10_p90_coverage,
-                    "mean_interval_width_mm": metric.mean_interval_width_mm,
-                }
-                for metric in self.metrics
-            ],
-            "input_audit": [
-                {
-                    "case_index": audit.case_index,
-                    "issue_time": _format_utc(audit.issue_time),
-                    "selected_records": [_receipt_record(record) for record in audit.selected_records],
-                    "excluded_after_issue": [
-                        _receipt_record(record) for record in audit.excluded_after_issue
-                    ],
-                }
-                for audit in self.input_audit
-            ],
-            "source_latency": [
-                {
-                    "source_name": item.source_name,
-                    "record_count": item.record_count,
-                    "late_record_count": item.late_record_count,
-                    "max_latency_days": item.max_latency_days,
-                }
-                for item in self.source_latency
-            ],
-        }
+        return _validation_record_payload(self)
+
+
+def _validation_record_payload(report: HindcastReport) -> dict[str, object]:
+    """Build a diagnostic payload with the evaluator's immutable false claim.
+
+    Local artifact writers call this function directly rather than the public
+    ``HindcastReport.validation_record`` method, so a caller replacing that
+    convenience method cannot alter a receipt.  The literal is intentionally
+    repeated at every serialization boundary: this process is never a release
+    authority.
+    """
+    return {
+        "schema_version": 1,
+        "kind": "idaho_outlook_hindcast_validation",
+        "fixture_non_scientific": report.fixture_non_scientific,
+        "fixture_reason": report.fixture_reason,
+        "case_count": report.case_count,
+        "promotion": False,
+        "promotion_blockers": list(report.promotion_blockers),
+        "metrics": [
+            {
+                "layer": metric.layer,
+                "group": metric.group,
+                "key": metric.key,
+                "sample_count": metric.sample_count,
+                "mae_mm": metric.mae_mm,
+                "rmse_mm": metric.rmse_mm,
+                "bias_mm": metric.bias_mm,
+                "p10_p90_coverage": metric.p10_p90_coverage,
+                "mean_interval_width_mm": metric.mean_interval_width_mm,
+            }
+            for metric in report.metrics
+        ],
+        "input_audit": [
+            {
+                "case_index": audit.case_index,
+                "issue_time": _format_utc(audit.issue_time),
+                "selected_records": [_receipt_record(record) for record in audit.selected_records],
+                "excluded_after_issue": [
+                    _receipt_record(record) for record in audit.excluded_after_issue
+                ],
+            }
+            for audit in report.input_audit
+        ],
+        "source_latency": [
+            {
+                "source_name": item.source_name,
+                "record_count": item.record_count,
+                "late_record_count": item.late_record_count,
+                "max_latency_days": item.max_latency_days,
+            }
+            for item in report.source_latency
+        ],
+    }
 
 
 @dataclass(frozen=True)
@@ -551,7 +563,7 @@ def render_hindcast_markdown(report: HindcastReport) -> str:
     lines = [
         "# Idaho Outlook Hindcast Validation",
         "",
-        f"Promotion: **{'true' if report.promotion else 'false'}**",
+        "Promotion: **false**",
         f"Historical issue cases: {report.case_count}",
         "",
     ]
@@ -1099,7 +1111,11 @@ def _parse_real_provenance(value: object, *, required: bool) -> None:
 
 
 def _receipt_payload(receipt: EvaluationReceipt) -> dict[str, object]:
-    payload = receipt.report.validation_record()
+    # Do not delegate to the public report method.  It is a diagnostic
+    # convenience API that an in-process caller could replace; local receipts
+    # must preserve their literal false promotion claim regardless.
+    payload = _validation_record_payload(receipt.report)
+    payload["promotion"] = False
     payload.update({
         "schema_version": 3,
         "kind": "idaho_outlook_hindcast_evaluation_receipt",
@@ -1135,7 +1151,7 @@ def _with_blockers(report: HindcastReport, blockers: Iterable[str]) -> HindcastR
 
 
 def _report_sha256(report: HindcastReport) -> str:
-    return hashlib.sha256(_canonical_json(report.validation_record()).encode("utf-8")).hexdigest()
+    return hashlib.sha256(_canonical_json(_validation_record_payload(report)).encode("utf-8")).hexdigest()
 
 
 def write_release_authority_request(receipt: object, destination: Path) -> Path:

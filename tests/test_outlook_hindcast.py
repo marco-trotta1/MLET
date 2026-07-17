@@ -522,23 +522,35 @@ def test_hindcast_cli_emits_a_qualified_candidate_but_exits_one(
     assert validation["promotion"] is False
 
 
-def test_runtime_authority_monkeypatches_cannot_cause_local_promotion(
+def test_runtime_report_monkeypatches_cannot_cause_local_promotion(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     evidence_path = _write_qualifying_verified_evidence(tmp_path)
+    monkeypatch.setattr(
+        hindcast_module.HindcastReport,
+        "promotion",
+        property(lambda _report: True),
+    )
+    monkeypatch.setattr(
+        hindcast_module.HindcastReport,
+        "validation_record",
+        lambda _report: {"promotion": True, "forged": True},
+    )
     monkeypatch.setattr(hindcast_module, "_PINNED_PROMOTION_AUTHORITY", object(), raising=False)
     monkeypatch.setenv("MLET_HINDCAST_PROMOTION_PUBLIC_KEY", "attacker-selected")
     monkeypatch.setenv("MLET_HINDCAST_PROMOTION_PRIVATE_KEY", "attacker-selected")
 
     report, receipt = evaluate_hindcast_evidence(evidence_path)
-    assert report.promotion is False
+    assert report.promotion is True
     object.__setattr__(receipt.report, "promotion_blockers", ())
-    assert receipt.report.promotion is False
     validation_path = write_hindcast_validation(receipt, tmp_path / "validation.json")
     request_path = write_release_authority_request(receipt, tmp_path / "authority_request.json")
+    markdown_path = hindcast_module.write_hindcast_markdown(report, tmp_path / "hindcast.md")
 
     assert json.loads(validation_path.read_text(encoding="utf-8"))["promotion"] is False
     assert json.loads(request_path.read_text(encoding="utf-8"))["promotion"] is False
+    assert "forged" not in json.loads(validation_path.read_text(encoding="utf-8"))
+    assert "Promotion: **false**" in markdown_path.read_text(encoding="utf-8")
 
 
 def test_held_out_training_leakage_blocks_promotion(tmp_path: Path) -> None:
