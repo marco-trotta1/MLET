@@ -122,3 +122,16 @@ def test_member_groups_require_at_least_three_members(
 
     with pytest.raises(ValueError, match="at least three"):
         summarize_member_groups([weather_member, second_member])
+
+
+def test_member_groups_reject_duplicate_member_ids(
+    weather_member: WeatherMember,
+) -> None:
+    members = [
+        weather_member,
+        replace(weather_member, tmax_c=34.0),
+        replace(weather_member, member_id="fixture-member-02", tmax_c=35.0),
+    ]
+
+    with pytest.raises(ValueError, match="duplicate member_id"):
+        summarize_member_groups(members)

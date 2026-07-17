@@ -54,15 +54,24 @@ def summarize_member_groups(
 ) -> dict[GridDay, OutlookQuantiles]:
     """Summarize ETo by native-weather-grid identifier and valid UTC date."""
     grouped_values: dict[GridDay, list[float]] = {}
+    grouped_member_ids: dict[GridDay, list[str]] = {}
     for member in members:
         group_key = (member.grid_id, member.valid_date)
         grouped_values.setdefault(group_key, []).append(eto_for_member(member))
+        grouped_member_ids.setdefault(group_key, []).append(member.member_id)
 
     summaries: dict[GridDay, OutlookQuantiles] = {}
     for group_key in sorted(grouped_values):
         values = grouped_values[group_key]
+        member_ids = grouped_member_ids[group_key]
+        grid_id, valid_date = group_key
+        if len(set(member_ids)) != len(member_ids):
+            raise ValueError(
+                "ETo ensemble for "
+                f"grid {grid_id!r} on {valid_date.isoformat()} must not contain "
+                "duplicate member_id values"
+            )
         if len(values) < 3:
-            grid_id, valid_date = group_key
             raise ValueError(
                 "ETo ensemble for "
                 f"grid {grid_id!r} on {valid_date.isoformat()} must contain at least "
