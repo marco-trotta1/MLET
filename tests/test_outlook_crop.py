@@ -166,6 +166,23 @@ def test_direct_potential_etc_record_serialization_revalidates_forged_terms() ->
         record.to_record()
 
 
+def test_public_potential_etc_validator_cannot_use_a_stale_assignment_snapshot() -> None:
+    """A public validation call must bind to the record's current assignment."""
+    record = potential_et_c(5.0, _assignment(_fraction(kc=1.0)))
+    assignment = record.crop_coefficient_assignment
+    stale_snapshot = assignment._validated_snapshot()
+    object.__setattr__(
+        assignment,
+        "fractions",
+        (replace(assignment.fractions[0], kc=1.1),),
+    )
+
+    with pytest.raises(ValueError, match="does not match its dated crop coefficient"):
+        record.assert_valid()
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        record.assert_valid(assignment_snapshot=stale_snapshot)  # type: ignore[call-arg]
+
+
 @pytest.mark.parametrize(
     ("field", "delta", "message"),
     (

@@ -232,12 +232,23 @@ class PotentialEtcRecord:
         for field_name, value in values.items():
             object.__setattr__(self, field_name, value)
 
-    def assert_valid(
-        self,
-        *,
-        assignment_snapshot: _ValidatedCropCoefficientAssignment | None = None,
+    def assert_valid(self) -> None:
+        """Recheck a record against its current crop-coefficient assignment."""
+        _validate_potential_etc_record(
+            grid_id=self.grid_id,
+            eto_mm=self.eto_mm,
+            potential_et_c_mm=self.potential_et_c_mm,
+            coverage_fraction=self.coverage_fraction,
+            known_coverage_fraction=self.known_coverage_fraction,
+            source_year=self.source_year,
+            layer_metadata=self.layer_metadata,
+            crop_coefficient_assignment=self.crop_coefficient_assignment,
+        )
+
+    def _assert_valid_with_assignment_snapshot(
+        self, assignment_snapshot: _ValidatedCropCoefficientAssignment
     ) -> None:
-        """Recheck direct or mutated records before serializing an ETc artifact."""
+        """Validate during serialization using its single materialized input view."""
         _validate_potential_etc_record(
             grid_id=self.grid_id,
             eto_mm=self.eto_mm,
@@ -256,7 +267,7 @@ class PotentialEtcRecord:
         if not isinstance(assignment, CropCoefficientAssignment):
             raise ValueError("potential ET record requires a CropCoefficientAssignment")
         assignment_snapshot = assignment._validated_snapshot()
-        self.assert_valid(assignment_snapshot=assignment_snapshot)
+        self._assert_valid_with_assignment_snapshot(assignment_snapshot)
         layer = self.layer_metadata
         return {
             "grid_id": self.grid_id,
