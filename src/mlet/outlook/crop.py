@@ -7,13 +7,16 @@ from dataclasses import dataclass, replace
 from datetime import date, datetime, timezone
 import math
 
-from mlet.sources.cdl import CdlLayerMetadata, CropFraction
+from mlet.sources.cdl import (
+    CdlLayerMetadata,
+    CropFraction,
+    validate_cdl_layer_metadata,
+)
 
 
 _MIN_KC = 0.0
 _MAX_KC = 1.4
 _COVERAGE_TOLERANCE = 1e-9
-_CALCULATION_TOLERANCE = 1e-9
 
 
 @dataclass(frozen=True)
@@ -174,7 +177,13 @@ def apply_crop_coefficients(
 
 @dataclass(frozen=True)
 class PotentialEtcRecord:
-    """One coverage-complete, manifest-ready ample-water ETc calculation."""
+    """One coverage-complete, manifest-ready ample-water ETc calculation.
+
+    Stored ETc and coverage terms must be the exact IEEE-754 values derived
+    from the assignment.  ``_COVERAGE_TOLERANCE`` applies only while deciding
+    whether input fractions sum to a declared cell coverage; it never permits
+    an alternate output scalar to be serialized.
+    """
 
     grid_id: str
     eto_mm: float
@@ -303,9 +312,9 @@ def _validate_potential_etc_record(
     actual_known_coverage = _require_fraction(
         known_coverage_fraction, "known_coverage_fraction"
     )
-    if not _is_close(actual_coverage, expected_coverage):
+    if actual_coverage != expected_coverage:
         raise ValueError("coverage_fraction must match its crop coefficient assignment")
-    if not _is_close(actual_known_coverage, expected_known_coverage):
+    if actual_known_coverage != expected_known_coverage:
         raise ValueError("known_coverage_fraction must match its crop coefficient assignment")
     if not isinstance(source_year, int) or isinstance(source_year, bool) or source_year < 1:
         raise ValueError("source_year must be a recorded positive integer")
@@ -313,10 +322,11 @@ def _validate_potential_etc_record(
         raise ValueError("source_year must match its crop coefficient assignment")
     if not isinstance(layer_metadata, CdlLayerMetadata):
         raise ValueError("layer_metadata must be a CdlLayerMetadata record")
+    validate_cdl_layer_metadata(layer_metadata)
     if layer_metadata != expected_layer_metadata:
         raise ValueError("layer_metadata must match its crop coefficient assignment")
     expected_et_c = eto * effective_kc
-    if not math.isfinite(expected_et_c) or not _is_close(actual_et_c, expected_et_c):
+    if not math.isfinite(expected_et_c) or actual_et_c != expected_et_c:
         raise ValueError("potential_et_c_mm must equal eto_mm times the effective Kc")
     return {
         "grid_id": actual_grid_id,
@@ -356,6 +366,8 @@ def _derive_potential_etc_terms(
     layer_metadata = {fraction.layer_metadata for fraction in cell_fractions}
     if len(layer_metadata) != 1:
         raise ValueError("potential ET fractions must share identical CDL layer metadata")
+    selected_layer_metadata = next(iter(layer_metadata))
+    validate_cdl_layer_metadata(selected_layer_metadata)
 
     fraction_sum = sum(fraction.fraction for fraction in cell_fractions)
     if not _is_close(fraction_sum, coverage_fraction):
@@ -375,7 +387,7 @@ def _derive_potential_etc_terms(
         coverage_fraction,
         known_coverage_fraction,
         next(iter(source_years)),
-        next(iter(layer_metadata)),
+        selected_layer_metadata,
         weighted_kc / known_coverage_fraction,
     )
 
@@ -451,6 +463,7 @@ def _validate_crop_fraction(fraction: CropFraction) -> None:
         raise ValueError("CropFraction source_year must be positive")
     if not isinstance(fraction.layer_metadata, CdlLayerMetadata):
         raise ValueError("CropFraction requires immutable CdlLayerMetadata provenance")
+    validate_cdl_layer_metadata(fraction.layer_metadata)
     if fraction.layer_metadata.source_year != fraction.source_year:
         raise ValueError("CropFraction source_year must match its CDL layer provenance")
 
@@ -532,4 +545,4 @@ def _require_finite_nonnegative(value: object, label: str) -> float:
 
 
 def _is_close(left: float, right: float) -> bool:
-    return math.isclose(left, right, rel_tol=0.0, abs_tol=_CALCULATION_TOLERANCE)
+    return math.isclose(left, right, rel_tol=0.0, abs_tol=_COVERAGE_TOLERANCE)

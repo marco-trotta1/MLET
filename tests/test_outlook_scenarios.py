@@ -201,6 +201,20 @@ def test_scenario_projection_serialization_revalidates_a_forged_record() -> None
         projection.to_record()
 
 
+@pytest.mark.parametrize(
+    "source_uri", ("http://forged.example/state", "https://")
+)
+def test_scenario_projection_serialization_revalidates_mutated_state_provenance(
+    source_uri: str,
+) -> None:
+    projection = _direct_no_irrigation_projection()
+    assert projection.state_provenance is not None
+    object.__setattr__(projection.state_provenance, "source_uri", source_uri)
+
+    with pytest.raises(ValueError, match="HTTPS"):
+        projection.to_record()
+
+
 def test_missing_openet_state_remains_missing_instead_of_becoming_an_analysis() -> None:
     analysis = eta_analysis_from_openet(None, issued_at=_ISSUED_AT)
 

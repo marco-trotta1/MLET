@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 import math
+from urllib.parse import urlparse
 
 from mlet.sources.openet_state import EtaAnalysis
 
@@ -20,17 +21,11 @@ class StateProvenance:
     source_available_at: datetime
 
     def __post_init__(self) -> None:
-        _require_text(self.source_name, "state provenance source_name")
-        _require_text(self.source_version, "state provenance source_version")
-        if not isinstance(self.source_uri, str) or not self.source_uri.startswith("https://"):
-            raise ValueError("state provenance source_uri must be an HTTPS URL")
-        _require_date(self.observed_date, "state provenance observed_date")
+        _, _, _, _, source_available_at = validate_state_provenance(self)
         object.__setattr__(
             self,
             "source_available_at",
-            _require_utc_timestamp(
-                self.source_available_at, "state provenance source_available_at"
-            ),
+            source_available_at,
         )
 
     def to_record(self, *, issued_at: datetime) -> dict[str, str]:
@@ -358,12 +353,51 @@ def _require_utc_timestamp(value: object, label: str) -> datetime:
 def _validate_provenance_at_issue(
     provenance: StateProvenance, issued_at: datetime
 ) -> datetime:
+    _, _, _, observed_date, source_available_at = validate_state_provenance(provenance)
     issue_time = _require_utc_timestamp(issued_at, "issued_at")
-    if provenance.source_available_at > issue_time:
+    if source_available_at > issue_time:
         raise ValueError("state provenance source_available_at is later than issued_at")
-    if provenance.observed_date > issue_time.date():
+    if observed_date > issue_time.date():
         raise ValueError("state provenance observed_date is later than issued_at")
     return issue_time
+
+
+def validate_state_provenance(
+    provenance: object,
+) -> tuple[str, str, str, date, datetime]:
+    """Validate a state receipt before it is used or serialized.
+
+    Frozen dataclasses can still be deliberately mutated through low-level
+    Python APIs, so eligibility checks call this complete structural validator
+    rather than trusting construction-time checks alone.
+    """
+    if not isinstance(provenance, StateProvenance):
+        raise ValueError("no-irrigation state requires explicit StateProvenance")
+    source_name = _require_text(
+        provenance.source_name, "state provenance source_name"
+    )
+    source_version = _require_text(
+        provenance.source_version, "state provenance source_version"
+    )
+    source_uri = _require_https_url(
+        provenance.source_uri, "state provenance source_uri"
+    )
+    observed_date = _require_date(
+        provenance.observed_date, "state provenance observed_date"
+    )
+    source_available_at = _require_utc_timestamp(
+        provenance.source_available_at, "state provenance source_available_at"
+    )
+    return source_name, source_version, source_uri, observed_date, source_available_at
+
+
+def _require_https_url(value: object, label: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be an HTTPS URL")
+    parsed = urlparse(value)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValueError(f"{label} must be an HTTPS URL")
+    return value
 
 
 def _format_utc_timestamp(value: datetime) -> str:

@@ -10,6 +10,8 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import re
+from urllib.parse import urlparse
 
 
 _COVERAGE_THRESHOLD = 0.8
@@ -166,6 +168,9 @@ _CDL_2024_NON_CROP_CODES = frozenset(
     }
 )
 _CDL_2024_ACCEPTED_CODES = _CDL_2024_CROP_CODES | _CDL_2024_NON_CROP_CODES
+_UTC_TIMESTAMP_PATTERN = re.compile(
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{6})?Z"
+)
 
 
 @dataclass(frozen=True)
@@ -187,6 +192,10 @@ class CdlLayerMetadata:
     upstream_uri: str
     sha256: str
 
+    def __post_init__(self) -> None:
+        """Reject malformed provenance before a public layer record exists."""
+        validate_cdl_layer_metadata(self)
+
 
 @dataclass(frozen=True)
 class CropFraction:
@@ -201,6 +210,13 @@ class CropFraction:
     confidence_pct: float | None
     layer_metadata: CdlLayerMetadata
     kc: float | None = None
+
+    def __post_init__(self) -> None:
+        """Bind each public fraction to structurally valid, matching CDL evidence."""
+        validate_cdl_layer_metadata(self.layer_metadata)
+        _validate_requested_source_year(self.source_year)
+        if self.source_year != self.layer_metadata.source_year:
+            raise ValueError("CropFraction source_year must match its CDL layer provenance")
 
 
 def aggregate_cdl(
@@ -319,20 +335,31 @@ def _validate_requested_source_year(source_year: int) -> None:
 def _validate_layer_metadata(
     layer: CdlLayerMetadata, source_year: int, issue_time: datetime
 ) -> None:
-    if not isinstance(layer, CdlLayerMetadata):
-        raise ValueError("layer_metadata must be an immutable CdlLayerMetadata record")
+    release_time = validate_cdl_layer_metadata(layer)
     if layer.source_year != source_year:
         raise ValueError("CDL layer metadata source_year must match the requested source_year")
+    if release_time > issue_time:
+        raise ValueError("CDL layer metadata release_at is later than issued_at")
+
+
+def validate_cdl_layer_metadata(layer: object) -> datetime:
+    """Validate every immutable CDL provenance field and return its release time.
+
+    This is deliberately reusable outside ``aggregate_cdl``: public crop and
+    output records must reject forged or post-construction-mutated metadata
+    before it can enter an outlook artifact.
+    """
+    if not isinstance(layer, CdlLayerMetadata):
+        raise ValueError("layer_metadata must be an immutable CdlLayerMetadata record")
+    _validate_requested_source_year(layer.source_year)
     if layer.legend_version != CDL_2024_LEGEND_VERSION:
         raise ValueError("CDL layer metadata legend_version is not a pinned supported legend")
     if not isinstance(layer.layer_version, str) or not layer.layer_version.strip():
         raise ValueError("CDL layer metadata layer_version must be non-empty text")
     release_time = _parse_utc_timestamp(layer.release_at, "CDL layer metadata release_at")
-    if release_time > issue_time:
-        raise ValueError("CDL layer metadata release_at is later than issued_at")
-    if not isinstance(layer.upstream_uri, str) or not layer.upstream_uri.startswith("https://"):
-        raise ValueError("CDL layer metadata upstream_uri must be an HTTPS URL")
+    _require_https_url(layer.upstream_uri, "CDL layer metadata upstream_uri")
     _require_sha256(layer.sha256, "CDL layer metadata checksum")
+    return release_time
 
 
 def _validate_grid_cells(grid_cells: Sequence[GridCell]) -> dict[str, GridCell]:
@@ -455,7 +482,7 @@ def _finite_float(value: object, label: str) -> float:
 
 
 def _parse_utc_timestamp(value: object, label: str) -> datetime:
-    if not isinstance(value, str) or not value.endswith("Z"):
+    if not isinstance(value, str) or _UTC_TIMESTAMP_PATTERN.fullmatch(value) is None:
         raise ValueError(f"{label} must be an explicit UTC ISO-8601 timestamp ending in Z")
     try:
         parsed = datetime.fromisoformat(f"{value[:-1]}+00:00")
@@ -473,4 +500,13 @@ def _require_sha256(value: object, label: str) -> str:
         raise ValueError(f"{label} must be a lowercase SHA-256 hex digest")
     if any(character not in "0123456789abcdef" for character in value):
         raise ValueError(f"{label} must be a lowercase SHA-256 hex digest")
+    return value
+
+
+def _require_https_url(value: object, label: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be an HTTPS URL")
+    parsed = urlparse(value)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValueError(f"{label} must be an HTTPS URL")
     return value

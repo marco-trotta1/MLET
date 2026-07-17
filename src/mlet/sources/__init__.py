@@ -1,6 +1,12 @@
 """Adapters for reproducible benchmark and Idaho-outlook public sources."""
 
-from mlet.sources.cdl import CdlLayerMetadata, CropFraction, GridCell, aggregate_cdl
+from mlet.sources.cdl import (
+    CdlLayerMetadata,
+    CropFraction,
+    GridCell,
+    aggregate_cdl,
+    validate_cdl_layer_metadata,
+)
 from mlet.sources.gefs import (
     GefsDailyArtifactSet,
     fetch_gefs,
@@ -22,4 +28,5 @@ __all__ = [
     "normalize_gefs_rows",
     "normalize_openet_state",
     "resolve_gefs_daily_artifact",
+    "validate_cdl_layer_metadata",
 ]

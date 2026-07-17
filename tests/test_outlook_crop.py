@@ -166,6 +166,57 @@ def test_direct_potential_etc_record_serialization_revalidates_forged_terms() ->
         record.to_record()
 
 
+@pytest.mark.parametrize(
+    ("field", "delta", "message"),
+    (
+        ("potential_et_c_mm", 1e-12, "potential_et_c_mm"),
+        ("coverage_fraction", 1e-12, "coverage_fraction"),
+        ("known_coverage_fraction", 1e-12, "known_coverage_fraction"),
+    ),
+)
+def test_direct_potential_etc_record_rejects_even_small_noncanonical_terms(
+    field: str, delta: float, message: str
+) -> None:
+    valid_record = potential_et_c(
+        5.0,
+        _assignment(
+            _fraction(
+                crop_code="1",
+                crop_class="corn",
+                fraction=0.6,
+                coverage_fraction=0.9,
+                kc=1.0,
+            ),
+            _fraction(
+                crop_code=None,
+                crop_class="non_crop",
+                fraction=0.3,
+                coverage_fraction=0.9,
+                kc=0.0,
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match=message):
+        replace(valid_record, **{field: getattr(valid_record, field) + delta})
+
+
+def test_crop_assignment_revalidates_mutated_cdl_metadata() -> None:
+    fraction = _fraction(kc=1.0)
+    object.__setattr__(fraction.layer_metadata, "sha256", "A" * 64)
+
+    with pytest.raises(ValueError, match="lowercase SHA-256"):
+        _assignment(fraction)
+
+
+def test_potential_etc_serialization_revalidates_mutated_cdl_metadata() -> None:
+    record = potential_et_c(5.0, _assignment(_fraction(kc=1.0)))
+    object.__setattr__(record.layer_metadata, "upstream_uri", "http://forged.example/cdl")
+
+    with pytest.raises(ValueError, match="HTTPS"):
+        record.to_record()
+
+
 def test_potential_et_rejects_unknown_coverage_without_a_dated_coefficient() -> None:
     with pytest.raises(ValueError, match="known crop coverage"):
         potential_et_c(
@@ -336,21 +387,16 @@ def test_potential_et_rejects_inconsistent_declared_coverage() -> None:
 
 def test_potential_et_rejects_mixed_cdl_source_years() -> None:
     first = _fraction(fraction=0.5, kc=1.0)
-    second = replace(
-        _fraction(
-            crop_code=None,
-            crop_class="non_crop",
-            fraction=0.5,
-            kc=0.0,
-        ),
-        source_year=2023,
-        layer_metadata=replace(
-            _fraction().layer_metadata,
-            source_year=2023,
-        ),
+    second = _fraction(
+        crop_code=None,
+        crop_class="non_crop",
+        fraction=0.5,
+        kc=0.0,
     )
+    object.__setattr__(second, "source_year", 2023)
+    object.__setattr__(second.layer_metadata, "source_year", 2023)
 
-    with pytest.raises(ValueError, match="one source_year"):
+    with pytest.raises(ValueError, match="source_year"):
         potential_et_c(5.0, _assignment(first, second))
 
 

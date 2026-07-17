@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from mlet.sources.cdl import CdlLayerMetadata, GridCell, aggregate_cdl
+from mlet.sources.cdl import CdlLayerMetadata, CropFraction, GridCell, aggregate_cdl
 
 
 ISSUED_AT = "2026-07-16T00:00:00Z"
@@ -54,6 +54,56 @@ def _cdl_rows() -> list[dict[str, object]]:
             "source_year": 2024,
         },
     ]
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("source_year", 2023, "unsupported"),
+        ("layer_version", "   ", "layer_version"),
+        ("legend_version", "usda-nass-cdl-2023", "legend_version"),
+        ("release_at", "2025-02-27T00:00:00+00:00", "explicit UTC"),
+        ("upstream_uri", "http://example.test/cdl", "HTTPS"),
+        ("upstream_uri", "https://", "HTTPS"),
+        ("sha256", "A" * 64, "lowercase SHA-256"),
+    ),
+)
+def test_cdl_layer_metadata_rejects_invalid_structural_fields_at_construction(
+    field: str, value: object, message: str
+) -> None:
+    fields: dict[str, object] = {
+        "source_year": 2024,
+        "layer_version": "fixture-2024",
+        "legend_version": "usda-nass-cdl-2024",
+        "release_at": "2025-02-27T00:00:00Z",
+        "upstream_uri": "https://example.test/cdl",
+        "sha256": "a" * 64,
+    }
+    fields[field] = value
+
+    with pytest.raises(ValueError, match=message):
+        CdlLayerMetadata(**fields)  # type: ignore[arg-type]
+
+
+def test_crop_fraction_revalidates_mutated_cdl_metadata_at_construction(
+    tmp_path: Path,
+) -> None:
+    cdl_path = tmp_path / "fixture_cdl_intersections.json"
+    _write_intersections(cdl_path, _cdl_rows())
+    layer = _metadata(cdl_path)
+    object.__setattr__(layer, "upstream_uri", "http://forged.example/cdl")
+
+    with pytest.raises(ValueError, match="HTTPS"):
+        CropFraction(
+            grid_id="fixture-idaho-grid",
+            crop_code="1",
+            crop_class="cdl_1",
+            fraction=0.6,
+            coverage_fraction=0.9,
+            source_year=2024,
+            confidence_pct=90.0,
+            layer_metadata=layer,
+        )
 
 
 def test_cdl_aggregation_retains_immutable_layer_metadata_and_area_weighted_fractions(
