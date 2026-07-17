@@ -10,14 +10,16 @@ normalized weather rows and a complete provenance receipt.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
 import hashlib
 import json
 import math
 import os
 from pathlib import Path
+import stat
 import tempfile
+import uuid
 
 from mlet.outlook.contracts import WeatherMember
 
@@ -50,6 +52,22 @@ _ROW_FIELDS = frozenset(
     }
 )
 _IDAHO_EXTENT = (-118.0, 41.0, -110.0, 50.0)
+_CACHE_RELATIVE_DIRECTORY = Path("data") / "cache" / "gefs-daily-artifacts"
+_GENERATION_PREFIX = "gefs-"
+_RAW_FILENAME = "canonical-artifact.json"
+_NORMALIZED_FILENAME = "weather_members.jsonl"
+_RECEIPT_FILENAME = "receipt.json"
+
+
+@dataclass(frozen=True)
+class GefsDailyArtifactSet:
+    """The three immutable files selected by one GEFS artifact pointer."""
+
+    pointer_path: Path
+    generation_id: str
+    raw_path: Path
+    normalized_path: Path
+    receipt_path: Path
 
 
 def normalize_gefs_rows(
@@ -146,12 +164,14 @@ def fetch_gefs(
     )
 
 
-def materialize_gefs_daily_artifact(artifact_path: Path, destination: Path) -> Path:
-    """Import one validated canonical daily artifact as a complete artifact set.
+def materialize_gefs_daily_artifact(
+    artifact_path: Path, artifact_pointer: Path
+) -> GefsDailyArtifactSet:
+    """Publish a complete immutable GEFS generation through one stable pointer.
 
-    The raw cache stores the exact canonical-artifact bytes passed to
-    ``json.loads``.  The receipt is written last and records both that parsed
-    byte hash and the immutable upstream GRIB hash supplied by the producer.
+    ``artifact_pointer`` is an atomically-replaced symlink, not a normalized
+    JSONL output path.  Consumers must call :func:`resolve_gefs_daily_artifact`
+    and use the resulting raw, normalized, and receipt paths as one set.
     """
     artifact_path = Path(artifact_path)
     try:
@@ -180,18 +200,17 @@ def materialize_gefs_daily_artifact(artifact_path: Path, destination: Path) -> P
         raise ValueError("GEFS daily artifact normalized_sha256 does not match rows")
     raw_sha256 = hashlib.sha256(raw_bytes).hexdigest()
 
-    destination = Path(destination)
-    cache_path = (
-        destination.parent
-        / "data"
-        / "cache"
-        / f"gefs-canonical-{source_issue_at.date().isoformat()}-{raw_sha256[:16]}.json"
+    artifact_pointer = Path(artifact_pointer)
+    _require_safe_directory(artifact_pointer.parent, "GEFS artifact pointer parent")
+    cache_directory = _prepare_cache_directory(artifact_pointer.parent)
+    generation_id = (
+        f"{_GENERATION_PREFIX}{source_issue_at.date().isoformat()}-{raw_sha256}"
     )
-    receipt_path = destination.with_suffix(f"{destination.suffix}.source.json")
     receipt = {
         "acquisition_mode": "imported_canonical_daily_artifact",
         "artifact_schema_version": _ARTIFACT_SCHEMA_VERSION,
         "artifact_type": _ARTIFACT_TYPE,
+        "generation_id": generation_id,
         "idaho_bbox": list(bbox),
         "name": "gefs",
         "normalized_sha256": normalized_sha256,
@@ -202,14 +221,47 @@ def materialize_gefs_daily_artifact(artifact_path: Path, destination: Path) -> P
         "uri": provenance["upstream_uri"],
         "variables": provenance["variables"],
     }
-    _write_artifact_set(
-        (
-            (cache_path, raw_bytes),
-            (destination, normalized_bytes),
-            (receipt_path, _canonical_json_bytes(receipt)),
-        )
+    _publish_generation(
+        cache_directory,
+        generation_id,
+        raw_bytes,
+        normalized_bytes,
+        _canonical_json_bytes(receipt),
     )
-    return destination
+    _publish_pointer(artifact_pointer, generation_id)
+    return resolve_gefs_daily_artifact(artifact_pointer)
+
+
+def resolve_gefs_daily_artifact(artifact_pointer: Path) -> GefsDailyArtifactSet:
+    """Resolve and validate one complete immutable GEFS artifact generation.
+
+    The pointer may name only a generation directly beneath this pointer's
+    ``data/cache/gefs-daily-artifacts`` directory.  That restriction prevents
+    a supplied symlink from selecting arbitrary filesystem content.
+    """
+    artifact_pointer = Path(artifact_pointer)
+    _require_safe_directory(artifact_pointer.parent, "GEFS artifact pointer parent")
+    if not artifact_pointer.is_symlink():
+        raise ValueError("GEFS artifact pointer must be a symlink to a complete generation")
+
+    target = Path(os.readlink(artifact_pointer))
+    if target.is_absolute() or target.parent != _CACHE_RELATIVE_DIRECTORY:
+        raise ValueError("GEFS artifact pointer has an unsafe generation target")
+    generation_id = target.name
+    if not _is_generation_id(generation_id):
+        raise ValueError("GEFS artifact pointer has an invalid generation identifier")
+
+    generation_directory = artifact_pointer.parent / target
+    _require_safe_directory(generation_directory, "GEFS artifact generation")
+    artifact_set = GefsDailyArtifactSet(
+        pointer_path=artifact_pointer,
+        generation_id=generation_id,
+        raw_path=generation_directory / _RAW_FILENAME,
+        normalized_path=generation_directory / _NORMALIZED_FILENAME,
+        receipt_path=generation_directory / _RECEIPT_FILENAME,
+    )
+    _validate_resolved_generation(artifact_set)
+    return artifact_set
 
 
 def _validate_daily_artifact(
@@ -249,51 +301,205 @@ def _validate_daily_artifact(
     return provenance, rows, normalized_sha256
 
 
-def _write_artifact_set(entries: tuple[tuple[Path, bytes], ...]) -> None:
-    """Publish cache, normalized rows, and receipt as one rollback-capable set.
+def _prepare_cache_directory(pointer_parent: Path) -> Path:
+    """Create the controlled cache directory without accepting symlink roots."""
+    cache_directory = pointer_parent / _CACHE_RELATIVE_DIRECTORY
+    _reject_symlink_ancestors(cache_directory)
+    cache_directory.mkdir(parents=True, exist_ok=True)
+    _require_safe_directory(cache_directory, "GEFS cache directory")
+    return cache_directory
 
-    Files are staged before any target changes.  The receipt is committed last;
-    when any replace fails, every earlier target is restored (or removed when it
-    was newly created), so a failed import cannot be mistaken for a completed
-    receipt-backed acquisition.
-    """
-    targets = [path for path, _ in entries]
-    if len(set(targets)) != len(targets):
-        raise ValueError("GEFS artifact-set targets must be distinct")
-    staged: dict[Path, Path] = {}
-    originals: dict[Path, bytes | None] = {}
-    committed: list[Path] = []
+
+def _publish_generation(
+    cache_directory: Path,
+    generation_id: str,
+    raw_bytes: bytes,
+    normalized_bytes: bytes,
+    receipt_bytes: bytes,
+) -> None:
+    """Stage, fsync, and atomically publish one immutable generation directory."""
+    generation_directory = cache_directory / generation_id
+    if generation_directory.exists() or generation_directory.is_symlink():
+        _validate_existing_generation(
+            generation_directory,
+            generation_id,
+            raw_bytes,
+            normalized_bytes,
+            receipt_bytes,
+        )
+        return
+
+    staging_directory = Path(
+        tempfile.mkdtemp(prefix=f".{generation_id}.", dir=cache_directory)
+    )
+    published = False
     try:
-        for target, contents in entries:
-            originals[target] = target.read_bytes() if target.exists() else None
-            staged[target] = _stage_bytes(target, contents)
-        for target, _ in entries:
-            os.replace(staged[target], target)
-            committed.append(target)
-    except OSError:
-        for target in reversed(committed):
-            original = originals[target]
-            if original is None:
-                target.unlink(missing_ok=True)
-            else:
-                rollback = _stage_bytes(target, original)
-                os.replace(rollback, target)
-        raise
+        _write_new_file(staging_directory / _RAW_FILENAME, raw_bytes)
+        _write_new_file(staging_directory / _NORMALIZED_FILENAME, normalized_bytes)
+        _write_new_file(staging_directory / _RECEIPT_FILENAME, receipt_bytes)
+        os.chmod(staging_directory, 0o555)
+        _fsync_directory(staging_directory)
+        try:
+            os.replace(staging_directory, generation_directory)
+            published = True
+            _fsync_directory(cache_directory)
+        except FileExistsError:
+            _validate_existing_generation(
+                generation_directory,
+                generation_id,
+                raw_bytes,
+                normalized_bytes,
+                receipt_bytes,
+            )
     finally:
-        for temporary_path in staged.values():
-            temporary_path.unlink(missing_ok=True)
+        if not published and staging_directory.exists():
+            _remove_staging_generation(staging_directory)
 
 
-def _stage_bytes(target: Path, contents: bytes) -> Path:
-    target.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode="wb", dir=target.parent, prefix=f".{target.name}.", delete=False
-    ) as handle:
-        temporary_path = Path(handle.name)
-        handle.write(contents)
-        handle.flush()
-        os.fsync(handle.fileno())
-    return temporary_path
+def _validate_existing_generation(
+    generation_directory: Path,
+    generation_id: str,
+    raw_bytes: bytes,
+    normalized_bytes: bytes,
+    receipt_bytes: bytes,
+) -> None:
+    """Refuse to overwrite a content-addressed generation with different bytes."""
+    _require_safe_directory(generation_directory, "GEFS artifact generation")
+    expected = {
+        _RAW_FILENAME: raw_bytes,
+        _NORMALIZED_FILENAME: normalized_bytes,
+        _RECEIPT_FILENAME: receipt_bytes,
+    }
+    for filename, contents in expected.items():
+        path = generation_directory / filename
+        if _read_regular_file(path, f"GEFS generation {filename}") != contents:
+            raise ValueError(
+                f"GEFS generation {generation_id!r} exists with different immutable content"
+            )
+
+
+def _publish_pointer(artifact_pointer: Path, generation_id: str) -> None:
+    """Atomically switch the sole public pointer after its generation is complete."""
+    _require_safe_directory(artifact_pointer.parent, "GEFS artifact pointer parent")
+    relative_target = _CACHE_RELATIVE_DIRECTORY / generation_id
+    temporary_pointer = artifact_pointer.parent / (
+        f".{artifact_pointer.name}.{uuid.uuid4().hex}.next"
+    )
+    created_pointer = False
+    try:
+        os.symlink(relative_target, temporary_pointer)
+        created_pointer = True
+        os.replace(temporary_pointer, artifact_pointer)
+        _fsync_directory(artifact_pointer.parent)
+    finally:
+        if created_pointer and temporary_pointer.is_symlink():
+            temporary_pointer.unlink()
+
+
+def _validate_resolved_generation(artifact_set: GefsDailyArtifactSet) -> None:
+    raw_bytes = _read_regular_file(artifact_set.raw_path, "GEFS raw artifact")
+    normalized_bytes = _read_regular_file(
+        artifact_set.normalized_path, "GEFS normalized weather rows"
+    )
+    receipt_bytes = _read_regular_file(artifact_set.receipt_path, "GEFS source receipt")
+    try:
+        receipt = json.loads(receipt_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("GEFS source receipt must be UTF-8 JSON") from error
+    if not isinstance(receipt, dict):
+        raise ValueError("GEFS source receipt must be an object")
+    if receipt.get("artifact_type") != _ARTIFACT_TYPE:
+        raise ValueError("GEFS source receipt artifact_type is invalid")
+    if receipt.get("artifact_schema_version") != _ARTIFACT_SCHEMA_VERSION:
+        raise ValueError("GEFS source receipt schema version is invalid")
+    if receipt.get("generation_id") != artifact_set.generation_id:
+        raise ValueError("GEFS source receipt generation_id does not match its pointer")
+    if receipt.get("raw_sha256") != hashlib.sha256(raw_bytes).hexdigest():
+        raise ValueError("GEFS source receipt raw_sha256 does not match cached bytes")
+    if receipt.get("normalized_sha256") != hashlib.sha256(normalized_bytes).hexdigest():
+        raise ValueError("GEFS source receipt normalized_sha256 does not match rows")
+
+
+def _write_new_file(path: Path, contents: bytes) -> None:
+    """Write a staged regular file without following an unexpected symlink."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags, 0o600)
+    try:
+        with os.fdopen(descriptor, "wb", closefd=False) as handle:
+            handle.write(contents)
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        os.close(descriptor)
+    os.chmod(path, 0o444)
+
+
+def _read_regular_file(path: Path, label: str) -> bytes:
+    """Read a regular artifact member without accepting a symlink file."""
+    if path.is_symlink():
+        raise ValueError(f"{label} must not be a symlink")
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise ValueError(f"cannot read {label}") from error
+    try:
+        mode = os.fstat(descriptor).st_mode
+        if not stat.S_ISREG(mode):
+            raise ValueError(f"{label} must be a regular file")
+        with os.fdopen(descriptor, "rb", closefd=False) as handle:
+            return handle.read()
+    finally:
+        os.close(descriptor)
+
+
+def _fsync_directory(directory: Path) -> None:
+    """Persist a directory entry before the next atomic publication step."""
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(directory, flags)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _remove_staging_generation(staging_directory: Path) -> None:
+    """Remove only the known files from an unpublished, private staging directory."""
+    if staging_directory.is_symlink():
+        raise ValueError("GEFS staging directory must not be a symlink")
+    os.chmod(staging_directory, 0o700)
+    for filename in (_RAW_FILENAME, _NORMALIZED_FILENAME, _RECEIPT_FILENAME):
+        path = staging_directory / filename
+        if path.exists() or path.is_symlink():
+            if path.is_symlink():
+                raise ValueError("GEFS staging member must not be a symlink")
+            path.unlink()
+    staging_directory.rmdir()
+
+
+def _reject_symlink_ancestors(path: Path) -> None:
+    """Reject known symlink path components before any GEFS write path is used."""
+    candidate = path
+    while candidate != candidate.parent:
+        if candidate.is_symlink():
+            raise ValueError(f"GEFS artifact path must not traverse symlinks: {candidate}")
+        candidate = candidate.parent
+
+
+def _require_safe_directory(path: Path, label: str) -> None:
+    _reject_symlink_ancestors(path)
+    if path.is_symlink() or not path.is_dir():
+        raise ValueError(f"{label} must be a non-symlink directory")
+
+
+def _is_generation_id(value: str) -> bool:
+    prefix, separator, digest = value.rpartition("-")
+    return (
+        separator == "-"
+        and prefix.startswith(_GENERATION_PREFIX)
+        and len(digest) == 64
+        and all(character in "0123456789abcdef" for character in digest)
+    )
 
 
 def _validate_idaho_bbox(value: object) -> tuple[float, float, float, float]:

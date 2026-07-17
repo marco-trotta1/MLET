@@ -15,6 +15,7 @@ from mlet.sources.gefs import (
     fetch_gefs,
     materialize_gefs_daily_artifact,
     normalize_gefs_rows,
+    resolve_gefs_daily_artifact,
 )
 
 
@@ -94,6 +95,15 @@ def _write_daily_artifact(path: Path, rows: list[dict[str, object]]) -> bytes:
     return artifact_bytes
 
 
+def _resolved_bytes(pointer: Path) -> tuple[bytes, bytes, bytes]:
+    artifact_set = resolve_gefs_daily_artifact(pointer)
+    return (
+        artifact_set.raw_path.read_bytes(),
+        artifact_set.normalized_path.read_bytes(),
+        artifact_set.receipt_path.read_bytes(),
+    )
+
+
 def test_gefs_normalizer_requires_twenty_distinct_daily_leads() -> None:
     members = normalize_gefs_rows(_gefs_rows(), issued_at=ISSUED_AT)
 
@@ -170,15 +180,22 @@ def test_imported_daily_artifact_caches_exact_parsed_bytes_and_publishes_hashes(
 ) -> None:
     artifact_path = tmp_path / "fixture.daily-artifact.json"
     artifact_bytes = _write_daily_artifact(artifact_path, _gefs_rows())
-    destination = tmp_path / "weather_members.jsonl"
+    pointer = tmp_path / "weather_members.gefs"
 
-    output = materialize_gefs_daily_artifact(artifact_path, destination)
+    output = materialize_gefs_daily_artifact(artifact_path, pointer)
 
-    assert output == destination
-    assert len(destination.read_text().splitlines()) == 60
-    receipt = json.loads(destination.with_suffix(".jsonl.source.json").read_text())
+    assert output == resolve_gefs_daily_artifact(pointer)
+    assert output.pointer_path == pointer
+    assert pointer.is_symlink()
+    assert output.raw_path.parent == output.normalized_path.parent
+    assert output.raw_path.parent == output.receipt_path.parent
+    assert output.raw_path.is_relative_to(tmp_path / "data" / "cache")
+    assert len(output.normalized_path.read_text().splitlines()) == 60
+    receipt = json.loads(output.receipt_path.read_text())
     assert receipt["raw_sha256"] == hashlib.sha256(artifact_bytes).hexdigest()
-    assert receipt["normalized_sha256"] == hashlib.sha256(destination.read_bytes()).hexdigest()
+    assert receipt["normalized_sha256"] == hashlib.sha256(
+        output.normalized_path.read_bytes()
+    ).hexdigest()
     assert receipt["upstream_raw_sha256"] == hashlib.sha256(b"fixture-grib-bytes").hexdigest()
     assert receipt["source_issue_at"] == ISSUED_AT
     assert receipt["idaho_bbox"] == list(IDAHO_BBOX)
@@ -188,9 +205,7 @@ def test_imported_daily_artifact_caches_exact_parsed_bytes_and_publishes_hashes(
         "name": "noaa-gefs-grib-to-daily-asce-input",
         "version": "1",
     }
-    cache_paths = list((tmp_path / "data" / "cache").glob("*.json"))
-    assert len(cache_paths) == 1
-    assert cache_paths[0].read_bytes() == artifact_bytes
+    assert output.raw_path.read_bytes() == artifact_bytes
 
 
 def test_imported_daily_artifact_rejects_mismatched_declared_normalized_hash(
@@ -203,79 +218,113 @@ def test_imported_daily_artifact_rejects_mismatched_declared_normalized_hash(
     artifact_path.write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(ValueError, match="normalized_sha256"):
-        materialize_gefs_daily_artifact(artifact_path, tmp_path / "weather_members.jsonl")
+        materialize_gefs_daily_artifact(artifact_path, tmp_path / "weather_members.gefs")
 
 
-@pytest.mark.parametrize("failed_target", ("cache", "normalized", "receipt"))
-def test_imported_daily_artifact_rolls_back_every_write_stage(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failed_target: str
+def test_materializer_rejects_a_symlinked_pointer_parent_before_writing(
+    tmp_path: Path,
 ) -> None:
     artifact_path = tmp_path / "fixture.daily-artifact.json"
     _write_daily_artifact(artifact_path, _gefs_rows())
-    destination = tmp_path / "weather_members.jsonl"
+    controlled_parent = tmp_path / "controlled"
+    controlled_parent.mkdir()
+    unsafe_parent = tmp_path / "unsafe-parent"
+    unsafe_parent.symlink_to(controlled_parent, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="must not traverse symlinks"):
+        materialize_gefs_daily_artifact(artifact_path, unsafe_parent / "weather_members.gefs")
+
+    assert list(controlled_parent.iterdir()) == []
+
+
+def test_imported_daily_artifact_has_no_visible_set_when_initial_pointer_publish_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact_path = tmp_path / "fixture.daily-artifact.json"
+    _write_daily_artifact(artifact_path, _gefs_rows())
+    pointer = tmp_path / "weather_members.gefs"
 
     from mlet.sources import gefs
 
     original_replace = gefs.os.replace
     failed = False
 
-    def fail_one_stage(source: Path | str, target: Path | str) -> None:
+    def fail_pointer_publish(source: Path | str, target: Path | str) -> None:
         nonlocal failed
-        target_path = Path(target)
-        is_target = (
-            (failed_target == "normalized" and target_path == destination)
-            or (
-                failed_target == "receipt"
-                and target_path == destination.with_suffix(".jsonl.source.json")
-            )
-            or (failed_target == "cache" and target_path.parent.name == "cache")
-        )
-        if is_target and not failed:
+        if Path(target) == pointer and not failed:
             failed = True
-            raise OSError("injected write-stage failure")
+            raise OSError("injected pointer publication failure")
         original_replace(source, target)
 
-    monkeypatch.setattr("mlet.sources.gefs.os.replace", fail_one_stage)
+    monkeypatch.setattr("mlet.sources.gefs.os.replace", fail_pointer_publish)
 
-    with pytest.raises(OSError, match="injected write-stage failure"):
-        materialize_gefs_daily_artifact(artifact_path, destination)
+    with pytest.raises(OSError, match="injected pointer publication failure"):
+        materialize_gefs_daily_artifact(artifact_path, pointer)
 
-    assert not destination.exists()
-    assert not destination.with_suffix(".jsonl.source.json").exists()
-    assert not list((tmp_path / "data" / "cache").glob("*.json"))
+    assert failed is True
+    assert not pointer.exists()
+    assert pointer.is_symlink() is False
+    with pytest.raises(ValueError, match="pointer"):
+        resolve_gefs_daily_artifact(pointer)
+
+    generations = list((tmp_path / "data" / "cache" / "gefs-daily-artifacts").iterdir())
+    assert len(generations) == 1
+    assert {entry.name for entry in generations[0].iterdir()} == {
+        "canonical-artifact.json",
+        "receipt.json",
+        "weather_members.jsonl",
+    }
 
 
 def test_imported_daily_artifact_preserves_previous_completed_set_on_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     first_artifact = tmp_path / "first.daily-artifact.json"
-    _write_daily_artifact(first_artifact, _gefs_rows())
-    destination = tmp_path / "weather_members.jsonl"
-    materialize_gefs_daily_artifact(first_artifact, destination)
-    previous_normalized = destination.read_bytes()
-    previous_receipt = destination.with_suffix(".jsonl.source.json").read_bytes()
+    first_raw_bytes = _write_daily_artifact(first_artifact, _gefs_rows())
+    pointer = tmp_path / "weather_members.gefs"
+    first_set = materialize_gefs_daily_artifact(first_artifact, pointer)
+    previous_raw, previous_normalized, previous_receipt = _resolved_bytes(pointer)
+    assert previous_raw == first_raw_bytes
 
     revised_rows = _gefs_rows()
     revised_rows[0]["tmax_c"] = 31.5
     revised_artifact = tmp_path / "revised.daily-artifact.json"
-    _write_daily_artifact(revised_artifact, revised_rows)
+    revised_raw_bytes = _write_daily_artifact(revised_artifact, revised_rows)
 
     from mlet.sources import gefs
 
     original_replace = gefs.os.replace
     failed = False
 
-    def fail_receipt(source: Path | str, target: Path | str) -> None:
+    def fail_pointer_publish(source: Path | str, target: Path | str) -> None:
         nonlocal failed
-        if Path(target) == destination.with_suffix(".jsonl.source.json") and not failed:
+        if Path(target) == pointer and not failed:
             failed = True
-            raise OSError("injected receipt failure")
+            raise OSError("injected pointer publication failure")
         original_replace(source, target)
 
-    monkeypatch.setattr("mlet.sources.gefs.os.replace", fail_receipt)
+    monkeypatch.setattr("mlet.sources.gefs.os.replace", fail_pointer_publish)
 
-    with pytest.raises(OSError, match="injected receipt failure"):
-        materialize_gefs_daily_artifact(revised_artifact, destination)
+    with pytest.raises(OSError, match="injected pointer publication failure"):
+        materialize_gefs_daily_artifact(revised_artifact, pointer)
 
-    assert destination.read_bytes() == previous_normalized
-    assert destination.with_suffix(".jsonl.source.json").read_bytes() == previous_receipt
+    assert failed is True
+    assert _resolved_bytes(pointer) == (
+        previous_raw,
+        previous_normalized,
+        previous_receipt,
+    )
+    assert json.loads(previous_receipt)["raw_sha256"] == hashlib.sha256(previous_raw).hexdigest()
+    assert json.loads(previous_receipt)["normalized_sha256"] == hashlib.sha256(
+        previous_normalized
+    ).hexdigest()
+
+    published_generations = list(
+        (tmp_path / "data" / "cache" / "gefs-daily-artifacts").iterdir()
+    )
+    assert len(published_generations) == 2
+
+    monkeypatch.setattr("mlet.sources.gefs.os.replace", original_replace)
+    revised_set = materialize_gefs_daily_artifact(revised_artifact, pointer)
+    assert revised_set.generation_id != first_set.generation_id
+    assert _resolved_bytes(pointer)[0] == revised_raw_bytes

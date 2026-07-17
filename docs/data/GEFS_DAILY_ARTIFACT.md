@@ -54,17 +54,42 @@ are sorted by `(grid_id, member_id, valid_date)`, each object has sorted compact
 JSON keys, and each line ends with a newline. The importer recomputes it and
 rejects any mismatch.
 
-## Receipt and transaction rule
+## Immutable generation and atomic pointer rule
 
-For a successful import, the raw cache is the exact artifact bytes passed to
-the JSON parser. The source receipt records the parsed-artifact `raw_sha256`,
-the upstream GRIB hash, normalized JSONL hash, artifact schema/type, upstream
-URI, issue time, Idaho bounding box, variable list, and transform identifier.
+For a successful import, `materialize_gefs_daily_artifact(artifact, pointer)`
+creates a content-addressed, generation-specific directory below
+`pointer.parent/data/cache/gefs-daily-artifacts/`. That directory contains
+only these immutable members:
 
-The cache, normalized JSONL, and receipt are staged before target changes. The
-receipt is published last. If any replacement fails, targets written in that
-attempt are restored or removed; a partial normalized file or new completion
-receipt must never represent a failed acquisition.
+- `canonical-artifact.json`: the exact UTF-8 bytes passed to the JSON parser;
+- `weather_members.jsonl`: the validated canonical normalized rows; and
+- `receipt.json`: provenance and the raw/normalized hashes.
+
+The source receipt records the parsed-artifact `raw_sha256`, the upstream GRIB
+hash, normalized JSONL hash, artifact schema/type, upstream URI, issue time,
+Idaho bounding box, variable list, transform identifier, and generation ID.
+
+The `pointer` argument is a stable symlink to one complete generation directory;
+it is **not** a normalized JSONL file. Consumers must call
+`resolve_gefs_daily_artifact(pointer)` and read the returned raw, normalized,
+and receipt paths together. There are no mutable normalized-file and receipt
+sidecars at the pointer location.
+
+The importer writes and fsyncs all three staged members, fsyncs the staged
+generation directory, and atomically renames that directory into the cache.
+Only then does it atomically replace the single pointer and fsync its parent.
+Thus, an interruption before pointer replacement leaves the previous complete
+generation visible; an interruption after replacement selects the new complete
+generation. A newly completed but unpointed generation may remain in the cache
+after an interrupted publish, but it is never a visible mixed artifact set.
+
+This relies on the POSIX/filesystem guarantee that `rename`/`replace` is atomic
+when source and destination are on the same filesystem and directory fsync is
+honored by the deployment filesystem. MLET stages each replacement beside its
+destination to meet the same-filesystem condition. The importer rejects
+symlinked pointer parents, cache roots, generation directories, and artifact
+members before writing or resolving them; the pointer target is restricted to
+this cache layout.
 
 ## Required future decoder evidence
 
