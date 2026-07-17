@@ -110,13 +110,14 @@ def build_outlook(
     _validate_days(days, inputs.issued_at)
     destination_root = _prepare_output_root(out_dir)
     destination = destination_root / manifest.run_id
-    if destination.exists() or destination.is_symlink():
-        raise ValueError(f"outlook run directory already exists: {destination}")
-
     temporary = Path(
         tempfile.mkdtemp(prefix=f".{manifest.run_id}.building-", dir=destination_root)
     )
     try:
+        # Persist the private directory entry before it receives the durable
+        # artifact.  The eventual public run id is an exclusive symlink claim,
+        # so an interrupted build can leave only an unreferenced private tree.
+        _fsync_directory(destination_root)
         outlook_path = temporary / "outlook.json"
         summary_path = temporary / "summary.json"
         validation_path = temporary / "validation.json"
@@ -134,12 +135,7 @@ def build_outlook(
         _write_new_text(manifest_path, completed_manifest.to_json() + "\n")
         _fsync_files((manifest_path,))
         _fsync_directory(temporary)
-        # The destination was checked before staging.  A same-run replay must
-        # never silently replace a previously published immutable directory.
-        if destination.exists() or destination.is_symlink():
-            raise ValueError(f"outlook run directory already exists: {destination}")
-        os.rename(temporary, destination)
-        _fsync_directory(destination_root)
+        _publish_private_artifact(temporary, destination)
     except Exception:
         if temporary.exists():
             shutil.rmtree(temporary)
@@ -150,6 +146,25 @@ def build_outlook(
         day_count=20,
         cell_count=len({day.grid_id for day in days}),
     )
+
+
+def _publish_private_artifact(temporary: Path, destination: Path) -> None:
+    """Atomically expose a durable private artifact without replacing a run id.
+
+    The output root and the private staging directory must be on one local
+    POSIX filesystem that provides exclusive ``symlink(2)`` creation and
+    durable directory ``fsync``.  ``symlink`` fails if *any* name already
+    exists at ``destination`` (including an empty directory), unlike a
+    check-then-rename sequence.  The relative link keeps the private artifact
+    movable together with its output root while the public stable run id
+    remains the sole artifact entry point.
+    """
+    try:
+        relative_target = os.path.relpath(temporary, start=destination.parent)
+        os.symlink(relative_target, destination, target_is_directory=True)
+    except FileExistsError as error:
+        raise ValueError(f"outlook run directory already exists: {destination}") from error
+    _fsync_directory(destination.parent)
 
 
 def _load_fixture_inputs(

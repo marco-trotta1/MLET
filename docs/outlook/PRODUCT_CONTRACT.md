@@ -64,6 +64,26 @@ The contract is intentionally independent of Helios or Irrigant runtime
 integration. A later adapter may consume this documented artifact, but this
 repository does not write to proprietary systems or assume their availability.
 
+### Promotion and fixture gate
+
+The root of `outlook.json` is the sole serving contract. It contains
+`fixture_non_scientific`, `production_status`, `promotion_status`, and
+`validation_status`. An adapter must reject a run whenever it is a fixture,
+not promoted, or not validated; it must not infer eligibility from a sibling
+`summary.json` or `validation.json`. The present direct-JSONL build path always
+publishes `true`, `non_production_fixture`, `not_promoted`, and
+`not_validated`, respectively.
+
+### Immutable publication
+
+A builder writes and fsyncs a private artifact directory before publishing the
+stable `run_id` as an exclusively-created relative symlink. The exclusive
+creation fails rather than replaces any existing filesystem entry at that run
+id, including an empty directory created by another publisher. This procedure
+assumes the output root is on a single local POSIX filesystem with atomic
+exclusive `symlink(2)` creation and durable directory `fsync`; network or
+object-store paths are not supported publication targets.
+
 ## Inputs and provenance
 
 The machine-readable registry is

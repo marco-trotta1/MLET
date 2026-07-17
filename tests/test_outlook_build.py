@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 from pathlib import Path
 
 import pytest
@@ -28,6 +29,10 @@ def test_build_outlook_writes_twenty_days_for_each_fixture_cell(tmp_path: Path) 
 
     assert result.day_count == 20
     payload = json.loads((tmp_path / result.run_id / "outlook.json").read_text())
+    assert payload["fixture_non_scientific"] is True
+    assert payload["production_status"] == "non_production_fixture"
+    assert payload["promotion_status"] == "not_promoted"
+    assert payload["validation_status"] == "not_validated"
     assert {
         "eto_mm",
         "potential_et_c_mm",
@@ -116,3 +121,39 @@ def test_build_outlook_never_replaces_an_existing_run_directory(tmp_path: Path) 
         )
 
     assert (first.run_dir / "manifest.json").read_bytes() == manifest_before
+
+
+def test_build_outlook_exclusive_claim_does_not_clobber_a_concurrent_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A run-id directory appearing after staging must win without replacement."""
+    original_symlink = os.symlink
+    sentinel = b"concurrent publisher owns this directory"
+
+    def claim_run_id_then_link(
+        target: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        link_name: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        target_is_directory: bool = False,
+        *,
+        dir_fd: int | None = None,
+    ) -> None:
+        del target_is_directory, dir_fd
+        run_dir = Path(link_name)
+        run_dir.mkdir()
+        (run_dir / "owner.txt").write_bytes(sentinel)
+        original_symlink(target, link_name)
+
+    monkeypatch.setattr("mlet.outlook.build.os.symlink", claim_run_id_then_link)
+
+    with pytest.raises(ValueError, match="already exists"):
+        build_outlook(
+            weather_path=WEATHER_FIXTURE,
+            state_path=STATE_FIXTURE,
+            crop_path=CROP_FIXTURE,
+            out_dir=tmp_path,
+        )
+
+    published = next(path for path in tmp_path.iterdir() if not path.name.startswith("."))
+    assert published.is_dir()
+    assert (published / "owner.txt").read_bytes() == sentinel
+    assert not list(tmp_path.glob(".*.building-*"))
