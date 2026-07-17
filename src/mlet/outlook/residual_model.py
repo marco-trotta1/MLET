@@ -9,12 +9,14 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 import math
 
 import numpy as np
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
+
+from mlet.outlook.dates import outlook_valid_date
 
 
 FEATURES = (
@@ -116,8 +118,10 @@ class ResidualCase:
         lead = self.features[0]
         if not lead.is_integer() or not 1 <= int(lead) <= 20:
             raise ValueError("residual lead_day must be an integer from 1 through 20")
-        if valid_day != issue.date() + timedelta(days=int(lead)):
-            raise ValueError("residual valid_date must equal issue date plus lead_day")
+        if valid_day != outlook_valid_date(issue, int(lead)):
+            raise ValueError(
+                "residual valid_date must equal the Idaho-local outlook date for lead_day"
+            )
         derived_season = calendar_season(valid_day)
         if self.season != derived_season:
             raise ValueError("residual season must equal the calendar season of valid_date")

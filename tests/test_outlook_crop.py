@@ -46,7 +46,7 @@ def _fraction(
     )
 
 
-_ISSUED_AT = datetime(2026, 7, 17, tzinfo=timezone.utc)
+_ISSUED_AT = datetime(2026, 7, 17, 18, tzinfo=timezone.utc)
 _VALID_DATE = date(2026, 7, 18)
 
 
@@ -525,7 +525,7 @@ def test_dated_crop_coefficient_assignment_retains_replay_metadata() -> None:
 
     assert assignment.fractions[0].kc == pytest.approx(1.05)
     assert assignment.to_record() == {
-        "issued_at": "2026-07-17T00:00:00Z",
+        "issued_at": "2026-07-17T18:00:00Z",
         "valid_date": "2026-07-18",
         "fractions": [
             {
@@ -719,13 +719,43 @@ def test_crop_coefficient_assignment_rejects_future_effective_date() -> None:
         source_available_at=datetime(2026, 7, 16, tzinfo=timezone.utc),
     )
 
-    with pytest.raises(ValueError, match="effective_date is later than issued_at"):
+    with pytest.raises(ValueError, match="effective_date is later than the Idaho-local issued_at date"):
         apply_crop_coefficients(
             [_fraction(kc=None)],
             [coefficient],
             issued_at=_ISSUED_AT,
             valid_date=_VALID_DATE,
         )
+
+
+def test_crop_coefficient_effective_date_uses_idaho_local_issue_day() -> None:
+    coefficient = CropCoefficientInput(
+        crop_code="1",
+        crop_class="corn",
+        kc=1.05,
+        effective_date=date(2026, 7, 16),
+        vegetation_state="mid-season",
+        source_name="fixture-coefficient-table",
+        source_version="fixture-v1",
+        source_available_at=datetime(2026, 7, 15, 12, tzinfo=timezone.utc),
+    )
+    fractions = [_fraction(kc=None)]
+
+    with pytest.raises(ValueError, match="Idaho-local issued_at date"):
+        apply_crop_coefficients(
+            fractions,
+            [coefficient],
+            issued_at=datetime(2026, 7, 16, 0, tzinfo=timezone.utc),
+            valid_date=date(2026, 7, 16),
+        )
+
+    assignment = apply_crop_coefficients(
+        fractions,
+        [coefficient],
+        issued_at=datetime(2026, 7, 16, 18, tzinfo=timezone.utc),
+        valid_date=date(2026, 7, 17),
+    )
+    assert assignment.issued_at == datetime(2026, 7, 16, 18, tzinfo=timezone.utc)
 
 
 def test_crop_coefficient_assignment_requires_coefficient_effective_on_valid_date() -> None:

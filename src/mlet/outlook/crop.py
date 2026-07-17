@@ -13,6 +13,7 @@ from mlet.sources.cdl import (
     validate_crop_fraction,
     validate_cdl_layer_metadata,
 )
+from mlet.outlook.dates import idaho_local_date
 
 
 _MIN_KC = 0.0
@@ -559,8 +560,10 @@ def _validate_coefficient_eligibility(
         raise ValueError(
             "crop coefficient source_available_at is later than issued_at"
         )
-    if coefficient.effective_date > issue_time.date():
-        raise ValueError("crop coefficient effective_date is later than issued_at")
+    if coefficient.effective_date > idaho_local_date(issue_time):
+        raise ValueError(
+            "crop coefficient effective_date is later than the Idaho-local issued_at date"
+        )
     if coefficient.effective_date > target_date:
         raise ValueError("crop coefficient effective_date is later than valid_date")
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 
@@ -16,6 +16,7 @@ from mlet.experiments.idaho_outlook_residual import (
     evaluate_residual_evidence,
     write_residual_authority_request,
 )
+from mlet.outlook.dates import outlook_valid_date
 from mlet.outlook.residual_model import FEATURES, ResidualCase, fit_residual_model
 
 
@@ -29,7 +30,8 @@ def _case(case_id: str, role: str, *, issue: str | None = None, block: str = "43
         "test": "2024-01-01T00:00:00Z",
     }
     issue = issue or issue_by_role[role]
-    valid = datetime.fromisoformat(issue.replace("Z", "+00:00")) + timedelta(days=1)
+    issue_time = datetime.fromisoformat(issue.replace("Z", "+00:00"))
+    valid = outlook_valid_date(issue_time, 1)
     season = "DJF" if valid.month in (12, 1, 2) else "MAM" if valid.month in (3, 4, 5) else "JJA" if valid.month in (6, 7, 8) else "SON"
     return {
         "case_id": case_id,
@@ -37,7 +39,7 @@ def _case(case_id: str, role: str, *, issue: str | None = None, block: str = "43
         "layer": "eta_well_watered_mm",
         "target_kind": "declared_well_watered_scenario_target",
         "issue_time": issue,
-        "valid_date": valid.date().isoformat(),
+        "valid_date": valid.isoformat(),
         "spatial_block": block,
         "season": season,
         "feature_available_at": {name: issue for name in FEATURES},
@@ -99,7 +101,7 @@ def test_residual_fit_receives_only_training_issue_times() -> None:
             layer="eta_well_watered_mm",
             target_kind="declared_well_watered_scenario_target",
             issue_time=issue,
-            valid_date="2024-01-02",
+            valid_date=outlook_valid_date(issue, 1).isoformat(),
             spatial_block="43:-117",
                 season="DJF",
             feature_available_at=available,
@@ -162,10 +164,41 @@ def test_case_valid_date_and_caller_season_cannot_disagree_with_issue_and_lead()
         ResidualCase(
             case_id="bad-season", role="train", layer="eta_well_watered_mm",
             target_kind="declared_well_watered_scenario_target", issue_time=issue,
-            valid_date="2024-01-02", spatial_block="43:-117", season="MAM",
+            valid_date=outlook_valid_date(issue, 1).isoformat(), spatial_block="43:-117", season="MAM",
             feature_available_at=tuple((name, issue) for name in FEATURES),
             features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0), physical_p50=3.0, target_mm=3.5,
         )
+
+
+@pytest.mark.parametrize(
+    ("issue", "expected_valid_date"),
+    (
+        (datetime(2026, 7, 16, 0, tzinfo=timezone.utc), "2026-07-16"),
+        (datetime(2026, 3, 8, 9, tzinfo=timezone.utc), "2026-03-09"),
+    ),
+)
+def test_residual_case_uses_idaho_local_valid_date_at_utc_and_dst_boundaries(
+    issue: datetime, expected_valid_date: str,
+) -> None:
+    valid_date = outlook_valid_date(issue, 1)
+    assert valid_date.isoformat() == expected_valid_date
+
+    case = ResidualCase(
+        case_id=f"boundary-{expected_valid_date}",
+        role="train",
+        layer="eta_well_watered_mm",
+        target_kind="declared_well_watered_scenario_target",
+        issue_time=issue,
+        valid_date=valid_date.isoformat(),
+        spatial_block="43:-117",
+        season="JJA" if valid_date.month == 7 else "MAM",
+        feature_available_at=tuple((name, issue) for name in FEATURES),
+        features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
+        physical_p50=3.0,
+        target_mm=3.5,
+    )
+
+    assert case.valid_date == expected_valid_date
 
 
 def test_split_requires_preregistered_assignment_and_strict_cutoffs() -> None:
@@ -210,11 +243,11 @@ def test_lead_calibration_support_is_feasible_without_a_held_season_claim() -> N
     )
 
     def case(identifier: str, role: str, lead: int, issue: datetime, season: str) -> ResidualCase:
-        valid = issue + timedelta(days=lead)
+        valid = outlook_valid_date(issue, lead)
         return ResidualCase(
             case_id=identifier, role=role, layer="eta_well_watered_mm",
             target_kind="declared_well_watered_scenario_target", issue_time=issue,
-            valid_date=valid.date().isoformat(), spatial_block="43:-117", season=season,
+            valid_date=valid.isoformat(), spatial_block="43:-117", season=season,
             feature_available_at=tuple((name, issue) for name in FEATURES),
             features=(float(lead), 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
             physical_p50=3.0, target_mm=3.5,
