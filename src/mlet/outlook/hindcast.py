@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, timezone
 import hashlib
 import json
 import math
@@ -19,6 +19,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from mlet.outlook.manifest import RunManifest
+from mlet.outlook.dates import idaho_local_date, idaho_local_day_end_utc, outlook_valid_date
 
 
 PUBLISHED_LAYERS = (
@@ -136,13 +137,9 @@ class HindcastCase:
         if not isinstance(self.rows, tuple) or any(not isinstance(item, HindcastRow) for item in self.rows):
             raise ValueError("hindcast rows must be a tuple of HindcastRow")
         for row in self.rows:
-            if row.valid_date != self.issue_time.date().fromordinal(
-                self.issue_time.date().toordinal() + row.lead_day
-            ):
+            if row.valid_date != outlook_valid_date(self.issue_time, row.lead_day):
                 raise ValueError("hindcast valid_date must equal issue date plus lead_day")
-            valid_day_end = datetime.combine(
-                row.valid_date, time.max, tzinfo=timezone.utc
-            )
+            valid_day_end = idaho_local_day_end_utc(row.valid_date)
             if row.target_available_at <= valid_day_end:
                 raise ValueError(
                     "hindcast target_available_at must be later than valid_date"
@@ -226,7 +223,9 @@ class HindcastReport:
 
     def validation_record(self) -> dict[str, object]:
         """Return a non-authoritative diagnostic record, never a release receipt."""
-        return _validation_record_payload(self)
+        return _validation_record_payload(
+            _with_blockers(self, [_EXTERNAL_RELEASE_AUTHORITY_BLOCKER])
+        )
 
 
 def _validation_record_payload(report: HindcastReport) -> dict[str, object]:
@@ -557,11 +556,17 @@ def write_hindcast_validation(receipt: object, destination: Path) -> Path:
 
 
 def render_hindcast_markdown(report: HindcastReport) -> str:
-    """Render a human-readable report that preserves the claim boundary."""
+    """Render a local diagnostic that cannot make a validation claim.
+
+    ``HindcastReport`` remains public for aggregation and inspection, so it is
+    never sufficient to support a scientific or release assertion.  Only a
+    separately trusted authority can publish a validation decision.
+    """
     if not isinstance(report, HindcastReport):
         raise ValueError("hindcast markdown requires a HindcastReport")
+    report = _with_blockers(report, [_EXTERNAL_RELEASE_AUTHORITY_BLOCKER])
     lines = [
-        "# Idaho Outlook Hindcast Validation",
+        "# Idaho Outlook Hindcast Diagnostic",
         "",
         "Promotion: **false**",
         f"Historical issue cases: {report.case_count}",
@@ -577,11 +582,21 @@ def render_hindcast_markdown(report: HindcastReport) -> str:
                 "",
             ]
         )
-    lines.extend(["## Promotion gate", ""])
+    lines.extend(
+        [
+            "## Local evaluation boundary",
+            "",
+            "This local diagnostic does not validate, certify, promote, or make a production claim.",
+            "A separately trusted release authority must independently review the hash-bound evidence candidate.",
+            "",
+            "## Computational gate observations",
+            "",
+        ]
+    )
     if report.promotion_blockers:
         lines.extend(f"- {blocker}" for blocker in report.promotion_blockers)
     else:
-        lines.append("- All frozen no-lookahead, lead coverage, and interval coverage gates passed.")
+        lines.append("- No blockers were recorded in this caller-supplied diagnostic object; this is not evidence validation.")
     lines.extend(
         [
             "",
@@ -632,7 +647,7 @@ def render_hindcast_markdown(report: HindcastReport) -> str:
 
 
 def write_hindcast_markdown(report: HindcastReport, destination: Path) -> Path:
-    """Write one report atomically enough to prevent silent receipt replacement."""
+    """Write a non-validating local diagnostic from public aggregate data."""
     return _write_new_bytes(Path(destination), render_hindcast_markdown(report).encode("utf-8"))
 
 
@@ -959,7 +974,7 @@ def _validate_holdout(value: object, rows: Sequence[HindcastRow], issue: datetim
             blockers.append(f"case {index} target grid is outside declared held-out spatial block")
         if _SEASONS[row.valid_date.month] != held_season:
             blockers.append(f"case {index} target date is outside declared held-out season")
-        if row.valid_date <= training_cutoff.date() or row.valid_date <= calibration_cutoff.date():
+        if row.valid_date <= idaho_local_date(training_cutoff) or row.valid_date <= idaho_local_date(calibration_cutoff):
             blockers.append(f"case {index} training or calibration cutoff reaches held-out target")
     return _deduplicate(blockers), held, held_season
 

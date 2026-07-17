@@ -8,6 +8,7 @@ import math
 from urllib.parse import urlparse
 
 from mlet.sources.openet_state import EtaAnalysis
+from mlet.outlook.dates import idaho_local_date
 
 
 @dataclass(frozen=True)
@@ -220,7 +221,7 @@ def eta_analysis_from_openet(
     observed_through = _require_date(analysis.observed_through, "OpenET observed_through")
     if source_available_at > issue_time:
         raise ValueError("OpenET source_available_at is later than issued_at")
-    if observed_through >= issue_time.date():
+    if observed_through >= idaho_local_date(issue_time):
         raise ValueError("OpenET observed_through must be strictly before issued_at")
     return EtaAnalysisLayer(
         eta_analysis_mm=analysis.eta_analysis_mm,
@@ -298,7 +299,7 @@ def _validate_eta_analysis_layer(
     _require_text(source_model_version, "source_model_version")
     if availability > issue_time:
         raise ValueError("ETa source_available_at is later than issued_at")
-    if analysis_date >= issue_time.date():
+    if analysis_date >= idaho_local_date(issue_time):
         raise ValueError("ETa analysis date must be strictly before issued_at")
     return issue_time, availability
 
@@ -357,7 +358,7 @@ def _validate_provenance_at_issue(
     issue_time = _require_utc_timestamp(issued_at, "issued_at")
     if source_available_at > issue_time:
         raise ValueError("state provenance source_available_at is later than issued_at")
-    if observed_date > issue_time.date():
+    if observed_date > idaho_local_date(issue_time):
         raise ValueError("state provenance observed_date is later than issued_at")
     return issue_time
 

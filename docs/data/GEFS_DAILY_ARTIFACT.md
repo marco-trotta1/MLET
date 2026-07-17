@@ -26,6 +26,7 @@ The input is UTF-8 JSON with these required top-level fields:
     "upstream_uri": "https://.../archived-gefs.grib2",
     "upstream_raw_sha256": "64 lowercase hex characters",
     "source_issue_at": "YYYY-MM-DDTHH:MM:SSZ",
+    "daily_aggregation_timezone": "America/Boise",
     "idaho_bbox": [west, south, east, north],
     "variables": [
       "precip_mm", "solar_mj_m2_day", "tmax_c", "tmin_c",
@@ -48,6 +49,11 @@ version identify the exact external process that selected GRIB messages,
 converted units, and aggregated daily Idaho weather-grid inputs. The bounding
 box must be inside Idaho and every resulting row must be inside that declared
 box.
+
+`daily_aggregation_timezone` freezes the meaning of every row's
+`valid_date`: it must be exactly `America/Boise`, including the IANA MST/MDT
+transition rule. The importer rejects a UTC-day or unspecified aggregation
+instead of shifting dates from the source issue timestamp.
 
 `normalized_sha256` is the SHA-256 of canonical normalized JSONL: weather rows
 are sorted by `(grid_id, member_id, valid_date)`, each object has sorted compact

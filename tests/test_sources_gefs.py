@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -18,9 +18,10 @@ from mlet.sources.gefs import (
     normalize_gefs_rows,
     resolve_gefs_daily_artifact,
 )
+from mlet.outlook.dates import idaho_local_day_end_utc, outlook_valid_dates
 
 
-ISSUED_AT = "2026-07-16T00:00:00Z"
+ISSUED_AT = "2026-07-16T18:00:00Z"
 IDAHO_BBOX = (-117.25, 42.0, -111.0, 49.0)
 VARIABLES = [
     "precip_mm",
@@ -77,6 +78,7 @@ def _write_daily_artifact(path: Path, rows: list[dict[str, object]]) -> bytes:
         "schema_version": 1,
         "provenance": {
             "idaho_bbox": list(IDAHO_BBOX),
+            "daily_aggregation_timezone": "America/Boise",
             "source_issue_at": ISSUED_AT,
             "transform": {
                 "name": "noaa-gefs-grib-to-daily-asce-input",
@@ -116,6 +118,26 @@ def test_gefs_normalizer_requires_twenty_distinct_daily_leads() -> None:
             if member.grid_id == "fixture-idaho-grid" and member.member_id == member_id
         }
         assert len(leads) == 20
+
+
+def test_gefs_leads_use_idaho_dates_across_utc_midnight_and_dst() -> None:
+    """Daily source labels follow America/Boise, never the UTC issue date."""
+    midnight_utc = datetime(2026, 7, 16, 0, tzinfo=timezone.utc)
+    assert outlook_valid_dates(midnight_utc)[0] == date(2026, 7, 16)
+
+    # 08:00Z is 01:00 MST on the spring-forward day; the completed day ends
+    # under MDT, so this also exercises the offset change inside one day.
+    spring_forward = datetime(2026, 3, 8, 8, tzinfo=timezone.utc)
+    assert outlook_valid_dates(spring_forward)[0] == date(2026, 3, 9)
+    assert idaho_local_day_end_utc(date(2026, 3, 8)) == datetime(
+        2026, 3, 9, 5, 59, 59, 999999, tzinfo=timezone.utc
+    )
+
+    rows = _gefs_rows()
+    for index, row in enumerate(rows):
+        row["valid_date"] = outlook_valid_dates(midnight_utc)[index % 20].isoformat()
+    members = normalize_gefs_rows(rows, issued_at="2026-07-16T00:00:00Z")
+    assert {member.valid_date for member in members} == set(outlook_valid_dates(midnight_utc))
 
 
 def test_gefs_normalizer_rejects_missing_required_radiation() -> None:
@@ -199,6 +221,7 @@ def test_imported_daily_artifact_caches_exact_parsed_bytes_and_publishes_hashes(
     ).hexdigest()
     assert receipt["upstream_raw_sha256"] == hashlib.sha256(b"fixture-grib-bytes").hexdigest()
     assert receipt["source_issue_at"] == ISSUED_AT
+    assert receipt["daily_aggregation_timezone"] == "America/Boise"
     assert receipt["idaho_bbox"] == list(IDAHO_BBOX)
     assert receipt["variables"] == VARIABLES
     assert receipt["artifact_schema_version"] == 1
@@ -215,6 +238,19 @@ def test_imported_daily_artifact_caches_exact_parsed_bytes_and_publishes_hashes(
         assert stat.S_IMODE(member_path.stat().st_mode) & (
             stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
         ) == 0
+
+
+def test_imported_daily_artifact_rejects_an_unlabeled_daily_boundary(
+    tmp_path: Path,
+) -> None:
+    artifact_path = tmp_path / "unlabeled.daily-artifact.json"
+    _write_daily_artifact(artifact_path, _gefs_rows())
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    del artifact["provenance"]["daily_aggregation_timezone"]
+    artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="daily_aggregation_timezone"):
+        materialize_gefs_daily_artifact(artifact_path, tmp_path / "weather.gefs")
 
 
 def test_new_cache_hierarchy_is_durably_linked_bottom_up_before_publish(

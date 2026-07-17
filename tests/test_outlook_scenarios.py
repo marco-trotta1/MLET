@@ -22,7 +22,7 @@ from mlet.outlook.state import (
 )
 
 
-_ISSUED_AT = datetime(2026, 7, 17, tzinfo=timezone.utc)
+_ISSUED_AT = datetime(2026, 7, 17, 18, tzinfo=timezone.utc)
 
 
 def _provenance() -> StateProvenance:
@@ -110,7 +110,7 @@ def test_no_irrigation_recurrence_persists_every_replay_term_and_scenario_label(
             "source_uri": "https://example.test/soil-water",
             "source_version": "fixture-v1",
         },
-        "issued_at": "2026-07-17T00:00:00Z",
+            "issued_at": "2026-07-17T18:00:00Z",
         "taw_mm": 80.0,
         "unavailable_reason": None,
         "eta_mm": 0.675,
@@ -226,7 +226,7 @@ def test_missing_openet_state_remains_missing_instead_of_becoming_an_analysis() 
         "source_available_at": None,
         "source_model": None,
         "source_model_version": None,
-        "issued_at": "2026-07-17T00:00:00Z",
+            "issued_at": "2026-07-17T18:00:00Z",
     }
 
 

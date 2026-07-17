@@ -11,7 +11,7 @@ import pytest
 from mlet.sources.openet_state import normalize_openet_state
 
 
-ISSUED_AT = "2026-07-16T00:00:00Z"
+ISSUED_AT = "2026-07-16T18:00:00Z"
 RETRIEVED_AT = "2026-07-20T12:00:00Z"
 
 
@@ -35,7 +35,7 @@ def test_openet_state_carries_issue_availability_version_and_whole_day_latency()
 
     assert len(state) == 1
     assert state[0].observed_through == date(2026, 7, 14)
-    assert state[0].issued_at == datetime(2026, 7, 16, tzinfo=timezone.utc)
+    assert state[0].issued_at == datetime(2026, 7, 16, 18, tzinfo=timezone.utc)
     assert state[0].retrieved_at == datetime(2026, 7, 20, 12, tzinfo=timezone.utc)
     assert state[0].source_available_at == datetime(2026, 7, 15, 18, tzinfo=timezone.utc)
     assert state[0].latency_days == 2

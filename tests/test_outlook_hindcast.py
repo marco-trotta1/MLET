@@ -15,6 +15,7 @@ from mlet.outlook.hindcast import (
     build_release_authority_request,
     evaluate_hindcast_evidence,
     HindcastCase,
+    HindcastReport,
     HindcastRow,
     load_hindcast_cases,
     render_hindcast_markdown,
@@ -24,10 +25,11 @@ from mlet.outlook.hindcast import (
     write_release_authority_request,
 )
 from mlet.outlook.manifest import build_manifest
+from mlet.outlook.dates import outlook_valid_date
 from mlet.cli import _trusted_hindcast_output, main
 
 
-ISSUE_TIME = datetime(2026, 7, 1, tzinfo=timezone.utc)
+ISSUE_TIME = datetime(2026, 7, 1, 18, tzinfo=timezone.utc)
 
 
 def _record(*, available_at: datetime = ISSUE_TIME) -> AvailableRecord:
@@ -41,7 +43,7 @@ def _record(*, available_at: datetime = ISSUE_TIME) -> AvailableRecord:
 
 
 def _row(*, layer: str, lead_day: int) -> HindcastRow:
-    valid_date = ISSUE_TIME.date() + timedelta(days=lead_day)
+    valid_date = outlook_valid_date(ISSUE_TIME, lead_day)
     target_kind = {
         "eto_mm": "independent_asce_short_reference_eto",
         "eta_well_watered_mm": "declared_well_watered_scenario_target",
@@ -91,7 +93,7 @@ def _write_verified_evidence(
     collections = []
     target_values = []
     for lead in range(1, 21):
-        valid = (issue_time.date() + timedelta(days=lead)).isoformat()
+        valid = outlook_valid_date(issue_time, lead).isoformat()
         layers = {}
         for layer, kind in {
             "eto_mm": "independent_asce_short_reference_eto",
@@ -110,7 +112,7 @@ def _write_verified_evidence(
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text(manifest.to_json(), encoding="utf-8")
     target = tmp_path / "targets.json"
-    case_id = f"{issue_time.strftime('%b').lower()}-fold-{held_out_fold}-{issue_time.date().isoformat()}"
+    case_id = f"{issue_time.strftime('%b').lower()}-fold-{held_out_fold}-{outlook_valid_date(issue_time, 1).isoformat()}"
     target_available = (issue_time + timedelta(days=22)).strftime("%Y-%m-%dT%H:%M:%SZ")
     target.write_text(json.dumps({"schema_version": 1, "kind": "idaho_outlook_hindcast_target", "receipt": {"case_id": case_id, "run_id": manifest.run_id, "uri": "https://archive.example.org/targets", "source_version": "target-v1", "available_at": target_available}, "values": target_values}), encoding="utf-8")
     receipt = {"schema_version": 1, "kind": "idaho_outlook_hindcast_source_receipt", "case_id": case_id, "run_id": manifest.run_id, "name": "weather", "available_at": issue, "source_version": "test-revision", "sha256": hashlib.sha256(source.read_bytes()).hexdigest(), "uri": source.resolve().as_uri()}
@@ -329,6 +331,36 @@ def test_fixture_cases_are_non_scientific_and_write_a_false_promotion_receipt(
     assert "fixture" in report.promotion_blockers[0]
     assert "software fixture" in render_hindcast_markdown(report).lower()
     assert json.loads(receipt_path.read_text(encoding="utf-8"))["promotion"] is False
+
+
+def test_public_or_mutated_report_writes_only_a_nonvalidating_diagnostic(
+    tmp_path: Path,
+) -> None:
+    """No mutable public aggregate may create a scientific release claim."""
+    report = HindcastReport(
+        metrics=(),
+        source_latency=(),
+        input_audit=(),
+        case_count=20,
+        fixture_non_scientific=False,
+        fixture_reason=None,
+        promotion_blockers=(),
+    )
+    object.__setattr__(report, "promotion_blockers", ())
+
+    path = hindcast_module.write_hindcast_markdown(report, tmp_path / "diagnostic.md")
+    markdown = path.read_text(encoding="utf-8").lower()
+
+    assert "promotion: **false**" in markdown
+    assert "hindcast validation" not in markdown
+    assert "gates passed" not in markdown
+    assert "validated" not in markdown
+    assert "production-ready" not in markdown
+    assert "does not validate" in markdown
+    assert "requires_separately_trusted_release_authority" in markdown
+    assert report.validation_record()["promotion_blockers"] == [
+        "requires_separately_trusted_release_authority"
+    ]
 
 
 def test_hindcast_cli_writes_fixture_receipts_and_returns_nonpromotion_status(

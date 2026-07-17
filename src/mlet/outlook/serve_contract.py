@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 import json
 import math
 from pathlib import Path
 
 from mlet.outlook.contracts import OutlookDay, OutlookQuantiles
+from mlet.outlook.dates import idaho_local_date, outlook_valid_dates
 from mlet.outlook.manifest import RunManifest
 
 
@@ -70,9 +71,7 @@ def _contract_payload(
     sorted_days = sorted(days, key=lambda item: (item.valid_date, item.grid_id))
 
     issue_time = _require_utc_datetime(manifest.issued_at, "manifest issued_at")
-    expected_dates = [
-        issue_time.date() + timedelta(days=lead) for lead in range(1, 21)
-    ]
+    expected_dates = list(outlook_valid_dates(issue_time))
     by_date: dict[date, list[OutlookDay]] = defaultdict(list)
     dates_by_grid: dict[str, set[date]] = defaultdict(set)
     seen: set[tuple[str, date]] = set()
@@ -97,7 +96,7 @@ def _contract_payload(
             )
 
     latencies = [
-        (issue_time.date() - item.eta_analysis_date).days
+        (idaho_local_date(issue_time) - item.eta_analysis_date).days
         for item in sorted_days
         if item.eta_analysis_date is not None
     ]
@@ -208,7 +207,7 @@ def _analysis_record(day: OutlookDay, issued_at: datetime) -> dict[str, object]:
     if day.eta_analysis_mm is None or day.eta_analysis_date is None:
         raise ValueError("ETa analysis date and value must be present together")
     value = _finite_nonnegative(day.eta_analysis_mm, "eta_analysis_mm")
-    if day.eta_analysis_date >= issued_at.date():
+    if day.eta_analysis_date >= idaho_local_date(issued_at):
         raise ValueError("ETa analysis must be a completed day before the issue time")
     return {
         "eta_analysis_mm": value,

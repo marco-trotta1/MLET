@@ -29,14 +29,20 @@ demonstrably available then.
 
 For OpenET, each selected immutable model/version row records a strict-UTC
 `source_available_at` no later than `issued_at`; the observation date must be a
-completed day strictly before the issue date. Latency is whole days from the
-issue date, not from a potentially later archive retrieval. For CDL, the
+completed Idaho-local day strictly before the Idaho-local issue date. Latency
+is whole Idaho-local days from that issue date, not from a potentially later
+archive retrieval. For CDL, the
 archived intersection table records a checksum plus source year, layer version,
 pinned official legend version, release time, and upstream URI. The release
 time must be no later than `issued_at`; no unpinned legend year is eligible.
 
 The forecast target range is lead days 1 through 20 inclusive, each mapped to
-an Idaho local `valid_date`. Daily outputs retain `p10`, `p50`, and `p90`; all
+an Idaho local `valid_date`. The frozen day boundary is `America/Boise`, using
+the IANA MST/MDT rule at the issue instant: lead 1 is the day after the Idaho
+local date of the strict-UTC issue timestamp and leads 2–20 are consecutive
+Idaho local dates. GEFS and every daily target/ETa aggregate must explicitly
+state that same Idaho-local aggregation label; UTC-day or unspecified-day
+aggregates are invalid inputs. Daily outputs retain `p10`, `p50`, and `p90`; all
 metrics are computed by lead day before any pooled summary is reported.
 
 ## Holdouts
@@ -133,9 +139,12 @@ The exact forecast contract must say `fixture_non_scientific: false`,
 `validation_status: "validated"`. Missing, non-boolean, fixture, or other
 classification states are permanent promotion blockers.
 
-The report contains sample count, MAE, RMSE, bias, empirical closed-interval
+The local Markdown report contains sample count, MAE, RMSE, bias, empirical closed-interval
 coverage, and interval width by layer/lead, month, season, and spatial block.
-It writes an adjacent `validation.json` and `authority_request.json` from a
+It is a diagnostic only and never says that gates passed, that a result is
+validated, or that it is production-ready—even when a caller constructs or
+mutates its public aggregate object. The command writes adjacent
+`validation.json` and `authority_request.json` from a
 reconstructed, hash-bound evaluation candidate (not a public report object).
 Both local artifacts always carry `promotion: false` and every blocking reason.
 The request is eligible for external release review only when its sole blocker

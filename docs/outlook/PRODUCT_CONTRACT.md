@@ -20,6 +20,12 @@ Every issue contains 20 daily lead dates. Forecast quantities retain daily
 does not reduce uncertainty to one unqualified deterministic value. `issued_at`
 is recorded in UTC, each forecast `valid_date` is an Idaho local calendar date,
 and the source issue time and source valid time are retained in the run receipt.
+The frozen daily boundary is the `America/Boise` civil day (MST/MDT as selected
+by the IANA time-zone database). Lead 1 is the calendar day after the Idaho
+local date of `issued_at`; leads 2–20 are consecutive Idaho local dates. A
+daily source artifact must explicitly aggregate and label values to that same
+Idaho-local day. A UTC-day aggregate, or an aggregate with an unspecified
+daily boundary, is rejected rather than silently relabeled.
 
 ## Four deliberately separate layers
 
@@ -162,8 +168,10 @@ Phase 2. See the [data card](../data/DATA_CARD.md) for that distinction.
 ## Claim boundary
 
 The public product may describe its geographic extent, weather-grid resolution,
-issue time, source provenance, and uncertainty. It may describe a hindcast as
-validated only after the preregistered gate in
+issue time, source provenance, and uncertainty. A local MLET report is always
+a non-validating diagnostic, even if its computational observations contain no
+blockers. Only a separately trusted release authority may describe a hindcast
+as validated after independently reviewing the preregistered gate in
 [the outlook preregistration](../evaluation/OUTLOOK_PREREGISTRATION.md) passes.
 Until then, it is an implementation or research artifact—not evidence of
 forecast skill. Phase 2's OpenET result is evidence about retrospective

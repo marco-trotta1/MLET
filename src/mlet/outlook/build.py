@@ -27,6 +27,7 @@ from types import MappingProxyType
 from typing import Iterable, Mapping, Sequence
 
 from mlet.outlook.contracts import OutlookDay, OutlookQuantiles, WeatherMember
+from mlet.outlook.dates import IDAHO_TIME_ZONE, idaho_local_date, outlook_valid_dates
 from mlet.outlook.crop import (
     CropCoefficientAssignment,
     CropCoefficientInput,
@@ -762,8 +763,8 @@ def _fixture_issue_time(weather_rows: Sequence[dict[str, object]]) -> datetime:
     valid_dates = [_parse_date(row.get("valid_date"), "fixture weather valid_date") for row in weather_rows]
     first_valid_date = min(valid_dates)
     return datetime.combine(
-        first_valid_date - timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc
-    )
+        first_valid_date - timedelta(days=1), datetime.min.time(), tzinfo=IDAHO_TIME_ZONE
+    ).astimezone(timezone.utc)
 
 
 def _calculate_outlook_days(inputs: _FixtureInputs, crop_path: Path) -> tuple[OutlookDay, ...]:
@@ -990,7 +991,7 @@ def _fixture_coefficients(
                 crop_code=fraction.crop_code,
                 crop_class=fraction.crop_class,
                 kc=_FIXTURE_KC_BY_CROP_CODE[fraction.crop_code],
-                effective_date=issued_at.date(),
+                effective_date=idaho_local_date(issued_at),
                 vegetation_state="fixture-fixed-software-input",
                 source_name=_FIXTURE_KC_SOURCE,
                 source_version="fixture-v1",
@@ -1032,7 +1033,7 @@ def _float_values(values: list[float] | list[None], label: str) -> list[float]:
 def _validate_days(days: Sequence[OutlookDay], issued_at: datetime) -> None:
     if not days:
         raise ValueError("outlook must contain at least one grid cell")
-    expected = {issued_at.date() + timedelta(days=lead) for lead in range(1, 21)}
+    expected = set(outlook_valid_dates(issued_at))
     by_grid: dict[str, set[date]] = defaultdict(set)
     for day in days:
         if day.valid_date in by_grid[day.grid_id]:

@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 import math
 
+from mlet.outlook.dates import idaho_local_date
+
 
 @dataclass(frozen=True)
 class EtaAnalysis:
@@ -43,7 +45,7 @@ def normalize_openet_state(
         model = _require_text(row, "model", row_index)
         model_version = _require_text(row, "model_version", row_index)
         observed_through = _require_date(row, "observation_date", row_index)
-        if observed_through >= issue_time.date():
+        if observed_through >= idaho_local_date(issue_time):
             raise ValueError(
                 "OpenET observation_date must be a completed day strictly before issued_at"
             )
@@ -68,7 +70,7 @@ def normalize_openet_state(
                 issued_at=issue_time,
                 source_available_at=source_available_at,
                 retrieved_at=retrieval_time,
-                latency_days=(issue_time.date() - observed_through).days,
+                latency_days=(idaho_local_date(issue_time) - observed_through).days,
                 model=model,
                 model_version=model_version,
             )

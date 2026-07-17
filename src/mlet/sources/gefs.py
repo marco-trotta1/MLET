@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 import hashlib
 import json
 import math
@@ -22,6 +22,7 @@ import tempfile
 import uuid
 
 from mlet.outlook.contracts import WeatherMember
+from mlet.outlook.dates import outlook_valid_dates
 
 
 _ARTIFACT_TYPE = "mlet.gefs.daily-artifact"
@@ -75,8 +76,7 @@ def normalize_gefs_rows(
 ) -> list[WeatherMember]:
     """Validate a complete 20-day canonical daily ensemble without imputation."""
     issued_datetime = _parse_utc_timestamp(issued_at, "issued_at")
-    issue_date = issued_datetime.date()
-    expected_dates = {issue_date + timedelta(days=lead) for lead in range(1, 21)}
+    expected_dates = set(outlook_valid_dates(issued_datetime))
     members: list[WeatherMember] = []
     seen_keys: set[tuple[str, str, date]] = set()
     dates_by_member: dict[tuple[str, str], set[date]] = {}
@@ -210,6 +210,7 @@ def materialize_gefs_daily_artifact(
         "acquisition_mode": "imported_canonical_daily_artifact",
         "artifact_schema_version": _ARTIFACT_SCHEMA_VERSION,
         "artifact_type": _ARTIFACT_TYPE,
+        "daily_aggregation_timezone": provenance["daily_aggregation_timezone"],
         "generation_id": generation_id,
         "idaho_bbox": list(bbox),
         "name": "gefs",
@@ -282,6 +283,10 @@ def _validate_daily_artifact(
     if not isinstance(upstream_uri, str) or not upstream_uri.startswith("https://"):
         raise ValueError("GEFS provenance upstream_uri must be an HTTPS URL")
     _parse_utc_timestamp(provenance.get("source_issue_at"), "GEFS provenance source_issue_at")
+    if provenance.get("daily_aggregation_timezone") != "America/Boise":
+        raise ValueError(
+            "GEFS provenance daily_aggregation_timezone must be America/Boise"
+        )
     _require_sha256(
         provenance.get("upstream_raw_sha256"), "GEFS provenance upstream_raw_sha256"
     )
