@@ -19,6 +19,7 @@ import math
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import tempfile
 from typing import Iterable, Mapping, Sequence
@@ -137,12 +138,12 @@ def build_outlook(
         _fsync_directory(temporary)
         _publish_private_artifact(temporary, destination)
     except Exception:
-        if temporary.exists():
-            shutil.rmtree(temporary)
+        _remove_private_generation(temporary, destination.parent, manifest.run_id)
         raise
+    published_generation = resolve_published_run(destination_root, manifest.run_id)
     return BuildResult(
         run_id=manifest.run_id,
-        run_dir=destination,
+        run_dir=published_generation,
         day_count=20,
         cell_count=len({day.grid_id for day in days}),
     )
@@ -159,12 +160,141 @@ def _publish_private_artifact(temporary: Path, destination: Path) -> None:
     movable together with its output root while the public stable run id
     remains the sole artifact entry point.
     """
+    relative_target = os.path.relpath(temporary, start=destination.parent)
     try:
-        relative_target = os.path.relpath(temporary, start=destination.parent)
         os.symlink(relative_target, destination, target_is_directory=True)
     except FileExistsError as error:
         raise ValueError(f"outlook run directory already exists: {destination}") from error
-    _fsync_directory(destination.parent)
+    try:
+        _fsync_directory(destination.parent)
+    except Exception:
+        _rollback_owned_publication(destination, relative_target)
+        _remove_private_generation(temporary, destination.parent, destination.name)
+        raise
+
+
+def resolve_published_run(output_root: Path, run_id: str) -> Path:
+    """Return a verified immutable generation behind one public ``run_id``.
+
+    A stable run id is deliberately a symlink so it can be claimed exclusively
+    without replacing another publisher.  It is never itself a completed
+    output: consumers receive only the resolved regular-file generation after
+    its receipt, containment, and recorded hashes have been validated.
+    """
+    _require_run_id(run_id)
+    root = _require_real_output_root(output_root)
+    stable_link = root / run_id
+    if not stable_link.is_symlink():
+        raise ValueError(f"published outlook run is not a stable symlink: {stable_link}")
+    try:
+        target_text = os.readlink(stable_link)
+    except OSError as error:
+        raise ValueError(f"cannot read published outlook run link: {stable_link}") from error
+    if os.path.isabs(target_text):
+        raise ValueError("published outlook run link must be relative")
+    generation = _absolute_path(stable_link.parent / target_text)
+    if generation.parent != root or not generation.name.startswith(f".{run_id}.building-"):
+        raise ValueError("published outlook run link escapes its immutable generation root")
+    _require_real_directory(generation, "published outlook generation")
+    _require_regular_generation_files(generation)
+    manifest_path = generation / "manifest.json"
+    try:
+        manifest = RunManifest.from_json(manifest_path.read_text(encoding="utf-8"))
+    except OSError as error:
+        raise ValueError("cannot read published outlook manifest") from error
+    if manifest.run_id != run_id:
+        raise ValueError("published outlook manifest run_id does not match stable link")
+    if not manifest.artifact_sha256:
+        raise ValueError("published outlook manifest has no recorded artifact hashes")
+    for filename, expected_digest in manifest.artifact_sha256:
+        artifact_path = generation / filename
+        if artifact_path.is_symlink() or not _is_regular_file(artifact_path):
+            raise ValueError(f"published outlook artifact is not a regular file: {filename}")
+        if _sha256(artifact_path) != expected_digest:
+            raise ValueError(f"published outlook artifact hash mismatch: {filename}")
+    return generation
+
+
+def _rollback_owned_publication(destination: Path, relative_target: str) -> None:
+    """Remove a failed publication only when its stable link is still ours."""
+    try:
+        if destination.is_symlink() and os.readlink(destination) == relative_target:
+            os.unlink(destination)
+    except OSError:
+        # Preserve the original durability error.  A concurrent publisher is
+        # never replaced or unlinked by recovery code.
+        return
+
+
+def _remove_private_generation(temporary: Path, root: Path, run_id: str) -> None:
+    """Remove only this builder's unreferenced, non-symlink staging directory."""
+    expected_prefix = f".{run_id}.building-"
+    if temporary.parent != root or not temporary.name.startswith(expected_prefix):
+        return
+    try:
+        mode = temporary.lstat().st_mode
+    except FileNotFoundError:
+        return
+    if not stat.S_ISDIR(mode):
+        return
+    shutil.rmtree(temporary)
+
+
+def _require_run_id(run_id: str) -> None:
+    if not isinstance(run_id, str) or not run_id or Path(run_id).name != run_id:
+        raise ValueError("published outlook run_id must be a safe basename")
+
+
+def _absolute_path(path: Path) -> Path:
+    """Normalize ``.`` and ``..`` without following symlinks."""
+    return Path(os.path.abspath(path))
+
+
+def _require_real_output_root(path: Path) -> Path:
+    root = _absolute_path(path)
+    _reject_symlinked_ancestors(root)
+    _require_real_directory(root, "out_dir")
+    return root
+
+
+def _reject_symlinked_ancestors(path: Path) -> None:
+    current = Path(path.anchor)
+    for component in path.parts[1:]:
+        current /= component
+        try:
+            mode = current.lstat().st_mode
+        except FileNotFoundError as error:
+            raise ValueError(f"published outlook path does not exist: {path}") from error
+        if stat.S_ISLNK(mode):
+            raise ValueError(f"published outlook path has a symlinked ancestor: {current}")
+
+
+def _require_real_directory(path: Path, label: str) -> None:
+    try:
+        mode = path.lstat().st_mode
+    except FileNotFoundError as error:
+        raise ValueError(f"{label} does not exist: {path}") from error
+    if not stat.S_ISDIR(mode):
+        raise ValueError(f"{label} must be a real directory")
+
+
+def _is_regular_file(path: Path) -> bool:
+    try:
+        return stat.S_ISREG(path.lstat().st_mode)
+    except FileNotFoundError:
+        return False
+
+
+def _require_regular_generation_files(generation: Path) -> None:
+    try:
+        children = tuple(generation.iterdir())
+    except OSError as error:
+        raise ValueError("cannot inspect published outlook generation") from error
+    if not children:
+        raise ValueError("published outlook generation is empty")
+    for child in children:
+        if child.is_symlink() or not _is_regular_file(child):
+            raise ValueError("published outlook generation must contain regular files only")
 
 
 def _load_fixture_inputs(

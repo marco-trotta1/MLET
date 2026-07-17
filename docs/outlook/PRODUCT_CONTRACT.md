@@ -84,6 +84,15 @@ assumes the output root is on a single local POSIX filesystem with atomic
 exclusive `symlink(2)` creation and durable directory `fsync`; network or
 object-store paths are not supported publication targets.
 
+The stable symlink is a discovery handle, not a completed artifact path.
+Consumers must use `resolve_published_run` before reading it. The resolver
+rejects symlinked output ancestors, absolute or escaping targets, dangling or
+non-directory generations, links or subdirectories inside a generation, an
+inconsistent manifest run ID, and every recorded artifact whose SHA-256 does
+not match its receipt. A parent-directory durability failure rolls back only
+the link still owned by that publisher and removes its private generation, so
+the run ID remains retryable without clobbering a concurrent publisher.
+
 ## Inputs and provenance
 
 The machine-readable registry is
