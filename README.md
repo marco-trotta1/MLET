@@ -192,11 +192,14 @@ python3 -m mlet evaluate-outlook-residual \
 ```
 
 That bundled input is a visibly non-scientific software fixture. Archive-local
-checksums for Task 8 cases and feature receipts are useful replay diagnostics,
-but are not independent provenance: an archive author can supply both the rows
-and receipts. An external archive-reconstruction authority must rebuild the
-rows from raw source artifacts before separate release review; this repository
-always emits `promotion: false` and `external_release_eligible: false`.
+checksums for Task 8 cases, feature receipts, and target receipts are useful
+replay diagnostics, but are not independent provenance: an archive author can
+supply both the rows and receipts. Training/calibration target receipts must
+also prove availability by their frozen cutoffs; test targets may be later but
+remain bound. An external archive-reconstruction authority must rebuild the
+rows and target receipts from raw source artifacts before separate release
+review; this repository always emits `promotion: false` and
+`external_release_eligible: false`.
 
 ## Static research-candidate map
 

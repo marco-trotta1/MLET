@@ -16,7 +16,7 @@ import numpy as np
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
 
-from mlet.outlook.dates import outlook_valid_date
+from mlet.outlook.dates import idaho_local_day_end_utc, outlook_valid_date
 
 
 FEATURES = (
@@ -72,7 +72,9 @@ class ResidualCase:
     """One archived case, including only issue-time available features.
 
     ``physical_p50`` is the unchanged physics baseline and ``target_mm`` is a
-    later-observed evaluation target.  A model learns ``target - physical``.
+    later-observed evaluation target.  ``target_available_at`` is the immutable
+    target-receipt time used by the train/calibration cutoff gates.  A model
+    learns ``target - physical``.
     """
 
     case_id: str
@@ -87,6 +89,7 @@ class ResidualCase:
     features: tuple[float, ...]
     physical_p50: float
     target_mm: float
+    target_available_at: datetime
 
     def __post_init__(self) -> None:
         if not isinstance(self.case_id, str) or not self.case_id:
@@ -127,6 +130,10 @@ class ResidualCase:
             raise ValueError("residual season must equal the calendar season of valid_date")
         if not math.isfinite(self.physical_p50) or not math.isfinite(self.target_mm):
             raise ValueError("residual physical_p50 and target_mm must be finite")
+        target_available = _strict_utc(self.target_available_at, "target_available_at")
+        if target_available <= idaho_local_day_end_utc(valid_day):
+            raise ValueError("residual target_available_at must be later than valid_date")
+        object.__setattr__(self, "target_available_at", target_available)
 
     @property
     def residual_mm(self) -> float:
@@ -155,6 +162,8 @@ def fit_residual_model(
         raise ValueError("fit_residual_model accepts only train-role cases")
     if any(case.issue_time > normalized_cutoff for case in train):
         raise ValueError("residual training case issue_time is after training cutoff")
+    if any(case.target_available_at > normalized_cutoff for case in train):
+        raise ValueError("residual training target_available_at is after training cutoff")
     if len(train) < 2:
         raise ValueError("residual training requires at least two training cases")
     values = np.asarray([case.features for case in train], dtype=float)

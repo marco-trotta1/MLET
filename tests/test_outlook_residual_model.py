@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 from pathlib import Path
 
@@ -12,6 +13,8 @@ from mlet.cli import main
 from mlet.experiments.idaho_outlook_residual import (
     FrozenSplit,
     ResidualMetric,
+    _parse_case,
+    _verify_target_receipt,
     _metric_blockers,
     evaluate_residual_evidence,
     write_residual_authority_request,
@@ -25,8 +28,8 @@ ISSUE = "2024-01-01T00:00:00Z"
 
 def _case(case_id: str, role: str, *, issue: str | None = None, block: str = "43:-117", target: float = 4.0) -> dict[str, object]:
     issue_by_role = {
-        "train": "2023-03-01T00:00:00Z",
-        "calibration": "2023-04-03T00:00:00Z",
+        "train": "2023-03-02T00:00:00Z",
+        "calibration": "2023-05-02T00:00:00Z",
         "test": "2024-01-01T00:00:00Z",
     }
     issue = issue or issue_by_role[role]
@@ -56,6 +59,9 @@ def _case(case_id: str, role: str, *, issue: str | None = None, block: str = "43
         },
         "physical_p50": 3.0,
         "target_mm": target,
+        "target_available_at": (
+            issue_time + timedelta(days=3 if role != "test" else 22)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
 
@@ -72,8 +78,8 @@ def _evidence(*, classification: str = "software_fixture") -> dict[str, object]:
         "hindcast_evidence": None,
         "split": {
             "split_id": "idaho-residual-v1-fold-4-djf",
-            "train_cutoff": "2023-03-01T00:00:00Z",
-            "calibration_cutoff": "2023-04-03T00:00:00Z",
+            "train_cutoff": "2023-05-01T00:00:00Z",
+            "calibration_cutoff": "2023-06-03T00:00:00Z",
             "held_out_spatial_blocks": ["44:-116"],
             "held_out_seasons": ["DJF"],
         },
@@ -108,11 +114,13 @@ def test_residual_fit_receives_only_training_issue_times() -> None:
             features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
             physical_p50=3.0,
             target_mm=3.5 + index / 10,
+            target_available_at=issue + timedelta(days=2),
         )
         for index in range(2)
     )
-    model = fit_residual_model(cases, cutoff=issue)
-    assert max(model.training_issue_times) <= issue
+    cutoff = issue + timedelta(days=3)
+    model = fit_residual_model(cases, cutoff=cutoff)
+    assert max(model.training_issue_times) <= cutoff
 
 
 def test_feature_after_issue_is_rejected(tmp_path: Path) -> None:
@@ -128,6 +136,69 @@ def test_feature_after_issue_is_rejected(tmp_path: Path) -> None:
         evaluate_residual_evidence(_write(tmp_path / "late.json", evidence))
 
 
+@pytest.mark.parametrize(
+    ("role", "available_at", "message"),
+    (
+        ("train", "2023-05-02T00:00:00Z", "training target_available_at"),
+        ("calibration", "2023-06-04T00:00:00Z", "calibration target_available_at"),
+    ),
+)
+def test_target_availability_is_cutoff_gated(
+    tmp_path: Path, role: str, available_at: str, message: str,
+) -> None:
+    evidence = _evidence()
+    cases = evidence["cases"]
+    assert isinstance(cases, list)
+    selected = next(item for item in cases if isinstance(item, dict) and item["role"] == role)
+    assert isinstance(selected, dict)
+    selected["target_available_at"] = available_at
+    with pytest.raises(ValueError, match=message):
+        evaluate_residual_evidence(_write(tmp_path / f"{role}-target-leak.json", evidence))
+
+
+def _target_receipt_payload(case: ResidualCase, *, hindcast_case_sha256: str = "a" * 64) -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "kind": "idaho_outlook_residual_target_receipt",
+        "case_id": case.case_id,
+        "hindcast_case_sha256": hindcast_case_sha256,
+        "layer": case.layer,
+        "target_kind": case.target_kind,
+        "lead_day": int(case.features[0]),
+        "valid_date": case.valid_date,
+        "spatial_block": case.spatial_block,
+        "target_mm": case.target_mm,
+        "target_available_at": case.target_available_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "uri": "https://archive.example.org/residual-targets",
+        "source_version": "target-v1",
+    }
+
+
+def test_target_receipt_is_required_bound_and_content_addressed(tmp_path: Path) -> None:
+    case = _parse_case(_case("test-1", "test", block="44:-116"))
+    target_path = tmp_path / "target-receipt.json"
+    payload = _target_receipt_payload(case)
+    target_path.write_text(json.dumps(payload), encoding="utf-8")
+    digest = hashlib.sha256(target_path.read_bytes()).hexdigest()
+    descriptor = {"path": target_path.name, "sha256": digest}
+
+    binding = _verify_target_receipt(descriptor, case, "a" * 64, tmp_path)
+    assert binding["sha256"] == digest
+    assert binding["target_available_at"] == payload["target_available_at"]
+
+    mutated = {**payload, "target_mm": 99.0}
+    target_path.write_text(json.dumps(mutated), encoding="utf-8")
+    mutated_digest = hashlib.sha256(target_path.read_bytes()).hexdigest()
+    with pytest.raises(ValueError, match="target_mm does not bind"):
+        _verify_target_receipt({"path": target_path.name, "sha256": mutated_digest}, case, "a" * 64, tmp_path)
+
+    with pytest.raises(ValueError, match="requires a target_receipt"):
+        _verify_target_receipt(None, case, "a" * 64, tmp_path)
+    target_path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="does not bind the Task 8 case"):
+        _verify_target_receipt(descriptor, case, "b" * 64, tmp_path)
+
+
 def test_underpowered_preregistered_strata_remain_named_with_blockers(tmp_path: Path) -> None:
     report, _receipt = evaluate_residual_evidence(_write(tmp_path / "underpowered.json", _evidence()))
     by_key = {(metric.group, metric.key): metric for metric in report.metrics}
@@ -137,6 +208,10 @@ def test_underpowered_preregistered_strata_remain_named_with_blockers(tmp_path: 
     assert by_key[("season", "DJF")].sample_count == 1
     assert "insufficient calibration support at lead 20: 0 < 5" in report.blockers
     assert "insufficient held-out test support in season DJF: 1 < 20" in report.blockers
+    assert report.model_parameters["case_target_receipts"] == {}
+    assert set(report.model_parameters["case_target_available_at"]) == {
+        "train-1", "train-2", "calibration-1", "test-1"
+    }
 
 
 def test_held_out_training_leakage_is_rejected(tmp_path: Path) -> None:
@@ -159,6 +234,7 @@ def test_case_valid_date_and_caller_season_cannot_disagree_with_issue_and_lead()
             valid_date="2024-01-03", spatial_block="43:-117", season="DJF",
             feature_available_at=tuple((name, issue) for name in FEATURES),
             features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0), physical_p50=3.0, target_mm=3.5,
+            target_available_at=issue + timedelta(days=3),
         )
     with pytest.raises(ValueError, match="calendar season"):
         ResidualCase(
@@ -167,6 +243,7 @@ def test_case_valid_date_and_caller_season_cannot_disagree_with_issue_and_lead()
             valid_date=outlook_valid_date(issue, 1).isoformat(), spatial_block="43:-117", season="MAM",
             feature_available_at=tuple((name, issue) for name in FEATURES),
             features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0), physical_p50=3.0, target_mm=3.5,
+            target_available_at=issue + timedelta(days=3),
         )
 
 
@@ -192,10 +269,11 @@ def test_residual_case_uses_idaho_local_valid_date_at_utc_and_dst_boundaries(
         valid_date=valid_date.isoformat(),
         spatial_block="43:-117",
         season="JJA" if valid_date.month == 7 else "MAM",
-        feature_available_at=tuple((name, issue) for name in FEATURES),
-        features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
-        physical_p50=3.0,
-        target_mm=3.5,
+            feature_available_at=tuple((name, issue) for name in FEATURES),
+            features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
+            physical_p50=3.0,
+            target_mm=3.5,
+            target_available_at=issue + timedelta(days=3),
     )
 
     assert case.valid_date == expected_valid_date
@@ -251,6 +329,7 @@ def test_lead_calibration_support_is_feasible_without_a_held_season_claim() -> N
             feature_available_at=tuple((name, issue) for name in FEATURES),
             features=(float(lead), 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
             physical_p50=3.0, target_mm=3.5,
+            target_available_at=issue + timedelta(days=lead + 2),
         )
 
     calibration = tuple(

@@ -15,6 +15,7 @@ import json
 import platform
 from pathlib import Path
 from typing import cast
+from urllib.parse import urlparse
 
 import numpy as np
 import sklearn
@@ -308,8 +309,15 @@ def _evaluate(path: Path) -> tuple[ResidualReport, str]:
                 "interval_calibration": "lead-stratified only; no season-conditioned calibration claim",
             },
             "case_sha256": [_case_digest(case) for case in cases],
+            "case_target_available_at": {
+                case.case_id: _format_utc(case.target_available_at) for case in cases
+            },
             "hindcast_binding": hindcast_binding or {"classification": "software_fixture"},
             "case_feature_receipts": case_bindings,
+            "case_target_receipts": {
+                case_id: binding["target_receipt"]
+                for case_id, binding in case_bindings.items()
+            },
             "mlet_source_revision": _mlet_revision(),
         },
     )
@@ -331,7 +339,12 @@ def _fixture_placeholder_report(raw_bytes: bytes) -> ResidualReport:
         metrics=(),
         blockers=(_FIXTURE_BLOCKER, "fixture contains no archived residual cases"),
         data_sha256=hashlib.sha256(raw_bytes).hexdigest(),
-        model_parameters={"algorithm": "not_fit", "features": list(FEATURES), "random_seed": MODEL_RANDOM_SEED},
+        model_parameters={
+            "algorithm": "not_fit",
+            "features": list(FEATURES),
+            "random_seed": MODEL_RANDOM_SEED,
+            "case_target_receipts": {},
+        },
     )
 
 
@@ -418,8 +431,12 @@ def _verify_hindcast_evidence(value: object, root: Path, *, required: bool) -> d
 def _parse_case(value: object) -> ResidualCase:
     if not isinstance(value, dict):
         raise ValueError("residual case must be an object")
-    expected = {"case_id", "role", "layer", "target_kind", "issue_time", "valid_date", "spatial_block", "season", "feature_available_at", "features", "physical_p50", "target_mm"}
-    extensions = {"hindcast_case_sha256", "feature_receipts"}
+    expected = {
+        "case_id", "role", "layer", "target_kind", "issue_time", "valid_date",
+        "spatial_block", "season", "feature_available_at", "features",
+        "physical_p50", "target_mm", "target_available_at",
+    }
+    extensions = {"hindcast_case_sha256", "feature_receipts", "target_receipt"}
     if set(value) != expected and set(value) != expected | extensions:
         raise ValueError("residual case fields must match the schema exactly")
     availability = value["feature_available_at"]
@@ -448,12 +465,13 @@ def _parse_case(value: object) -> ResidualCase:
         features=ordered_features,
         physical_p50=physical_p50,
         target_mm=target_mm,
+        target_available_at=_parse_timestamp(value["target_available_at"], "target_available_at"),
     )
 
 
 def _verify_case_bindings(
     raw_cases: Sequence[object], cases: Sequence[ResidualCase], hindcast_binding: dict[str, object] | None, root: Path,
-) -> dict[str, object]:
+) -> dict[str, dict[str, object]]:
     """Validate archive-local diagnostics for each real ML row.
 
     The digest is not a signature or a local promotion authority.  It is a
@@ -467,7 +485,7 @@ def _verify_case_bindings(
     allowed = hindcast_binding.get("case_sha256")
     if not isinstance(allowed, list) or not all(isinstance(item, str) for item in allowed):
         raise ValueError("hindcast binding does not contain Task 8 case hashes")
-    bound: dict[str, object] = {}
+    bound: dict[str, dict[str, object]] = {}
     for raw_case, case in zip(raw_cases, cases, strict=True):
         if not isinstance(raw_case, dict):
             raise ValueError("real_archived residual case must be an object")
@@ -510,6 +528,9 @@ def _verify_case_bindings(
                 raise ValueError("feature receipt value must be numeric") from error
             if receipt_value != case.features[index]:
                 raise ValueError("feature receipt value does not bind the evaluated feature")
+        target_binding = _verify_target_receipt(
+            raw_case.get("target_receipt"), case, reference, root
+        )
         # The complete row is content-addressed in the report for diagnostic
         # replay.  A changed local row changes its review artifact; that is not
         # proof the row came from the cited Task 8 case.
@@ -519,8 +540,85 @@ def _verify_case_bindings(
             "hindcast_case_sha256": reference,
             "feature_receipt_sha256": receipt_hashes,
             "feature_source_revisions": source_revisions,
+            "target_receipt": target_binding,
         }
     return bound
+
+
+def _verify_target_receipt(
+    descriptor: object, case: ResidualCase, hindcast_case_sha256: str, root: Path
+) -> dict[str, object]:
+    """Verify a hashed target receipt against a reconstructed Task 8 case.
+
+    The receipt is an archive-local diagnostic binding, not an authority.  A
+    caller can still author a row and a matching receipt, so the external
+    archive-reconstruction authority remains a mandatory release blocker.
+    """
+    if not isinstance(descriptor, dict):
+        raise ValueError("real_archived residual case requires a target_receipt")
+    _require_keys(descriptor, {"path", "sha256"}, "target receipt descriptor")
+    receipt_path = _read_relative_evidence_file(root, descriptor["path"], "target receipt")
+    receipt_bytes = receipt_path.read_bytes()
+    receipt_digest = descriptor["sha256"]
+    if not isinstance(receipt_digest, str) or not _is_sha256(receipt_digest):
+        raise ValueError("target receipt sha256 must be lowercase hexadecimal")
+    actual_digest = hashlib.sha256(receipt_bytes).hexdigest()
+    if actual_digest != receipt_digest:
+        raise ValueError("target receipt sha256 does not match its archived bytes")
+    payload = _load_json(receipt_bytes, "target receipt")
+    if not isinstance(payload, dict):
+        raise ValueError("target receipt must be a JSON object")
+    _require_keys(
+        payload,
+        {
+            "schema_version", "kind", "case_id", "hindcast_case_sha256", "layer",
+            "target_kind", "lead_day", "valid_date", "spatial_block", "target_mm",
+            "target_available_at", "uri", "source_version",
+        },
+        "target receipt artifact",
+    )
+    if payload["schema_version"] != 1 or payload["kind"] != "idaho_outlook_residual_target_receipt":
+        raise ValueError("target receipt artifact schema is invalid")
+    if payload["case_id"] != case.case_id:
+        raise ValueError("target receipt does not bind the residual case")
+    if payload["hindcast_case_sha256"] != hindcast_case_sha256:
+        raise ValueError("target receipt does not bind the Task 8 case")
+    if payload["layer"] != case.layer or payload["target_kind"] != case.target_kind:
+        raise ValueError("target receipt layer or target kind does not bind the residual case")
+    lead_day = payload["lead_day"]
+    if isinstance(lead_day, bool) or not isinstance(lead_day, int) or lead_day != int(case.features[0]):
+        raise ValueError("target receipt lead_day does not bind the residual case")
+    if payload["valid_date"] != case.valid_date or payload["spatial_block"] != case.spatial_block:
+        raise ValueError("target receipt date or spatial block does not bind the residual case")
+    try:
+        target_mm = float(payload["target_mm"])
+    except (TypeError, ValueError) as error:
+        raise ValueError("target receipt target_mm must be numeric") from error
+    if not np.isfinite(target_mm) or target_mm != case.target_mm:
+        raise ValueError("target receipt target_mm does not bind the residual case")
+    target_available_at = _parse_timestamp(
+        payload["target_available_at"], "target receipt target_available_at"
+    )
+    if target_available_at != case.target_available_at:
+        raise ValueError("target receipt target_available_at does not bind the residual case")
+    uri = payload["uri"]
+    source_version = payload["source_version"]
+    parsed_uri = urlparse(uri) if isinstance(uri, str) else None
+    if (
+        parsed_uri is None
+        or not parsed_uri.scheme
+        or (not parsed_uri.netloc and parsed_uri.scheme != "file")
+        or not isinstance(source_version, str)
+        or not source_version
+    ):
+        raise ValueError("target receipt source identity is invalid")
+    return {
+        "sha256": actual_digest,
+        "hindcast_case_sha256": hindcast_case_sha256,
+        "target_available_at": _format_utc(target_available_at),
+        "uri": uri,
+        "source_version": source_version,
+    }
 
 
 def _read_relative_evidence_file(root: Path, relative_path: object, label: str) -> Path:
@@ -559,11 +657,15 @@ def _validate_split_roles(cases: Sequence[ResidualCase], split: FrozenSplit) -> 
         if case.role == "train":
             if case.issue_time > split.train_cutoff:
                 raise ValueError("training case is after frozen train_cutoff")
+            if case.target_available_at > split.train_cutoff:
+                raise ValueError("training target_available_at is after frozen train_cutoff")
             if held_block or held_season:
                 raise ValueError("held-out spatial block or season appears in training")
         elif case.role == "calibration":
             if not calibration_start <= case.issue_time <= split.calibration_cutoff:
                 raise ValueError("calibration case is outside the frozen post-training interval")
+            if case.target_available_at > split.calibration_cutoff:
+                raise ValueError("calibration target_available_at is after frozen calibration_cutoff")
             if held_block or held_season:
                 raise ValueError("held-out spatial block or season appears in calibration")
         elif case.issue_time < test_start:
@@ -826,6 +928,8 @@ def _case_digest(case: ResidualCase) -> str:
             {
                 "case_id": case.case_id,
                 "role": case.role,
+                "layer": case.layer,
+                "target_kind": case.target_kind,
                 "issue_time": _format_utc(case.issue_time),
                 "valid_date": case.valid_date,
                 "spatial_block": case.spatial_block,
@@ -836,6 +940,7 @@ def _case_digest(case: ResidualCase) -> str:
                 "features": list(case.features),
                 "physical_p50": case.physical_p50,
                 "target_mm": case.target_mm,
+                "target_available_at": _format_utc(case.target_available_at),
             }
         ).encode("utf-8")
     ).hexdigest()
