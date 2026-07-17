@@ -74,7 +74,9 @@ def validate_crop_coefficient_input(
     if not isinstance(coefficient, CropCoefficientInput):
         raise ValueError("crop_coefficients must contain CropCoefficientInput records")
     _require_crop_key(coefficient.crop_code, coefficient.crop_class)
-    _require_kc(coefficient.kc)
+    kc = _require_kc(coefficient.kc)
+    if coefficient.crop_class == "non_crop" and kc != 0.0:
+        raise ValueError("non-crop crop coefficient must equal 0")
     _require_date(coefficient.effective_date, "crop coefficient effective_date")
     _require_text(coefficient.vegetation_state, "crop coefficient vegetation_state")
     _require_text(coefficient.source_name, "crop coefficient source_name")
@@ -365,35 +367,9 @@ def _derive_potential_etc_terms(
     """Return the only native-cell ETc terms reproducible from one assignment."""
     crop_coefficient_assignment.assert_valid()
     cell_fractions = crop_coefficient_assignment.fractions
-    if not cell_fractions:
-        raise ValueError("potential ET requires at least one crop fraction")
-    for fraction in cell_fractions:
-        _validate_crop_fraction(fraction)
-
-    grid_ids = {fraction.grid_id for fraction in cell_fractions}
-    if len(grid_ids) != 1:
-        raise ValueError("potential ET fractions must belong to one grid_id")
-    source_years = {fraction.source_year for fraction in cell_fractions}
-    if len(source_years) != 1:
-        raise ValueError("potential ET fractions must share one source_year")
-    coverage_fraction = cell_fractions[0].coverage_fraction
-    if any(
-        fraction.coverage_fraction != coverage_fraction
-        for fraction in cell_fractions[1:]
-    ):
-        raise ValueError("potential ET fractions must share one coverage_fraction")
-    layer_metadata = {fraction.layer_metadata for fraction in cell_fractions}
-    if len(layer_metadata) != 1:
-        raise ValueError("potential ET fractions must share identical CDL layer metadata")
-    selected_layer_metadata = next(iter(layer_metadata))
-    validate_cdl_layer_metadata(selected_layer_metadata)
-
-    fraction_sum = sum(fraction.fraction for fraction in cell_fractions)
-    if not _is_close(fraction_sum, coverage_fraction):
-        raise ValueError(
-            "potential ET crop fractions must sum to declared coverage within "
-            f"{_COVERAGE_TOLERANCE:g}"
-        )
+    grid_id, coverage_fraction, source_year, selected_layer_metadata = (
+        _validate_native_crop_assignment_structure(cell_fractions)
+    )
     active = [fraction for fraction in cell_fractions if fraction.crop_class != "unknown"]
     if not active:
         raise ValueError("potential ET requires known crop coverage")
@@ -402,10 +378,10 @@ def _derive_potential_etc_terms(
         raise ValueError("potential ET requires positive known crop coverage")
     weighted_kc = sum(fraction.fraction * _require_kc(fraction.kc) for fraction in active)
     return (
-        next(iter(grid_ids)),
+        grid_id,
         coverage_fraction,
         known_coverage_fraction,
-        next(iter(source_years)),
+        source_year,
         selected_layer_metadata,
         weighted_kc / known_coverage_fraction,
     )
@@ -451,6 +427,8 @@ def _validate_assignment(
                 raise ValueError("unknown crop coverage must not carry a crop coefficient")
             continue
         fraction_kc = _require_kc(fraction.kc)
+        if fraction.crop_class == "non_crop" and fraction_kc != 0.0:
+            raise ValueError("non-crop crop coefficient must equal 0")
         key = (fraction.crop_code, fraction.crop_class)
         required_keys.add(key)
         coefficient = coefficient_by_crop.get(key)
@@ -464,7 +442,50 @@ def _validate_assignment(
     unused = set(coefficient_by_crop) - required_keys
     if unused:
         raise ValueError("crop coefficient input does not match any known crop fraction")
+    _validate_native_crop_assignment_structure(assigned_fractions)
     return assigned_fractions, coefficients, issue_time, target_date
+
+
+def _validate_native_crop_assignment_structure(
+    fractions: tuple[CropFraction, ...],
+) -> tuple[str, float, int, CdlLayerMetadata]:
+    """Require one native CDL cell with exact recorded coverage structure.
+
+    This validation belongs to a crop-coefficient assignment rather than only
+    its ETc projection: assignments are serializable provenance artifacts and
+    must not claim a heterogeneous grid, year, layer, or coverage sum.
+    """
+    if not fractions:
+        raise ValueError("crop coefficient assignment requires at least one crop fraction")
+    grid_ids = {fraction.grid_id for fraction in fractions}
+    if len(grid_ids) != 1:
+        raise ValueError("crop coefficient assignment fractions must belong to one grid_id")
+    source_years = {fraction.source_year for fraction in fractions}
+    if len(source_years) != 1:
+        raise ValueError("crop coefficient assignment fractions must share one source_year")
+    coverage_fraction = fractions[0].coverage_fraction
+    if any(fraction.coverage_fraction != coverage_fraction for fraction in fractions[1:]):
+        raise ValueError("crop coefficient assignment fractions must share one coverage_fraction")
+    layer_metadata = {fraction.layer_metadata for fraction in fractions}
+    if len(layer_metadata) != 1:
+        raise ValueError(
+            "crop coefficient assignment fractions must share identical CDL layer metadata"
+        )
+    selected_layer_metadata = next(iter(layer_metadata))
+    validate_cdl_layer_metadata(selected_layer_metadata)
+
+    fraction_sum = sum(fraction.fraction for fraction in fractions)
+    if not _is_close(fraction_sum, coverage_fraction):
+        raise ValueError(
+            "crop coefficient assignment fractions must sum to declared coverage within "
+            f"{_COVERAGE_TOLERANCE:g}"
+        )
+    return (
+        next(iter(grid_ids)),
+        coverage_fraction,
+        next(iter(source_years)),
+        selected_layer_metadata,
+    )
 
 
 def _validate_crop_fraction(fraction: CropFraction) -> None:

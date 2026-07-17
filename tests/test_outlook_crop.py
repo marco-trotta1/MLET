@@ -243,6 +243,129 @@ def test_crop_coefficient_serialization_revalidates_a_mutated_source_identity() 
 
 
 @pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        (
+            lambda fractions: object.__setattr__(fractions[1], "grid_id", "other-grid"),
+            "one grid_id",
+        ),
+        (
+            lambda fractions: object.__setattr__(fractions[1], "source_year", 2023),
+            "source_year",
+        ),
+        (
+            lambda fractions: object.__setattr__(
+                fractions[1],
+                "layer_metadata",
+                replace(fractions[1].layer_metadata, layer_version="other-layer"),
+            ),
+            "identical CDL layer metadata",
+        ),
+        (
+            lambda fractions: object.__setattr__(
+                fractions[1], "coverage_fraction", 0.5000000005
+            ),
+            "one coverage_fraction",
+        ),
+        (
+            lambda fractions: object.__setattr__(fractions[1], "fraction", 0.49),
+            "sum to declared coverage",
+        ),
+    ),
+)
+def test_crop_assignment_serialization_revalidates_native_cell_structure(
+    mutation: object, message: str
+) -> None:
+    assignment = _assignment(
+        _fraction(fraction=0.5, coverage_fraction=1.0, kc=1.0),
+        _fraction(
+            crop_code=None,
+            crop_class="non_crop",
+            fraction=0.5,
+            coverage_fraction=1.0,
+            kc=0.0,
+        ),
+    )
+
+    mutation(assignment.fractions)  # type: ignore[operator]
+
+    with pytest.raises(ValueError, match=message):
+        assignment.to_record()
+
+
+def test_direct_crop_assignment_rejects_mixed_native_cell_structure() -> None:
+    with pytest.raises(ValueError, match="one grid_id"):
+        CropCoefficientAssignment(
+            fractions=(
+                _fraction(fraction=0.5, kc=1.0),
+                _fraction(
+                    crop_code=None,
+                    crop_class="non_crop",
+                    fraction=0.5,
+                    kc=0.0,
+                    grid_id="other-grid",
+                ),
+            ),
+            crop_coefficients=(
+                _coefficient(),
+                _coefficient(crop_code=None, crop_class="non_crop", kc=0.0),
+            ),
+            issued_at=_ISSUED_AT,
+            valid_date=_VALID_DATE,
+        )
+
+
+def test_non_crop_only_assignment_remains_a_serializable_provenance_record() -> None:
+    assignment = _assignment(
+        _fraction(crop_code=None, crop_class="non_crop", kc=0.0)
+    )
+
+    assert assignment.to_record()["fractions"][0]["kc"] == 0.0
+
+
+def test_non_crop_coefficient_rejects_nonzero_kc() -> None:
+    with pytest.raises(ValueError, match="non-crop crop coefficient must equal 0"):
+        _coefficient(crop_code=None, crop_class="non_crop", kc=0.1)
+
+
+def test_non_crop_coefficient_serialization_revalidates_a_mutated_kc() -> None:
+    coefficient = _coefficient(crop_code=None, crop_class="non_crop", kc=0.0)
+    object.__setattr__(coefficient, "kc", 0.1)
+
+    with pytest.raises(ValueError, match="non-crop crop coefficient must equal 0"):
+        coefficient.to_record(issued_at=_ISSUED_AT, valid_date=_VALID_DATE)
+
+
+def test_crop_assignment_serialization_rejects_a_mutated_non_crop_kc() -> None:
+    assignment = _assignment(
+        _fraction(crop_code=None, crop_class="non_crop", kc=0.0)
+    )
+    object.__setattr__(assignment.fractions[0], "kc", 0.1)
+
+    with pytest.raises(ValueError, match="non-crop crop coefficient must equal 0"):
+        assignment.to_record()
+
+
+def test_etc_serialization_rejects_a_mutated_non_crop_kc() -> None:
+    result = potential_et_c(
+        5.0,
+        _assignment(
+            _fraction(crop_code="1", crop_class="corn", fraction=0.5, kc=1.0),
+            _fraction(
+                crop_code=None,
+                crop_class="non_crop",
+                fraction=0.5,
+                kc=0.0,
+            ),
+        ),
+    )
+    object.__setattr__(result.crop_coefficient_assignment.fractions[1], "kc", 0.1)
+
+    with pytest.raises(ValueError, match="non-crop crop coefficient must equal 0"):
+        result.to_record()
+
+
+@pytest.mark.parametrize(
     ("field", "value", "message"),
     (
         ("crop_code", "999", "2024 legend"),
