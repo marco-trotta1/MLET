@@ -6,6 +6,7 @@ import json
 import hashlib
 import os
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -295,6 +296,100 @@ def test_trusted_root_rejects_observable_darwin_acl_metadata(
         "_darwin_acl_xattr_names",
         lambda fd: ("com.apple.acl.text",),
     )
+    try:
+        with pytest.raises(ValueError, match="without ACL metadata: com.apple.acl.text"):
+            outlook_build._require_trusted_directory_fd(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def test_darwin_acl_inspection_lists_names_without_decoding_unrelated_values(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Darwin ACL inspection must not consume arbitrary xattr value bytes."""
+    from mlet.outlook import build as outlook_build
+
+    descriptor = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    calls: list[list[str]] = []
+
+    def list_names(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        del kwargs
+        command = args[0]
+        assert isinstance(command, list)
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, stdout=b"user.example.binary\n")
+
+    monkeypatch.setattr(outlook_build.subprocess, "run", list_names)
+    try:
+        assert outlook_build._darwin_acl_xattr_names(descriptor) == (
+            "user.example.binary",
+        )
+    finally:
+        os.close(descriptor)
+
+    assert calls == [["/usr/bin/xattr", f"/dev/fd/{descriptor}"]]
+
+
+def test_darwin_acl_inspection_fails_closed_for_non_utf8_name_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Undecodable xattr-name output cannot be mistaken for an ACL-free root."""
+    from mlet.outlook import build as outlook_build
+
+    descriptor = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+
+    def undecodable_name(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        del kwargs
+        command = args[0]
+        assert isinstance(command, list)
+        return subprocess.CompletedProcess(command, 0, stdout=b"user.example.\xff\n")
+
+    monkeypatch.setattr(outlook_build.subprocess, "run", undecodable_name)
+    try:
+        with pytest.raises(OSError, match="cannot decode Darwin ACL metadata"):
+            outlook_build._darwin_acl_xattr_names(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def test_darwin_acl_inspection_fails_closed_for_non_name_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Value-style output is malformed when the command is names-only."""
+    from mlet.outlook import build as outlook_build
+
+    descriptor = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+
+    def value_style_output(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        del kwargs
+        command = args[0]
+        assert isinstance(command, list)
+        return subprocess.CompletedProcess(command, 0, stdout=b"user.example: raw-value\n")
+
+    monkeypatch.setattr(outlook_build.subprocess, "run", value_style_output)
+    try:
+        with pytest.raises(OSError, match="cannot parse Darwin ACL metadata"):
+            outlook_build._darwin_acl_xattr_names(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def test_darwin_acl_inspection_returns_acl_name_for_rejection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A listed Darwin ACL marker still reaches the trusted-root rejection."""
+    from mlet.outlook import build as outlook_build
+
+    descriptor = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+
+    def list_acl_name(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        del kwargs
+        command = args[0]
+        assert isinstance(command, list)
+        return subprocess.CompletedProcess(command, 0, stdout=b"com.apple.acl.text\n")
+
+    monkeypatch.setattr(outlook_build.sys, "platform", "darwin")
+    monkeypatch.setattr(outlook_build.subprocess, "run", list_acl_name)
     try:
         with pytest.raises(ValueError, match="without ACL metadata: com.apple.acl.text"):
             outlook_build._require_trusted_directory_fd(descriptor)

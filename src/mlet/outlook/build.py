@@ -534,7 +534,7 @@ def _darwin_acl_xattr_names(descriptor: int) -> tuple[str, ...]:
     """Return Darwin ACL xattr names for a pinned FD, or fail closed."""
     try:
         completed = subprocess.run(
-            ["/usr/bin/xattr", "-l", f"/dev/fd/{descriptor}"],
+            ["/usr/bin/xattr", f"/dev/fd/{descriptor}"],
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -558,11 +558,13 @@ def _darwin_acl_xattr_names(descriptor: int) -> tuple[str, ...]:
             "outlook publication trust boundary is unsupported: cannot decode "
             "Darwin ACL metadata"
         ) from error
-    return tuple(
-        line.split(":", 1)[0]
-        for line in text.splitlines()
-        if line.startswith("com.apple.acl.") and ":" in line
-    )
+    names = tuple(text.splitlines())
+    if any(not name or name != name.strip() or ":" in name for name in names):
+        raise OSError(
+            "outlook publication trust boundary is unsupported: cannot parse "
+            "Darwin ACL metadata"
+        )
+    return names
 
 
 def _linux_acl_xattr_names(descriptor: int) -> tuple[str, ...]:
