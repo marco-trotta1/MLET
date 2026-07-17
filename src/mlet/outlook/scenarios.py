@@ -110,6 +110,7 @@ def project_no_irrigation_from_state(
     """Project or explicitly withhold the no-irrigation scenario for one state."""
     if not isinstance(state, NoIrrigationState):
         raise ValueError("no-irrigation scenario requires a NoIrrigationState")
+    state.assert_valid()
     issue_time = state.provenance.assert_eligible_at(issued_at)
     if state.issued_at != issue_time:
         raise ValueError("no-irrigation state issued_at does not match projection issued_at")

@@ -62,15 +62,32 @@ class NoIrrigationState:
     unavailable_reason: str | None
 
     def __post_init__(self) -> None:
-        _require_text(self.grid_id, "grid_id")
-        _require_positive(self.taw_mm, "taw_mm")
-        _require_positive(self.raw_mm, "raw_mm")
-        if not isinstance(self.provenance, StateProvenance):
-            raise ValueError("no-irrigation state requires explicit StateProvenance")
-        object.__setattr__(
-            self, "issued_at", _require_utc_timestamp(self.issued_at, "issued_at")
+        taw, raw, depletion, issue_time, unavailable_reason = _validate_no_irrigation_state(
+            grid_id=self.grid_id,
+            taw_mm=self.taw_mm,
+            raw_mm=self.raw_mm,
+            initial_depletion_mm=self.initial_depletion_mm,
+            provenance=self.provenance,
+            issued_at=self.issued_at,
+            unavailable_reason=self.unavailable_reason,
         )
-        _validate_provenance_at_issue(self.provenance, self.issued_at)
+        object.__setattr__(self, "taw_mm", taw)
+        object.__setattr__(self, "raw_mm", raw)
+        object.__setattr__(self, "initial_depletion_mm", depletion)
+        object.__setattr__(self, "issued_at", issue_time)
+        object.__setattr__(self, "unavailable_reason", unavailable_reason)
+
+    def assert_valid(self) -> None:
+        """Verify this state cannot be relabeled as an available invalid state."""
+        _validate_no_irrigation_state(
+            grid_id=self.grid_id,
+            taw_mm=self.taw_mm,
+            raw_mm=self.raw_mm,
+            initial_depletion_mm=self.initial_depletion_mm,
+            provenance=self.provenance,
+            issued_at=self.issued_at,
+            unavailable_reason=self.unavailable_reason,
+        )
 
     @property
     def is_available(self) -> bool:
@@ -79,6 +96,7 @@ class NoIrrigationState:
 
     def to_record(self) -> dict[str, object]:
         """Expose all state terms used or withheld by the no-irrigation branch."""
+        self.assert_valid()
         return {
             "grid_id": self.grid_id,
             "taw_mm": self.taw_mm,
@@ -102,8 +120,32 @@ class EtaAnalysisLayer:
     source_model_version: str | None
     issued_at: datetime
 
+    def __post_init__(self) -> None:
+        issue_time, source_available_at = _validate_eta_analysis_layer(
+            eta_analysis_mm=self.eta_analysis_mm,
+            eta_analysis_date=self.eta_analysis_date,
+            source_available_at=self.source_available_at,
+            source_model=self.source_model,
+            source_model_version=self.source_model_version,
+            issued_at=self.issued_at,
+        )
+        object.__setattr__(self, "issued_at", issue_time)
+        object.__setattr__(self, "source_available_at", source_available_at)
+
+    def assert_eligible(self) -> None:
+        """Ensure a direct construction cannot serialize a future analysis."""
+        _validate_eta_analysis_layer(
+            eta_analysis_mm=self.eta_analysis_mm,
+            eta_analysis_date=self.eta_analysis_date,
+            source_available_at=self.source_available_at,
+            source_model=self.source_model,
+            source_model_version=self.source_model_version,
+            issued_at=self.issued_at,
+        )
+
     def to_record(self) -> dict[str, object]:
         """Serialize an observed analysis without recasting it as a forecast."""
+        self.assert_eligible()
         return {
             "eta_analysis_mm": self.eta_analysis_mm,
             "eta_analysis_date": (
@@ -177,14 +219,18 @@ def eta_analysis_from_openet(
         )
     if not isinstance(analysis, EtaAnalysis):
         raise ValueError("eta analysis must be an EtaAnalysis record or None")
-    if analysis.source_available_at > issue_time:
+    source_available_at = _require_utc_timestamp(
+        analysis.source_available_at, "OpenET source_available_at"
+    )
+    observed_through = _require_date(analysis.observed_through, "OpenET observed_through")
+    if source_available_at > issue_time:
         raise ValueError("OpenET source_available_at is later than issued_at")
-    if analysis.observed_through > issue_time.date():
-        raise ValueError("OpenET observed_through is later than issued_at")
+    if observed_through >= issue_time.date():
+        raise ValueError("OpenET observed_through must be strictly before issued_at")
     return EtaAnalysisLayer(
         eta_analysis_mm=analysis.eta_analysis_mm,
-        eta_analysis_date=analysis.observed_through,
-        source_available_at=analysis.source_available_at,
+        eta_analysis_date=observed_through,
+        source_available_at=source_available_at,
         source_model=analysis.model,
         source_model_version=analysis.model_version,
         issued_at=issue_time,
@@ -200,6 +246,68 @@ def _bounded_depletion_or_none(value: object, taw_mm: float) -> float | None:
     return result
 
 
+def _validate_no_irrigation_state(
+    *,
+    grid_id: object,
+    taw_mm: object,
+    raw_mm: object,
+    initial_depletion_mm: object,
+    provenance: object,
+    issued_at: object,
+    unavailable_reason: object,
+) -> tuple[float, float, float | None, datetime, str | None]:
+    _require_text(grid_id, "grid_id")
+    taw = _require_positive(taw_mm, "taw_mm")
+    raw = _require_positive(raw_mm, "raw_mm")
+    if raw > taw:
+        raise ValueError("raw_mm must not exceed taw_mm")
+    if not isinstance(provenance, StateProvenance):
+        raise ValueError("no-irrigation state requires explicit StateProvenance")
+    issue_time = _validate_provenance_at_issue(provenance, issued_at)
+    if initial_depletion_mm is None:
+        reason = _require_text(unavailable_reason, "unavailable_reason")
+        return taw, raw, None, issue_time, reason
+    depletion = _require_bounded_depletion(initial_depletion_mm, taw)
+    if unavailable_reason is not None:
+        raise ValueError(
+            "available no-irrigation state must not include unavailable_reason"
+        )
+    return taw, raw, depletion, issue_time, None
+
+
+def _validate_eta_analysis_layer(
+    *,
+    eta_analysis_mm: object,
+    eta_analysis_date: object,
+    source_available_at: object,
+    source_model: object,
+    source_model_version: object,
+    issued_at: object,
+) -> tuple[datetime, datetime | None]:
+    issue_time = _require_utc_timestamp(issued_at, "issued_at")
+    fields = (
+        eta_analysis_mm,
+        eta_analysis_date,
+        source_available_at,
+        source_model,
+        source_model_version,
+    )
+    if all(field is None for field in fields):
+        return issue_time, None
+    if any(field is None for field in fields):
+        raise ValueError("ETa analysis fields must be all present or all absent")
+    _require_nonnegative(eta_analysis_mm, "eta_analysis_mm")
+    analysis_date = _require_date(eta_analysis_date, "eta_analysis_date")
+    availability = _require_utc_timestamp(source_available_at, "source_available_at")
+    _require_text(source_model, "source_model")
+    _require_text(source_model_version, "source_model_version")
+    if availability > issue_time:
+        raise ValueError("ETa source_available_at is later than issued_at")
+    if analysis_date >= issue_time.date():
+        raise ValueError("ETa analysis date must be strictly before issued_at")
+    return issue_time, availability
+
+
 def _require_positive(value: object, label: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f"{label} must be a finite positive number")
@@ -207,6 +315,24 @@ def _require_positive(value: object, label: str) -> float:
     if not math.isfinite(result) or result <= 0.0:
         raise ValueError(f"{label} must be a finite positive number")
     return result
+
+
+def _require_nonnegative(value: object, label: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{label} must be a finite non-negative number")
+    result = float(value)
+    if not math.isfinite(result) or result < 0.0:
+        raise ValueError(f"{label} must be a finite non-negative number")
+    return result
+
+
+def _require_bounded_depletion(value: object, taw_mm: float) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError("initial_depletion_mm must be within [0, taw_mm]")
+    depletion = float(value)
+    if not math.isfinite(depletion) or not 0.0 <= depletion <= taw_mm:
+        raise ValueError("initial_depletion_mm must be within [0, taw_mm]")
+    return depletion
 
 
 def _require_text(value: object, label: str) -> str:

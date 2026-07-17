@@ -8,6 +8,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 from mlet.outlook.crop import (
+    CropCoefficientAssignment,
     CropCoefficientInput,
     apply_crop_coefficients,
     potential_et_c,
@@ -48,6 +49,38 @@ _ISSUED_AT = datetime(2026, 7, 17, tzinfo=timezone.utc)
 _VALID_DATE = date(2026, 7, 18)
 
 
+def _coefficient(
+    *, crop_code: str | None = "1", crop_class: str = "corn", kc: float = 1.0
+) -> CropCoefficientInput:
+    return CropCoefficientInput(
+        crop_code=crop_code,
+        crop_class=crop_class,
+        kc=kc,
+        effective_date=date(2026, 7, 17),
+        vegetation_state="fixture-vegetation-state",
+        source_name="fixture-coefficient-table",
+        source_version="fixture-v1",
+        source_available_at=datetime(2026, 7, 16, 12, tzinfo=timezone.utc),
+    )
+
+
+def _assignment(*fractions: CropFraction) -> CropCoefficientAssignment:
+    return CropCoefficientAssignment(
+        fractions=fractions,
+        crop_coefficients=tuple(
+            _coefficient(
+                crop_code=fraction.crop_code,
+                crop_class=fraction.crop_class,
+                kc=float(fraction.kc),
+            )
+            for fraction in fractions
+            if fraction.crop_class != "unknown"
+        ),
+        issued_at=_ISSUED_AT,
+        valid_date=_VALID_DATE,
+    )
+
+
 def test_potential_et_is_coverage_weighted_over_known_crop_fractions() -> None:
     fractions = [
         _fraction(crop_code="1", crop_class="corn", fraction=0.6, kc=1.0),
@@ -55,10 +88,15 @@ def test_potential_et_is_coverage_weighted_over_known_crop_fractions() -> None:
         _fraction(crop_code=None, crop_class="unknown", fraction=0.0, kc=None),
     ]
 
-    result = potential_et_c(5.0, fractions)
+    assignment = _assignment(*fractions)
+    result = potential_et_c(5.0, assignment)
 
     assert result.potential_et_c_mm == pytest.approx(3.0)
-    assert result.to_record() == {
+    record = result.to_record()
+    assert record["crop_coefficient_assignment"] == assignment.to_record()
+    assert {
+        key: value for key, value in record.items() if key != "crop_coefficient_assignment"
+    } == {
         "cdl_layer": {
             "layer_version": "fixture-2024",
             "legend_version": "usda-nass-cdl-2024",
@@ -79,13 +117,36 @@ def test_potential_et_is_coverage_weighted_over_known_crop_fractions() -> None:
 
 def test_potential_et_rejects_unknown_coverage_without_a_dated_coefficient() -> None:
     with pytest.raises(ValueError, match="known crop coverage"):
-        potential_et_c(5.0, [_fraction(crop_code=None, crop_class="unknown", kc=None)])
+        potential_et_c(
+            5.0,
+            _assignment(_fraction(crop_code=None, crop_class="unknown", kc=None)),
+        )
 
 
 @pytest.mark.parametrize("kc", (None, -0.01, 1.41))
 def test_potential_et_rejects_missing_or_out_of_range_coefficients(kc: float | None) -> None:
     with pytest.raises(ValueError, match="crop coefficient"):
-        potential_et_c(5.0, [_fraction(kc=kc)])
+        CropCoefficientAssignment(
+            fractions=(_fraction(kc=kc),),
+            crop_coefficients=(_coefficient(kc=1.0),),
+            issued_at=_ISSUED_AT,
+            valid_date=_VALID_DATE,
+        )
+
+
+def test_potential_et_rejects_arbitrary_crop_fractions() -> None:
+    with pytest.raises(ValueError, match="CropCoefficientAssignment"):
+        potential_et_c(5.0, [_fraction(kc=1.0)])  # type: ignore[arg-type]
+
+
+def test_direct_assignment_rejects_a_fraction_kc_that_does_not_match_its_source() -> None:
+    with pytest.raises(ValueError, match="does not match its dated crop coefficient"):
+        CropCoefficientAssignment(
+            fractions=(_fraction(kc=1.0),),
+            crop_coefficients=(_coefficient(kc=1.05),),
+            issued_at=_ISSUED_AT,
+            valid_date=_VALID_DATE,
+        )
 
 
 def test_dated_crop_coefficient_assignment_retains_replay_metadata() -> None:
@@ -187,7 +248,7 @@ def test_potential_et_rejects_mixed_grid_fractions() -> None:
     with pytest.raises(ValueError, match="one grid_id"):
         potential_et_c(
             5.0,
-            [
+            _assignment(
                 _fraction(fraction=0.5, kc=1.0),
                 _fraction(
                     crop_code=None,
@@ -196,20 +257,20 @@ def test_potential_et_rejects_mixed_grid_fractions() -> None:
                     kc=0.0,
                     grid_id="other-idaho-grid",
                 ),
-            ],
+            ),
         )
 
 
 def test_potential_et_rejects_incomplete_fraction_sum_instead_of_renormalizing() -> None:
     with pytest.raises(ValueError, match="sum to declared coverage"):
-        potential_et_c(5.0, [_fraction(fraction=0.6, kc=1.0)])
+        potential_et_c(5.0, _assignment(_fraction(fraction=0.6, kc=1.0)))
 
 
 def test_potential_et_rejects_inconsistent_declared_coverage() -> None:
     with pytest.raises(ValueError, match="one coverage_fraction"):
         potential_et_c(
             5.0,
-            [
+            _assignment(
                 _fraction(fraction=0.5, coverage_fraction=1.0, kc=1.0),
                 _fraction(
                     crop_code=None,
@@ -218,7 +279,7 @@ def test_potential_et_rejects_inconsistent_declared_coverage() -> None:
                     coverage_fraction=0.9,
                     kc=0.0,
                 ),
-            ],
+            ),
         )
 
 
@@ -232,10 +293,14 @@ def test_potential_et_rejects_mixed_cdl_source_years() -> None:
             kc=0.0,
         ),
         source_year=2023,
+        layer_metadata=replace(
+            _fraction().layer_metadata,
+            source_year=2023,
+        ),
     )
 
     with pytest.raises(ValueError, match="one source_year"):
-        potential_et_c(5.0, [first, second])
+        potential_et_c(5.0, _assignment(first, second))
 
 
 def test_crop_coefficient_assignment_rejects_post_issue_source_input() -> None:

@@ -12,6 +12,8 @@ from mlet.outlook.scenarios import (
     project_well_watered,
 )
 from mlet.outlook.state import (
+    EtaAnalysisLayer,
+    NoIrrigationState,
     StateProvenance,
     eta_analysis_from_openet,
     initialize_no_irrigation_state,
@@ -136,6 +138,82 @@ def test_missing_openet_state_remains_missing_instead_of_becoming_an_analysis() 
         "source_model_version": None,
         "issued_at": "2026-07-17T00:00:00Z",
     }
+
+
+@pytest.mark.parametrize(
+    ("eta_analysis_date", "source_available_at", "message"),
+    (
+        (date(2026, 7, 17), datetime(2026, 7, 16, 18, tzinfo=timezone.utc), "strictly before"),
+        (date(2026, 7, 16), datetime(2026, 7, 18, tzinfo=timezone.utc), "later than issued_at"),
+    ),
+)
+def test_direct_eta_analysis_layer_rejects_ineligible_observations(
+    eta_analysis_date: date, source_available_at: datetime, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        EtaAnalysisLayer(
+            eta_analysis_mm=4.2,
+            eta_analysis_date=eta_analysis_date,
+            source_available_at=source_available_at,
+            source_model="fixture-openet-model",
+            source_model_version="fixture-v1",
+            issued_at=_ISSUED_AT,
+        )
+
+
+def test_direct_eta_analysis_layer_serializes_only_an_eligible_completed_day() -> None:
+    analysis = EtaAnalysisLayer(
+        eta_analysis_mm=4.2,
+        eta_analysis_date=date(2026, 7, 16),
+        source_available_at=datetime(2026, 7, 16, 18, tzinfo=timezone.utc),
+        source_model="fixture-openet-model",
+        source_model_version="fixture-v1",
+        issued_at=_ISSUED_AT,
+    )
+
+    assert analysis.to_record()["eta_analysis_date"] == "2026-07-16"
+    assert analysis.to_record()["source_available_at"] == "2026-07-16T18:00:00Z"
+
+
+@pytest.mark.parametrize(
+    ("initial_depletion_mm", "raw_mm", "unavailable_reason", "message"),
+    (
+        (80.1, 40.0, None, r"within \[0, taw_mm\]"),
+        (20.0, 81.0, None, "must not exceed taw_mm"),
+        (None, 40.0, None, "unavailable_reason"),
+    ),
+)
+def test_direct_no_irrigation_state_rejects_invalid_or_ambiguous_availability(
+    initial_depletion_mm: float | None,
+    raw_mm: float,
+    unavailable_reason: str | None,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        NoIrrigationState(
+            grid_id="fixture-idaho-grid",
+            taw_mm=80.0,
+            raw_mm=raw_mm,
+            initial_depletion_mm=initial_depletion_mm,
+            provenance=_provenance(),
+            issued_at=_ISSUED_AT,
+            unavailable_reason=unavailable_reason,
+        )
+
+
+def test_direct_no_irrigation_state_serializes_unavailable_only_with_a_reason() -> None:
+    state = NoIrrigationState(
+        grid_id="fixture-idaho-grid",
+        taw_mm=80.0,
+        raw_mm=40.0,
+        initial_depletion_mm=None,
+        provenance=_provenance(),
+        issued_at=_ISSUED_AT,
+        unavailable_reason="fixture state unavailable",
+    )
+
+    assert state.is_available is False
+    assert state.to_record()["availability"] == "unavailable"
 
 
 @pytest.mark.parametrize("initial_depletion_mm", (None, -0.1, 80.1))
