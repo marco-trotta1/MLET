@@ -88,6 +88,23 @@ def validate_crop_coefficient_input(
 
 
 @dataclass(frozen=True)
+class _ValidatedCropCoefficientAssignment:
+    """One materialized, validated view of mutable assignment inputs.
+
+    A frozen dataclass can still be bypassed with ``object.__setattr__``.  In
+    particular, an attacker or faulty caller could replace either collection
+    with a one-shot iterable after construction.  Artifact serialization must
+    render the exact values it validated, rather than consume such an iterable
+    a second time.
+    """
+
+    fractions: tuple[CropFraction, ...]
+    crop_coefficients: tuple[CropCoefficientInput, ...]
+    issued_at: datetime
+    valid_date: date
+
+
+@dataclass(frozen=True)
 class CropCoefficientAssignment:
     """CDL fractions paired with the dated coefficients used to calculate ETc."""
 
@@ -108,39 +125,24 @@ class CropCoefficientAssignment:
         object.__setattr__(self, "issued_at", issue_time)
         object.__setattr__(self, "valid_date", target_date)
 
+    def _validated_snapshot(self) -> _ValidatedCropCoefficientAssignment:
+        """Materialize all assignment inputs once and retain their validation result."""
+        return _ValidatedCropCoefficientAssignment(
+            *_validate_assignment(
+                fractions=self.fractions,
+                crop_coefficients=self.crop_coefficients,
+                issued_at=self.issued_at,
+                valid_date=self.valid_date,
+            )
+        )
+
     def assert_valid(self) -> None:
         """Check that each stored Kc still matches its eligible source input."""
-        _validate_assignment(
-            fractions=self.fractions,
-            crop_coefficients=self.crop_coefficients,
-            issued_at=self.issued_at,
-            valid_date=self.valid_date,
-        )
+        self._validated_snapshot()
 
     def to_record(self) -> dict[str, object]:
         """Expose all crop terms needed to replay an ETc calculation."""
-        self.assert_valid()
-        return {
-            "issued_at": _format_utc_timestamp(self.issued_at),
-            "valid_date": self.valid_date.isoformat(),
-            "fractions": [
-                {
-                    "crop_code": fraction.crop_code,
-                    "crop_class": fraction.crop_class,
-                    "fraction": fraction.fraction,
-                    "coverage_fraction": fraction.coverage_fraction,
-                    "cdl_year": fraction.source_year,
-                    "kc": fraction.kc,
-                }
-                for fraction in self.fractions
-            ],
-            "crop_coefficients": [
-                coefficient.to_record(
-                    issued_at=self.issued_at, valid_date=self.valid_date
-                )
-                for coefficient in self.crop_coefficients
-            ],
-        }
+        return _crop_coefficient_assignment_to_record(self._validated_snapshot())
 
 
 def apply_crop_coefficients(
@@ -230,7 +232,11 @@ class PotentialEtcRecord:
         for field_name, value in values.items():
             object.__setattr__(self, field_name, value)
 
-    def assert_valid(self) -> None:
+    def assert_valid(
+        self,
+        *,
+        assignment_snapshot: _ValidatedCropCoefficientAssignment | None = None,
+    ) -> None:
         """Recheck direct or mutated records before serializing an ETc artifact."""
         _validate_potential_etc_record(
             grid_id=self.grid_id,
@@ -241,11 +247,16 @@ class PotentialEtcRecord:
             source_year=self.source_year,
             layer_metadata=self.layer_metadata,
             crop_coefficient_assignment=self.crop_coefficient_assignment,
+            assignment_snapshot=assignment_snapshot,
         )
 
     def to_record(self) -> dict[str, object]:
         """Return every grid and CDL coverage term needed to replay ETc."""
-        self.assert_valid()
+        assignment = self.crop_coefficient_assignment
+        if not isinstance(assignment, CropCoefficientAssignment):
+            raise ValueError("potential ET record requires a CropCoefficientAssignment")
+        assignment_snapshot = assignment._validated_snapshot()
+        self.assert_valid(assignment_snapshot=assignment_snapshot)
         layer = self.layer_metadata
         return {
             "grid_id": self.grid_id,
@@ -263,7 +274,9 @@ class PotentialEtcRecord:
                 "upstream_uri": layer.upstream_uri,
                 "sha256": layer.sha256,
             },
-            "crop_coefficient_assignment": self.crop_coefficient_assignment.to_record(),
+            "crop_coefficient_assignment": _crop_coefficient_assignment_to_record(
+                assignment_snapshot
+            ),
         }
 
 
@@ -312,10 +325,12 @@ def _validate_potential_etc_record(
     source_year: object,
     layer_metadata: object,
     crop_coefficient_assignment: object,
+    assignment_snapshot: _ValidatedCropCoefficientAssignment | None = None,
 ) -> dict[str, object]:
     """Validate persisted ETc fields against their sole eligible calculation input."""
     if not isinstance(crop_coefficient_assignment, CropCoefficientAssignment):
         raise ValueError("potential ET record requires a CropCoefficientAssignment")
+    snapshot = assignment_snapshot or crop_coefficient_assignment._validated_snapshot()
     (
         expected_grid_id,
         expected_coverage,
@@ -323,7 +338,9 @@ def _validate_potential_etc_record(
         expected_source_year,
         expected_layer_metadata,
         effective_kc,
-    ) = _derive_potential_etc_terms(crop_coefficient_assignment)
+    ) = _derive_potential_etc_terms(
+        crop_coefficient_assignment, assignment_snapshot=snapshot
+    )
     actual_grid_id = _require_text(grid_id, "grid_id")
     if actual_grid_id != expected_grid_id:
         raise ValueError("potential ET record grid_id must match its crop coefficient assignment")
@@ -363,10 +380,12 @@ def _validate_potential_etc_record(
 
 def _derive_potential_etc_terms(
     crop_coefficient_assignment: CropCoefficientAssignment,
+    *,
+    assignment_snapshot: _ValidatedCropCoefficientAssignment | None = None,
 ) -> tuple[str, float, float, int, CdlLayerMetadata, float]:
     """Return the only native-cell ETc terms reproducible from one assignment."""
-    crop_coefficient_assignment.assert_valid()
-    cell_fractions = crop_coefficient_assignment.fractions
+    snapshot = assignment_snapshot or crop_coefficient_assignment._validated_snapshot()
+    cell_fractions = snapshot.fractions
     grid_id, coverage_fraction, source_year, selected_layer_metadata = (
         _validate_native_crop_assignment_structure(cell_fractions)
     )
@@ -444,6 +463,33 @@ def _validate_assignment(
         raise ValueError("crop coefficient input does not match any known crop fraction")
     _validate_native_crop_assignment_structure(assigned_fractions)
     return assigned_fractions, coefficients, issue_time, target_date
+
+
+def _crop_coefficient_assignment_to_record(
+    snapshot: _ValidatedCropCoefficientAssignment,
+) -> dict[str, object]:
+    """Serialize exactly the assignment collection materialized during validation."""
+    return {
+        "issued_at": _format_utc_timestamp(snapshot.issued_at),
+        "valid_date": snapshot.valid_date.isoformat(),
+        "fractions": [
+            {
+                "crop_code": fraction.crop_code,
+                "crop_class": fraction.crop_class,
+                "fraction": fraction.fraction,
+                "coverage_fraction": fraction.coverage_fraction,
+                "cdl_year": fraction.source_year,
+                "kc": fraction.kc,
+            }
+            for fraction in snapshot.fractions
+        ],
+        "crop_coefficients": [
+            coefficient.to_record(
+                issued_at=snapshot.issued_at, valid_date=snapshot.valid_date
+            )
+            for coefficient in snapshot.crop_coefficients
+        ],
+    }
 
 
 def _validate_native_crop_assignment_structure(

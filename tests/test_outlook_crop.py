@@ -242,6 +242,35 @@ def test_crop_coefficient_serialization_revalidates_a_mutated_source_identity() 
         assignment.to_record()
 
 
+@pytest.mark.parametrize("field", ("fractions", "crop_coefficients"))
+def test_crop_assignment_serialization_uses_its_validated_iterator_snapshot(
+    field: str,
+) -> None:
+    assignment = _assignment(_fraction(kc=1.0))
+    expected_record = assignment.to_record()
+    original_inputs = getattr(assignment, field)
+    object.__setattr__(
+        assignment, field, (item for item in original_inputs)
+    )
+
+    assert assignment.to_record() == expected_record
+
+
+@pytest.mark.parametrize("field", ("fractions", "crop_coefficients"))
+def test_potential_etc_serialization_uses_its_validated_iterator_snapshot(
+    field: str,
+) -> None:
+    result = potential_et_c(5.0, _assignment(_fraction(kc=1.0)))
+    expected_record = result.to_record()
+    assignment = result.crop_coefficient_assignment
+    original_inputs = getattr(assignment, field)
+    object.__setattr__(
+        assignment, field, (item for item in original_inputs)
+    )
+
+    assert result.to_record() == expected_record
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     (
