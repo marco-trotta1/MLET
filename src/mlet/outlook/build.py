@@ -160,8 +160,9 @@ def build_outlook(
     days = _calculate_outlook_days(inputs, crop_path)
     _validate_days(days, inputs.issued_at)
     output_root = _open_output_root(out_dir, create=True)
-    private_generation = _create_private_generation(output_root.fd, manifest.run_id)
+    private_generation: _PinnedDirectory | None = None
     try:
+        private_generation = _create_private_generation(output_root.fd, manifest.run_id)
         # The root and generation descriptors are pinned before any data
         # write.  All artifact creation below is ``openat`` relative to those
         # FDs, so a concurrent pathname/ancestor replacement cannot redirect
@@ -203,7 +204,8 @@ def build_outlook(
         # inspection rather than risking an unsafe cleanup.
         raise
     finally:
-        os.close(private_generation.fd)
+        if private_generation is not None:
+            os.close(private_generation.fd)
         os.close(output_root.fd)
     return BuildResult(
         run_id=manifest.run_id,
@@ -398,10 +400,21 @@ def _no_follow_open_flags(base_flags: int) -> int:
 
 
 def _open_output_root(path: Path, *, create: bool) -> _OpenedDirectory:
-    """Open an absolute root component-by-component without following links."""
+    """Open one trusted absolute root component-by-component without links.
+
+    Publication deliberately does not attempt to make an arbitrary writable
+    directory hostile-writer safe. Every pre-existing component must be a
+    non-symlink directory owned by this effective user, or by root under the
+    documented system-owner exception, and must not be group/other writable.
+    Once that boundary is established, descriptor-relative operations pin the
+    builder and reader to it. A caller needing a shared spool must provision a
+    trusted per-publisher directory first rather than passing the spool itself
+    as ``out_dir``.
+    """
     root = _absolute_path(Path(path))
     descriptor = os.open(root.anchor, _directory_open_flags())
     try:
+        _require_trusted_directory_fd(descriptor)
         for component in root.parts[1:]:
             if create:
                 try:
@@ -429,13 +442,36 @@ def _open_child_directory(parent_fd: int, name: str) -> int:
             raise ValueError("out_dir has a symlinked ancestor") from error
         raise
     try:
-        mode = os.fstat(descriptor).st_mode
-        if not stat.S_ISDIR(mode):
-            raise ValueError("out_dir must be a real directory")
+        _require_trusted_directory_fd(descriptor)
         return descriptor
     except Exception:
         os.close(descriptor)
         raise
+
+
+def _require_trusted_directory_fd(descriptor: int) -> os.stat_result:
+    """Require one directory FD to satisfy the trusted-output-root policy.
+
+    Root-owned, non-group/other-writable system ancestors are accepted so a
+    normal absolute path such as ``/private/var/...`` can be rooted at ``/``.
+    The final output root and any user-owned ancestors must be owned by the
+    effective user. Group- or world-writable directories (including sticky
+    temporary directories) are intentionally unsupported publication roots.
+    """
+    metadata = os.fstat(descriptor)
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise ValueError("out_dir must be a real directory")
+    effective_uid = os.geteuid()
+    if metadata.st_uid not in {effective_uid, 0}:
+        raise ValueError(
+            "out_dir must use a trusted output root owned by the effective user "
+            "or root"
+        )
+    if metadata.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        raise ValueError(
+            "out_dir must use a trusted output root without group/other write access"
+        )
+    return metadata
 
 
 def _stat_child_directory(parent_fd: int, name: str) -> os.stat_result:
@@ -482,22 +518,41 @@ def _require_pinned_child_identity(parent_fd: int, pinned: _PinnedDirectory) -> 
 
 
 def _create_private_generation(root_fd: int, run_id: str) -> _PinnedDirectory:
+    """Create and pin a private generation under an already trusted root.
+
+    ``mkdirat`` gives the name an exclusive initial claim and ``openat`` with
+    ``O_NOFOLLOW`` pins the resulting directory before any write. If a
+    detectable corruption (for example a symlink substitution) occurs before
+    that open, the operation fails closed. A byte-for-byte indistinguishable
+    replacement directory cannot be distinguished by portable POSIX after a
+    name has been replaced before its first open; such a hostile writable root
+    is outside the explicitly enforced trusted-root precondition.
+    """
     for _ in range(128):
         name = f".{run_id}.building-{secrets.token_hex(16)}"
         try:
             os.mkdir(name, mode=0o700, dir_fd=root_fd)
         except FileExistsError:
             continue
+        descriptor: int | None = None
         try:
-            identity = _stat_child_directory(root_fd, name)
-            return _open_pinned_child_directory(
-                root_fd,
-                name,
-                identity,
-                changed_message="private outlook generation changed while being opened",
+            # Open once through the trusted parent FD, then capture the
+            # descriptor identity immediately. Do not reopen this generated
+            # name by a mutable pathname.
+            descriptor = _open_child_directory(root_fd, name)
+            opened = os.fstat(descriptor)
+            pinned = _PinnedDirectory(
+                name=name,
+                fd=descriptor,
+                st_dev=opened.st_dev,
+                st_ino=opened.st_ino,
             )
+            _require_pinned_child_identity(root_fd, pinned)
+            return pinned
         except Exception:
             # A replacement may own this name.  Do not path-clean it.
+            if descriptor is not None:
+                os.close(descriptor)
             raise
     raise ValueError("cannot allocate a unique private outlook generation")
 

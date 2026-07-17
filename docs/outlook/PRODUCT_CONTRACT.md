@@ -105,12 +105,36 @@ descriptor-relative operations, `O_DIRECTORY`, `O_NOFOLLOW`, exclusive
 `symlink(2)` creation, and durable directory `fsync`; network/object-store
 paths and platforms without those semantics are unsupported. MLET detects
 these capabilities only when the outlook builder or reader is invoked and
-raises a clear unsupported-POSIX error if they are unavailable. If the final
-directory `fsync` fails after an exclusive public claim, durability is
-uncertain. The builder deliberately does not attempt a readlink-then-unlink
-rollback, because POSIX cannot make that unlink conditional and it could erase
-a replacement publisher's entry. It leaves the claim and private generation
-for explicit inspection instead.
+raises a clear unsupported-POSIX error if they are unavailable.
+
+### Trusted output-root threat model
+
+The output root is a security boundary, not a general shared scratch path.
+Before either a build or read, MLET traverses every existing absolute component
+through non-following directory descriptors. Each must be a directory owned by
+the effective user, or a root-owned system ancestor, and must have neither
+group nor other write permission. Root ownership is accepted only for such
+non-writable system ancestors; the actual output directory is normally
+effective-user owned. Group- or world-writable paths—including sticky temporary
+directories—and symlinked components are rejected. Operators must provision a
+trusted per-publisher root instead of attempting publication directly in a
+hostile writable spool.
+
+That invariant is what makes later writer/link attacks outside the pinned
+descriptors out of scope: no independent hostile principal can mutate a
+trusted directory entry. The descriptor checks still fail closed for detectable
+corruption such as symlink or inode substitution. Portable POSIX cannot
+distinguish a perfectly identical directory substituted before its first open
+inside an attacker-writable root; MLET makes no security claim for that
+unsupported configuration. Readers independently verify the manifest run ID
+and every recorded SHA-256 from the exact pinned bytes they return, so the
+stable relative link remains discovery-only under this trusted-root model.
+
+If the final directory `fsync` fails after an exclusive public claim,
+durability is uncertain. The builder deliberately does not attempt a
+readlink-then-unlink rollback, because POSIX cannot make that unlink
+conditional and it could erase a replacement publisher's entry. It leaves the
+claim and private generation for explicit inspection instead.
 
 ## Inputs and provenance
 

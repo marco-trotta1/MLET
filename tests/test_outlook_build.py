@@ -188,15 +188,22 @@ def test_build_outlook_exclusive_claim_does_not_clobber_a_concurrent_run(
     assert list(tmp_path.glob(".*.building-*"))
 
 
-def test_builder_rejects_a_private_generation_replaced_before_its_fd_is_pinned(
+def test_builder_rejects_a_detectable_private_generation_replacement_before_open(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The builder never writes a replacement created between mkdir and open."""
+    """A symlink substitution before the first generation FD is rejected."""
     from mlet.outlook import build as outlook_build
 
     original_open = outlook_build._open_child_directory
+    original_open_root = outlook_build._open_output_root
+    opened_root_fds: list[int] = []
     moved_name: str | None = None
     replacement_name: str | None = None
+
+    def capture_root(path: Path, *, create: bool):
+        opened = original_open_root(path, create=create)
+        opened_root_fds.append(opened.fd)
+        return opened
 
     def replace_private_generation(parent_fd: int, name: str) -> int:
         nonlocal moved_name, replacement_name
@@ -204,14 +211,15 @@ def test_builder_rejects_a_private_generation_replaced_before_its_fd_is_pinned(
             moved_name = f"{name}.original"
             replacement_name = name
             os.rename(name, moved_name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
-            os.mkdir(name, dir_fd=parent_fd)
+            os.symlink("/definitely-not-a-generation", name, dir_fd=parent_fd)
         return original_open(parent_fd, name)
 
     monkeypatch.setattr(
         "mlet.outlook.build._open_child_directory", replace_private_generation
     )
+    monkeypatch.setattr("mlet.outlook.build._open_output_root", capture_root)
 
-    with pytest.raises(ValueError, match="private outlook generation changed while being opened"):
+    with pytest.raises(ValueError, match="symlinked ancestor"):
         build_outlook(
             weather_path=WEATHER_FIXTURE,
             state_path=STATE_FIXTURE,
@@ -222,7 +230,136 @@ def test_builder_rejects_a_private_generation_replaced_before_its_fd_is_pinned(
     assert moved_name is not None
     assert replacement_name is not None
     assert (tmp_path / moved_name).is_dir()
-    assert (tmp_path / replacement_name).is_dir()
+    assert (tmp_path / replacement_name).is_symlink()
+    assert len(opened_root_fds) == 1
+    with pytest.raises(OSError):
+        os.fstat(opened_root_fds[0])
+
+
+@pytest.mark.parametrize("mode", [0o775, 0o777])
+def test_build_outlook_rejects_group_or_world_writable_output_root(
+    tmp_path: Path, mode: int
+) -> None:
+    unsafe_root = tmp_path / f"unsafe-{mode:o}"
+    unsafe_root.mkdir()
+    unsafe_root.chmod(mode)
+
+    with pytest.raises(ValueError, match="trusted output root without group/other write"):
+        build_outlook(
+            weather_path=WEATHER_FIXTURE,
+            state_path=STATE_FIXTURE,
+            crop_path=CROP_FIXTURE,
+            out_dir=unsafe_root,
+        )
+
+
+def test_build_outlook_rejects_an_untrusted_output_root_owner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only the effective user (or safe root-owned ancestors) may own a root."""
+    actual_uid = os.geteuid()
+    monkeypatch.setattr("mlet.outlook.build.os.geteuid", lambda: actual_uid + 1)
+
+    with pytest.raises(ValueError, match="owned by the effective user or root"):
+        build_outlook(
+            weather_path=WEATHER_FIXTURE,
+            state_path=STATE_FIXTURE,
+            crop_path=CROP_FIXTURE,
+            out_dir=tmp_path,
+        )
+
+
+def test_reader_rejects_a_group_writable_output_root(tmp_path: Path) -> None:
+    result = build_outlook(
+        weather_path=WEATHER_FIXTURE,
+        state_path=STATE_FIXTURE,
+        crop_path=CROP_FIXTURE,
+        out_dir=tmp_path,
+    )
+    tmp_path.chmod(0o775)
+
+    with pytest.raises(ValueError, match="trusted output root without group/other write"):
+        read_published_run(tmp_path, result.run_id)
+
+
+def test_build_outlook_closes_output_root_fd_when_private_creation_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The root descriptor is closed even if generation allocation aborts."""
+    from mlet.outlook import build as outlook_build
+
+    original_open_root = outlook_build._open_output_root
+    opened_fds: list[int] = []
+
+    def capture_root(path: Path, *, create: bool):
+        opened = original_open_root(path, create=create)
+        opened_fds.append(opened.fd)
+        return opened
+
+    def fail_private_generation(root_fd: int, run_id: str):
+        del root_fd, run_id
+        raise RuntimeError("injected private creation failure")
+
+    monkeypatch.setattr("mlet.outlook.build._open_output_root", capture_root)
+    monkeypatch.setattr(
+        "mlet.outlook.build._create_private_generation", fail_private_generation
+    )
+
+    with pytest.raises(RuntimeError, match="injected private creation failure"):
+        build_outlook(
+            weather_path=WEATHER_FIXTURE,
+            state_path=STATE_FIXTURE,
+            crop_path=CROP_FIXTURE,
+            out_dir=tmp_path,
+        )
+
+    assert len(opened_fds) == 1
+    with pytest.raises(OSError):
+        os.fstat(opened_fds[0])
+
+
+def test_build_outlook_closes_root_and_generation_fds_when_publish_collides(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A run-id collision closes both pinned descriptors before it propagates."""
+    from mlet.outlook import build as outlook_build
+
+    build_outlook(
+        weather_path=WEATHER_FIXTURE,
+        state_path=STATE_FIXTURE,
+        crop_path=CROP_FIXTURE,
+        out_dir=tmp_path,
+    )
+
+    original_open_root = outlook_build._open_output_root
+    original_create = outlook_build._create_private_generation
+    opened_fds: list[int] = []
+
+    def capture_root(path: Path, *, create: bool):
+        opened = original_open_root(path, create=create)
+        opened_fds.append(opened.fd)
+        return opened
+
+    def capture_generation(root_fd: int, run_id: str):
+        generation = original_create(root_fd, run_id)
+        opened_fds.append(generation.fd)
+        return generation
+
+    monkeypatch.setattr("mlet.outlook.build._open_output_root", capture_root)
+    monkeypatch.setattr("mlet.outlook.build._create_private_generation", capture_generation)
+
+    with pytest.raises(ValueError, match="already exists"):
+        build_outlook(
+            weather_path=WEATHER_FIXTURE,
+            state_path=STATE_FIXTURE,
+            crop_path=CROP_FIXTURE,
+            out_dir=tmp_path,
+        )
+
+    assert len(opened_fds) == 2
+    for descriptor in opened_fds:
+        with pytest.raises(OSError):
+            os.fstat(descriptor)
 
 
 def test_failed_publication_fsync_preserves_claim_without_racy_rollback(
