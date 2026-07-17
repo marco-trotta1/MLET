@@ -352,6 +352,33 @@ def test_darwin_acl_inspection_fails_closed_for_non_utf8_name_output(
         os.close(descriptor)
 
 
+def test_darwin_acl_inspection_fails_closed_for_successful_diagnostic_stderr(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A successful query with diagnostic bytes is not authoritative evidence."""
+    from mlet.outlook import build as outlook_build
+
+    descriptor = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+
+    def diagnostic_stderr(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        del kwargs
+        command = args[0]
+        assert isinstance(command, list)
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=b"",
+            stderr=b"incomplete xattr listing: \xff\n",
+        )
+
+    monkeypatch.setattr(outlook_build.subprocess, "run", diagnostic_stderr)
+    try:
+        with pytest.raises(OSError, match="cannot inspect Darwin ACL metadata"):
+            outlook_build._darwin_acl_xattr_names(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def test_darwin_acl_inspection_fails_closed_for_non_name_output(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -546,7 +546,10 @@ def _darwin_acl_xattr_names(descriptor: int) -> tuple[str, ...]:
             "outlook publication trust boundary is unsupported: cannot inspect "
             "Darwin ACL metadata"
         ) from error
-    if completed.returncode != 0:
+    # ``xattr`` succeeds with an empty stderr stream during a complete names-only
+    # query.  Any diagnostic bytes make an otherwise successful empty listing
+    # ambiguous, so reject them without attempting to decode arbitrary bytes.
+    if completed.returncode != 0 or completed.stderr:
         raise OSError(
             "outlook publication trust boundary is unsupported: cannot inspect "
             "Darwin ACL metadata"
