@@ -243,6 +243,49 @@ def test_manifest_to_json_rejects_directly_constructed_duplicate_sources(
         duplicate_manifest.to_json()
 
 
+def test_manifest_to_json_rejects_directly_constructed_stale_run_id(
+    tmp_path: Path,
+) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    stale_manifest = RunManifest(
+        schema_version=manifest.schema_version,
+        run_id="stale-run-id",
+        issued_at=manifest.issued_at,
+        retrieved_at=manifest.retrieved_at,
+        git_revision=manifest.git_revision,
+        sources=manifest.sources,
+    )
+
+    with pytest.raises(ValueError, match="run_id does not match"):
+        stale_manifest.to_json()
+
+
+def test_manifest_from_json_rejects_noncanonical_observed_through_date(
+    tmp_path: Path,
+) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    payload = json.loads(manifest.to_json())
+    source_payloads = payload["sources"]
+    assert isinstance(source_payloads, list)
+    source_payloads[0]["observed_through"] = "20260715"
+
+    with pytest.raises(ValueError, match="run receipt schema"):
+        RunManifest.from_json(_manifest_json_with_valid_run_id(payload))
+
+
+def test_manifest_from_json_round_trips_canonical_observed_through_bytes(
+    tmp_path: Path,
+) -> None:
+    manifest = _two_source_manifest(tmp_path)
+    payload = json.loads(manifest.to_json())
+    source_payloads = payload["sources"]
+    assert isinstance(source_payloads, list)
+    source_payloads[0]["observed_through"] = "2026-07-15"
+    canonical_json = _manifest_json_with_valid_run_id(payload)
+
+    assert RunManifest.from_json(canonical_json).to_json() == canonical_json
+
+
 @pytest.mark.parametrize(
     "timestamp",
     ["2026-07-16T00:00:00", "2026-07-16T00:00:00+00:00"],

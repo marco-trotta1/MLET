@@ -101,6 +101,9 @@ class RunManifest:
         """Return canonical JSON suitable for an immutable run receipt."""
         _require_strictly_sorted_sources(self.sources)
         payload = self._payload_without_run_id()
+        expected_run_id = _run_id(payload)
+        if self.run_id != expected_run_id:
+            raise ValueError("manifest run_id does not match its canonical content")
         payload["run_id"] = self.run_id
         return _canonical_json(payload)
 
@@ -192,6 +195,8 @@ def _source_from_payload(value: object) -> SourceRecord:
         if not isinstance(observed_through, str):
             raise TypeError("observed_through must be a date or null")
         observed_date = date.fromisoformat(observed_through)
+        if observed_date.isoformat() != observed_through:
+            raise ValueError("observed_through must use canonical YYYY-MM-DD format")
     else:
         observed_date = None
     return SourceRecord(
