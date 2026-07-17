@@ -17,23 +17,36 @@ class StateProvenance:
     source_version: str
     source_uri: str
     observed_date: date
+    source_available_at: datetime
 
     def __post_init__(self) -> None:
         _require_text(self.source_name, "state provenance source_name")
         _require_text(self.source_version, "state provenance source_version")
         if not isinstance(self.source_uri, str) or not self.source_uri.startswith("https://"):
             raise ValueError("state provenance source_uri must be an HTTPS URL")
-        if not isinstance(self.observed_date, date):
-            raise ValueError("state provenance observed_date must be a date")
+        _require_date(self.observed_date, "state provenance observed_date")
+        object.__setattr__(
+            self,
+            "source_available_at",
+            _require_utc_timestamp(
+                self.source_available_at, "state provenance source_available_at"
+            ),
+        )
 
-    def to_record(self) -> dict[str, str]:
+    def to_record(self, *, issued_at: datetime) -> dict[str, str]:
         """Return the state source fields that a run receipt must retain."""
+        self.assert_eligible_at(issued_at)
         return {
             "source_name": self.source_name,
             "source_version": self.source_version,
             "source_uri": self.source_uri,
             "observed_date": self.observed_date.isoformat(),
+            "source_available_at": _format_utc_timestamp(self.source_available_at),
         }
+
+    def assert_eligible_at(self, issued_at: datetime) -> datetime:
+        """Return a canonical issue time only when this state was then knowable."""
+        return _validate_provenance_at_issue(self, issued_at)
 
 
 @dataclass(frozen=True)
@@ -45,7 +58,19 @@ class NoIrrigationState:
     raw_mm: float
     initial_depletion_mm: float | None
     provenance: StateProvenance
+    issued_at: datetime
     unavailable_reason: str | None
+
+    def __post_init__(self) -> None:
+        _require_text(self.grid_id, "grid_id")
+        _require_positive(self.taw_mm, "taw_mm")
+        _require_positive(self.raw_mm, "raw_mm")
+        if not isinstance(self.provenance, StateProvenance):
+            raise ValueError("no-irrigation state requires explicit StateProvenance")
+        object.__setattr__(
+            self, "issued_at", _require_utc_timestamp(self.issued_at, "issued_at")
+        )
+        _validate_provenance_at_issue(self.provenance, self.issued_at)
 
     @property
     def is_available(self) -> bool:
@@ -61,7 +86,8 @@ class NoIrrigationState:
             "initial_depletion_mm": self.initial_depletion_mm,
             "availability": "available" if self.is_available else "unavailable",
             "unavailable_reason": self.unavailable_reason,
-            "state_provenance": self.provenance.to_record(),
+            "issued_at": _format_utc_timestamp(self.issued_at),
+            "state_provenance": self.provenance.to_record(issued_at=self.issued_at),
         }
 
 
@@ -74,6 +100,7 @@ class EtaAnalysisLayer:
     source_available_at: datetime | None
     source_model: str | None
     source_model_version: str | None
+    issued_at: datetime
 
     def to_record(self) -> dict[str, object]:
         """Serialize an observed analysis without recasting it as a forecast."""
@@ -91,6 +118,7 @@ class EtaAnalysisLayer:
             ),
             "source_model": self.source_model,
             "source_model_version": self.source_model_version,
+            "issued_at": _format_utc_timestamp(self.issued_at),
         }
 
 
@@ -101,6 +129,7 @@ def initialize_no_irrigation_state(
     raw_mm: float,
     initial_depletion_mm: float | None,
     provenance: StateProvenance,
+    issued_at: datetime,
 ) -> NoIrrigationState:
     """Accept only a bounded recorded depletion; otherwise make the branch unavailable.
 
@@ -113,6 +142,8 @@ def initialize_no_irrigation_state(
     raw = _require_positive(raw_mm, "raw_mm")
     if not isinstance(provenance, StateProvenance):
         raise ValueError("no-irrigation state requires explicit StateProvenance")
+    issue_time = _require_utc_timestamp(issued_at, "issued_at")
+    _validate_provenance_at_issue(provenance, issue_time)
     depletion = _bounded_depletion_or_none(initial_depletion_mm, taw)
     unavailable_reason = (
         None
@@ -125,12 +156,16 @@ def initialize_no_irrigation_state(
         raw_mm=raw,
         initial_depletion_mm=depletion,
         provenance=provenance,
+        issued_at=issue_time,
         unavailable_reason=unavailable_reason,
     )
 
 
-def eta_analysis_from_openet(analysis: EtaAnalysis | None) -> EtaAnalysisLayer:
+def eta_analysis_from_openet(
+    analysis: EtaAnalysis | None, *, issued_at: datetime
+) -> EtaAnalysisLayer:
     """Represent a dated OpenET observation exactly, or retain a missing value."""
+    issue_time = _require_utc_timestamp(issued_at, "issued_at")
     if analysis is None:
         return EtaAnalysisLayer(
             eta_analysis_mm=None,
@@ -138,15 +173,21 @@ def eta_analysis_from_openet(analysis: EtaAnalysis | None) -> EtaAnalysisLayer:
             source_available_at=None,
             source_model=None,
             source_model_version=None,
+            issued_at=issue_time,
         )
     if not isinstance(analysis, EtaAnalysis):
         raise ValueError("eta analysis must be an EtaAnalysis record or None")
+    if analysis.source_available_at > issue_time:
+        raise ValueError("OpenET source_available_at is later than issued_at")
+    if analysis.observed_through > issue_time.date():
+        raise ValueError("OpenET observed_through is later than issued_at")
     return EtaAnalysisLayer(
         eta_analysis_mm=analysis.eta_analysis_mm,
         eta_analysis_date=analysis.observed_through,
         source_available_at=analysis.source_available_at,
         source_model=analysis.model,
         source_model_version=analysis.model_version,
+        issued_at=issue_time,
     )
 
 
@@ -174,7 +215,30 @@ def _require_text(value: object, label: str) -> str:
     return value
 
 
+def _require_date(value: object, label: str) -> date:
+    if not isinstance(value, date) or isinstance(value, datetime):
+        raise ValueError(f"{label} must be a date")
+    return value
+
+
+def _require_utc_timestamp(value: object, label: str) -> datetime:
+    if not isinstance(value, datetime) or value.tzinfo is None:
+        raise ValueError(f"{label} must be an explicit UTC datetime")
+    if value.utcoffset() != timezone.utc.utcoffset(value):
+        raise ValueError(f"{label} must be an explicit UTC datetime")
+    return value.astimezone(timezone.utc)
+
+
+def _validate_provenance_at_issue(
+    provenance: StateProvenance, issued_at: datetime
+) -> datetime:
+    issue_time = _require_utc_timestamp(issued_at, "issued_at")
+    if provenance.source_available_at > issue_time:
+        raise ValueError("state provenance source_available_at is later than issued_at")
+    if provenance.observed_date > issue_time.date():
+        raise ValueError("state provenance observed_date is later than issued_at")
+    return issue_time
+
+
 def _format_utc_timestamp(value: datetime) -> str:
-    if value.tzinfo is None or value.utcoffset() != timezone.utc.utcoffset(value):
-        raise ValueError("OpenET source_available_at must be UTC")
-    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    return _require_utc_timestamp(value, "timestamp").isoformat().replace("+00:00", "Z")
