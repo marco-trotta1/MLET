@@ -85,13 +85,26 @@ exclusive `symlink(2)` creation and durable directory `fsync`; network or
 object-store paths are not supported publication targets.
 
 The stable symlink is a discovery handle, not a completed artifact path.
-Consumers must use `resolve_published_run` before reading it. The resolver
-rejects symlinked output ancestors, absolute or escaping targets, dangling or
-non-directory generations, links or subdirectories inside a generation, an
-inconsistent manifest run ID, and every recorded artifact whose SHA-256 does
-not match its receipt. A parent-directory durability failure rolls back only
-the link still owned by that publisher and removes its private generation, so
-the run ID remains retryable without clobbering a concurrent publisher.
+Consumers must call `read_published_run` (with `resolve_published_run` retained
+as an alias) and use the returned immutable artifact bytes—not a `Path`—before
+serving or adapting a run. The reader opens the output root, generation, and
+each member with POSIX `openat(2)`-style directory descriptors and
+`O_NOFOLLOW`; it validates the manifest run ID and computes every receipt hash
+from the exact pinned bytes it returns. It rejects symlinked output ancestors,
+absolute or escaping targets, dangling or non-directory generations, links or
+subdirectories inside a generation, an inconsistent manifest run ID, and every
+recorded artifact whose SHA-256 does not match its receipt. A `BuildResult`
+path is only a local builder convenience and is never a verified consumer
+contract.
+
+This publication protocol requires a local POSIX filesystem supporting
+descriptor-relative operations, `O_NOFOLLOW`, exclusive `symlink(2)` creation,
+and durable directory `fsync`; network/object-store paths and platforms without
+those semantics are unsupported. If the final directory `fsync` fails after an
+exclusive public claim, durability is uncertain. The builder deliberately does
+not attempt a readlink-then-unlink rollback, because POSIX cannot make that
+unlink conditional and it could erase a replacement publisher's entry. It
+leaves the claim and private generation for explicit inspection instead.
 
 ## Inputs and provenance
 

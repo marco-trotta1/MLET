@@ -13,15 +13,16 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
+import errno
 import hashlib
 import json
 import math
 import os
 from pathlib import Path
-import shutil
+import secrets
 import stat
 import subprocess
-import tempfile
+from types import MappingProxyType
 from typing import Iterable, Mapping, Sequence
 
 from mlet.outlook.contracts import OutlookDay, OutlookQuantiles, WeatherMember
@@ -38,7 +39,7 @@ from mlet.outlook.scenarios import (
     project_no_irrigation_from_state,
     project_well_watered,
 )
-from mlet.outlook.serve_contract import write_serve_contract
+from mlet.outlook.serve_contract import serialize_serve_contract
 from mlet.outlook.state import (
     NoIrrigationState,
     StateProvenance,
@@ -72,6 +73,29 @@ class BuildResult:
 
 
 @dataclass(frozen=True)
+class PublishedRun:
+    """Verified bytes pinned to one immutable published generation.
+
+    ``artifacts`` are read through open file descriptors anchored to the
+    generation directory.  They are therefore the exact bytes whose hashes
+    were checked, even if a public link or a pathname changes immediately
+    afterwards.  This is the consumer boundary; a ``Path`` is intentionally
+    not a verified artifact contract.
+    """
+
+    run_id: str
+    manifest: RunManifest
+    artifacts: Mapping[str, bytes]
+
+    def artifact_bytes(self, filename: str) -> bytes:
+        """Return one verified immutable artifact byte string."""
+        try:
+            return self.artifacts[filename]
+        except KeyError as error:
+            raise ValueError(f"published outlook artifact is unavailable: {filename}") from error
+
+
+@dataclass(frozen=True)
 class _FixtureInputs:
     """Validated fixture inputs plus the deterministic forecast issue time."""
 
@@ -79,6 +103,10 @@ class _FixtureInputs:
     state_rows: tuple[dict[str, object], ...]
     crop_rows: tuple[dict[str, object], ...]
     issued_at: datetime
+
+
+class _PublicationDurabilityUncertain(OSError):
+    """A public claim may exist and must not be cleaned up by pathname."""
 
 
 def build_outlook(
@@ -109,47 +137,61 @@ def build_outlook(
     )
     days = _calculate_outlook_days(inputs, crop_path)
     _validate_days(days, inputs.issued_at)
-    destination_root = _prepare_output_root(out_dir)
-    destination = destination_root / manifest.run_id
-    temporary = Path(
-        tempfile.mkdtemp(prefix=f".{manifest.run_id}.building-", dir=destination_root)
-    )
+    output_root = _open_output_root(out_dir, create=True)
+    temporary_name = _create_private_generation(output_root.fd, manifest.run_id)
+    temporary_display = output_root.path / temporary_name
     try:
-        # Persist the private directory entry before it receives the durable
-        # artifact.  The eventual public run id is an exclusive symlink claim,
-        # so an interrupted build can leave only an unreferenced private tree.
-        _fsync_directory(destination_root)
-        outlook_path = temporary / "outlook.json"
-        summary_path = temporary / "summary.json"
-        validation_path = temporary / "validation.json"
-        manifest_path = temporary / "manifest.json"
-        write_serve_contract(days, manifest, outlook_path)
-        _write_new_json(summary_path, _summary_payload(days, manifest))
-        _write_new_json(validation_path, _validation_payload(manifest))
-        _fsync_files((outlook_path, summary_path, validation_path))
-        completed_manifest = manifest.with_artifact_sha256(
-            {
-                path.name: _sha256(path)
-                for path in (outlook_path, summary_path, validation_path)
-            }
-        )
-        _write_new_text(manifest_path, completed_manifest.to_json() + "\n")
-        _fsync_files((manifest_path,))
-        _fsync_directory(temporary)
-        _publish_private_artifact(temporary, destination)
-    except Exception:
-        _remove_private_generation(temporary, destination.parent, manifest.run_id)
+        temporary_fd = _open_child_directory(output_root.fd, temporary_name)
+        try:
+            # The root and generation descriptors are pinned before any data
+            # write.  All artifact creation below is ``openat`` relative to
+            # those FDs, so a concurrent pathname/ancestor replacement cannot
+            # redirect the build into another tree.
+            _fsync_directory_fd(output_root.fd)
+            _write_new_bytes_at(
+                temporary_fd,
+                "outlook.json",
+                serialize_serve_contract(days, manifest),
+            )
+            _write_new_json_at(temporary_fd, "summary.json", _summary_payload(days, manifest))
+            _write_new_json_at(
+                temporary_fd,
+                "validation.json",
+                _validation_payload(manifest),
+            )
+            completed_manifest = manifest.with_artifact_sha256(
+                {
+                    filename: _sha256_at(temporary_fd, filename)
+                    for filename in ("outlook.json", "summary.json", "validation.json")
+                }
+            )
+            _write_new_bytes_at(
+                temporary_fd,
+                "manifest.json",
+                (completed_manifest.to_json() + "\n").encode("utf-8"),
+            )
+            _fsync_directory_fd(temporary_fd)
+        finally:
+            os.close(temporary_fd)
+        _publish_private_artifact(output_root.fd, temporary_name, manifest.run_id)
+    except _PublicationDurabilityUncertain:
         raise
-    published_generation = resolve_published_run(destination_root, manifest.run_id)
+    except Exception:
+        _remove_private_generation_at(output_root.fd, temporary_name, manifest.run_id)
+        raise
+    finally:
+        os.close(output_root.fd)
+    # ``run_dir`` is a convenience location for the local builder/CLI, not a
+    # verified consumer handle.  Consumers must call ``read_published_run``.
     return BuildResult(
         run_id=manifest.run_id,
-        run_dir=published_generation,
+        run_dir=temporary_display,
         day_count=20,
         cell_count=len({day.grid_id for day in days}),
     )
 
 
-def _publish_private_artifact(temporary: Path, destination: Path) -> None:
+def _publish_private_artifact(root_fd: int, temporary_name: str, run_id: str) -> None:
     """Atomically expose a durable private artifact without replacing a run id.
 
     The output root and the private staging directory must be on one local
@@ -160,84 +202,138 @@ def _publish_private_artifact(temporary: Path, destination: Path) -> None:
     movable together with its output root while the public stable run id
     remains the sole artifact entry point.
     """
-    relative_target = os.path.relpath(temporary, start=destination.parent)
     try:
-        os.symlink(relative_target, destination, target_is_directory=True)
+        os.symlink(temporary_name, run_id, target_is_directory=True, dir_fd=root_fd)
     except FileExistsError as error:
-        raise ValueError(f"outlook run directory already exists: {destination}") from error
+        raise ValueError(f"outlook run directory already exists: {run_id}") from error
     try:
-        _fsync_directory(destination.parent)
-    except Exception:
-        _rollback_owned_publication(destination, relative_target)
-        _remove_private_generation(temporary, destination.parent, destination.name)
-        raise
+        _fsync_directory_fd(root_fd)
+    except Exception as error:
+        # After a failed directory fsync publication durability is unknown.
+        # POSIX has no conditional unlink operation for a symlink name, so a
+        # readlink-then-unlink rollback can delete a replacement publisher's
+        # entry.  Preserve the exclusive claim and private generation instead;
+        # a subsequent verifier can inspect it, while no other publisher is
+        # ever clobbered.  This is deliberately fail-closed rather than
+        # pretending the run id is safely retryable.
+        raise _PublicationDurabilityUncertain(str(error)) from error
 
 
-def resolve_published_run(output_root: Path, run_id: str) -> Path:
-    """Return a verified immutable generation behind one public ``run_id``.
+def read_published_run(output_root: Path, run_id: str) -> PublishedRun:
+    """Read one publication through pinned descriptors and return verified bytes.
 
-    A stable run id is deliberately a symlink so it can be claimed exclusively
-    without replacing another publisher.  It is never itself a completed
-    output: consumers receive only the resolved regular-file generation after
-    its receipt, containment, and recorded hashes have been validated.
+    This is deliberately not a path resolver.  A pathname is mutable after it
+    is checked; the returned byte strings were read through regular-file FDs
+    anchored to a generation directory FD, and each digest was computed from
+    those exact bytes.  This implementation requires local POSIX
+    ``openat(2)``/``O_NOFOLLOW`` semantics and directory ``fsync`` support.
     """
     _require_run_id(run_id)
-    root = _require_real_output_root(output_root)
-    stable_link = root / run_id
-    if not stable_link.is_symlink():
-        raise ValueError(f"published outlook run is not a stable symlink: {stable_link}")
+    root = _open_output_root(output_root, create=False)
     try:
-        target_text = os.readlink(stable_link)
+        generation_name = _read_pinned_stable_target(root.fd, run_id)
+        try:
+            generation_fd = _open_child_directory(root.fd, generation_name)
+        except FileNotFoundError as error:
+            raise ValueError("published outlook generation does not exist") from error
+        try:
+            _require_regular_generation_files_at(generation_fd)
+            manifest_bytes = _read_regular_at(generation_fd, "manifest.json")
+            try:
+                manifest = RunManifest.from_json(manifest_bytes.decode("utf-8"))
+            except (UnicodeDecodeError, ValueError) as error:
+                raise ValueError("cannot read published outlook manifest") from error
+            if manifest.run_id != run_id:
+                raise ValueError("published outlook manifest run_id does not match stable link")
+            if not manifest.artifact_sha256:
+                raise ValueError("published outlook manifest has no recorded artifact hashes")
+            artifacts: dict[str, bytes] = {}
+            for filename, expected_digest in manifest.artifact_sha256:
+                _require_safe_artifact_name(filename)
+                contents = _read_regular_at(generation_fd, filename)
+                if hashlib.sha256(contents).hexdigest() != expected_digest:
+                    raise ValueError(f"published outlook artifact hash mismatch: {filename}")
+                artifacts[filename] = contents
+            return PublishedRun(
+                run_id=run_id,
+                manifest=manifest,
+                artifacts=MappingProxyType(artifacts),
+            )
+        finally:
+            os.close(generation_fd)
+    finally:
+        os.close(root.fd)
+
+
+def resolve_published_run(output_root: Path, run_id: str) -> PublishedRun:
+    """Backward-compatible name for the descriptor-anchored reader.
+
+    Older callers must treat the result as a ``PublishedRun``, not a resolved
+    filesystem location.  ``read_published_run`` is the preferred explicit
+    consumer API.
+    """
+    return read_published_run(output_root, run_id)
+
+
+def _read_pinned_stable_target(root_fd: int, run_id: str) -> str:
+    """Read a stable link once and pin its exact target name for subsequent use."""
+    try:
+        before = os.stat(run_id, dir_fd=root_fd, follow_symlinks=False)
+        if not stat.S_ISLNK(before.st_mode):
+            raise ValueError("published outlook run is not a stable symlink")
+        target = os.readlink(run_id, dir_fd=root_fd)
+        after = os.stat(run_id, dir_fd=root_fd, follow_symlinks=False)
+    except FileNotFoundError as error:
+        raise ValueError("published outlook run does not exist") from error
     except OSError as error:
-        raise ValueError(f"cannot read published outlook run link: {stable_link}") from error
-    if os.path.isabs(target_text):
+        raise ValueError("cannot read published outlook run link") from error
+    if (
+        not stat.S_ISLNK(after.st_mode)
+        or (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino)
+    ):
+        raise ValueError("published outlook run link changed while being read")
+    if os.path.isabs(target):
         raise ValueError("published outlook run link must be relative")
-    generation = _absolute_path(stable_link.parent / target_text)
-    if generation.parent != root or not generation.name.startswith(f".{run_id}.building-"):
+    if Path(target).name != target or not target.startswith(f".{run_id}.building-"):
         raise ValueError("published outlook run link escapes its immutable generation root")
-    _require_real_directory(generation, "published outlook generation")
-    _require_regular_generation_files(generation)
-    manifest_path = generation / "manifest.json"
-    try:
-        manifest = RunManifest.from_json(manifest_path.read_text(encoding="utf-8"))
-    except OSError as error:
-        raise ValueError("cannot read published outlook manifest") from error
-    if manifest.run_id != run_id:
-        raise ValueError("published outlook manifest run_id does not match stable link")
-    if not manifest.artifact_sha256:
-        raise ValueError("published outlook manifest has no recorded artifact hashes")
-    for filename, expected_digest in manifest.artifact_sha256:
-        artifact_path = generation / filename
-        if artifact_path.is_symlink() or not _is_regular_file(artifact_path):
-            raise ValueError(f"published outlook artifact is not a regular file: {filename}")
-        if _sha256(artifact_path) != expected_digest:
-            raise ValueError(f"published outlook artifact hash mismatch: {filename}")
-    return generation
+    return target
 
 
-def _rollback_owned_publication(destination: Path, relative_target: str) -> None:
-    """Remove a failed publication only when its stable link is still ours."""
+def _remove_private_generation_at(root_fd: int, temporary_name: str, run_id: str) -> None:
+    """Remove only an unpublished private tree via pinned directory FDs."""
+    if not temporary_name.startswith(f".{run_id}.building-"):
+        return
     try:
-        if destination.is_symlink() and os.readlink(destination) == relative_target:
-            os.unlink(destination)
+        temporary_fd = _open_child_directory(root_fd, temporary_name)
+    except (FileNotFoundError, NotADirectoryError, ValueError, OSError):
+        return
+    try:
+        _remove_tree_contents_at(temporary_fd)
+    finally:
+        os.close(temporary_fd)
+    try:
+        os.rmdir(temporary_name, dir_fd=root_fd)
     except OSError:
-        # Preserve the original durability error.  A concurrent publisher is
-        # never replaced or unlinked by recovery code.
+        # A concurrent rename/replacement cannot escape root_fd.  Preserve
+        # cleanup failure rather than deleting a path by an unpinned name.
         return
 
 
-def _remove_private_generation(temporary: Path, root: Path, run_id: str) -> None:
-    """Remove only this builder's unreferenced, non-symlink staging directory."""
-    expected_prefix = f".{run_id}.building-"
-    if temporary.parent != root or not temporary.name.startswith(expected_prefix):
-        return
-    try:
-        mode = temporary.lstat().st_mode
-    except FileNotFoundError:
-        return
-    if not stat.S_ISDIR(mode):
-        return
-    shutil.rmtree(temporary)
+def _remove_tree_contents_at(directory_fd: int) -> None:
+    for entry in os.scandir(directory_fd):
+        try:
+            member = os.stat(entry.name, dir_fd=directory_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            continue
+        if stat.S_ISDIR(member.st_mode):
+            child_fd = _open_child_directory(directory_fd, entry.name)
+            try:
+                _remove_tree_contents_at(child_fd)
+            finally:
+                os.close(child_fd)
+            os.rmdir(entry.name, dir_fd=directory_fd)
+        else:
+            os.unlink(entry.name, dir_fd=directory_fd)
 
 
 def _require_run_id(run_id: str) -> None:
@@ -250,64 +346,118 @@ def _absolute_path(path: Path) -> Path:
     return Path(os.path.abspath(path))
 
 
-def _require_real_output_root(path: Path) -> Path:
-    root = _absolute_path(path)
-    _reject_symlinked_ancestors(root)
-    _require_real_directory(root, "out_dir")
-    return root
+@dataclass(frozen=True)
+class _OpenedDirectory:
+    """A display path plus an FD that pins the directory for all operations."""
+
+    path: Path
+    fd: int
 
 
-def _reject_symlinked_ancestors(path: Path) -> None:
-    current = Path(path.anchor)
-    for component in path.parts[1:]:
-        current /= component
+_DIRECTORY_OPEN_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+
+
+def _open_output_root(path: Path, *, create: bool) -> _OpenedDirectory:
+    """Open an absolute root component-by-component without following links."""
+    root = _absolute_path(Path(path))
+    descriptor = os.open(root.anchor, _DIRECTORY_OPEN_FLAGS)
+    try:
+        for component in root.parts[1:]:
+            if create:
+                try:
+                    os.mkdir(component, mode=0o755, dir_fd=descriptor)
+                except FileExistsError:
+                    pass
+            try:
+                child = _open_child_directory(descriptor, component)
+            except FileNotFoundError as error:
+                raise ValueError(f"out_dir does not exist: {root}") from error
+            os.close(descriptor)
+            descriptor = child
+        return _OpenedDirectory(path=root, fd=descriptor)
+    except Exception:
+        os.close(descriptor)
+        raise
+
+
+def _open_child_directory(parent_fd: int, name: str) -> int:
+    _require_safe_artifact_name(name)
+    try:
+        descriptor = os.open(name, _DIRECTORY_OPEN_FLAGS, dir_fd=parent_fd)
+    except OSError as error:
+        if error.errno in {errno.ELOOP, errno.ENOTDIR}:
+            raise ValueError("out_dir has a symlinked ancestor") from error
+        raise
+    try:
+        mode = os.fstat(descriptor).st_mode
+        if not stat.S_ISDIR(mode):
+            raise ValueError("out_dir must be a real directory")
+        return descriptor
+    except Exception:
+        os.close(descriptor)
+        raise
+
+
+def _create_private_generation(root_fd: int, run_id: str) -> str:
+    for _ in range(128):
+        name = f".{run_id}.building-{secrets.token_hex(16)}"
         try:
-            mode = current.lstat().st_mode
-        except FileNotFoundError as error:
-            raise ValueError(f"published outlook path does not exist: {path}") from error
-        if stat.S_ISLNK(mode):
-            raise ValueError(f"published outlook path has a symlinked ancestor: {current}")
+            os.mkdir(name, mode=0o700, dir_fd=root_fd)
+            return name
+        except FileExistsError:
+            continue
+    raise ValueError("cannot allocate a unique private outlook generation")
 
 
-def _reject_symlinked_existing_ancestors(path: Path) -> None:
-    """Reject an existing link before ``mkdir`` can traverse it for a write."""
-    current = Path(path.anchor)
-    for component in path.parts[1:]:
-        current /= component
-        try:
-            mode = current.lstat().st_mode
-        except FileNotFoundError:
-            return
-        if stat.S_ISLNK(mode):
-            raise ValueError(f"out_dir has a symlinked ancestor: {current}")
+def _require_safe_artifact_name(name: str) -> None:
+    if not isinstance(name, str) or not name or Path(name).name != name or name in {".", ".."}:
+        raise ValueError("published outlook member name must be a safe basename")
 
 
-def _require_real_directory(path: Path, label: str) -> None:
+def _require_regular_generation_files_at(generation_fd: int) -> None:
     try:
-        mode = path.lstat().st_mode
-    except FileNotFoundError as error:
-        raise ValueError(f"{label} does not exist: {path}") from error
-    if not stat.S_ISDIR(mode):
-        raise ValueError(f"{label} must be a real directory")
-
-
-def _is_regular_file(path: Path) -> bool:
-    try:
-        return stat.S_ISREG(path.lstat().st_mode)
-    except FileNotFoundError:
-        return False
-
-
-def _require_regular_generation_files(generation: Path) -> None:
-    try:
-        children = tuple(generation.iterdir())
+        children = tuple(os.scandir(generation_fd))
     except OSError as error:
         raise ValueError("cannot inspect published outlook generation") from error
     if not children:
         raise ValueError("published outlook generation is empty")
     for child in children:
-        if child.is_symlink() or not _is_regular_file(child):
+        try:
+            member = os.stat(child.name, dir_fd=generation_fd, follow_symlinks=False)
+        except FileNotFoundError as error:
+            raise ValueError("published outlook generation changed while being read") from error
+        if not stat.S_ISREG(member.st_mode):
             raise ValueError("published outlook generation must contain regular files only")
+
+
+def _read_regular_at(directory_fd: int, filename: str) -> bytes:
+    """Read exactly one pinned regular member, rejecting a pre-open swap."""
+    _require_safe_artifact_name(filename)
+    try:
+        before = os.stat(filename, dir_fd=directory_fd, follow_symlinks=False)
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError(f"published outlook artifact is not a regular file: {filename}")
+        descriptor = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=directory_fd)
+    except FileNotFoundError as error:
+        raise ValueError(f"published outlook artifact is unavailable: {filename}") from error
+    except OSError as error:
+        raise ValueError(f"published outlook artifact is not a regular file: {filename}") from error
+    try:
+        after = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(after.st_mode)
+            or (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino)
+        ):
+            raise ValueError(f"published outlook artifact changed while being read: {filename}")
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        return b"".join(chunks)
+    finally:
+        os.close(descriptor)
 
 
 def _load_fixture_inputs(
@@ -689,16 +839,6 @@ def _require_regular_file(path: Path, label: str) -> Path:
     return value
 
 
-def _prepare_output_root(path: Path) -> Path:
-    root = _absolute_path(Path(path))
-    _reject_symlinked_existing_ancestors(root)
-    root.mkdir(parents=True, exist_ok=True)
-    _reject_symlinked_ancestors(root)
-    if not root.is_dir():
-        raise ValueError("out_dir must be a real directory")
-    return root
-
-
 def _git_revision() -> str:
     try:
         return subprocess.check_output(
@@ -758,35 +898,44 @@ def _bounded_float(
     return result
 
 
-def _write_new_json(path: Path, payload: Mapping[str, object]) -> None:
-    _write_new_text(
-        path,
-        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n",
+def _write_new_json_at(directory_fd: int, filename: str, payload: Mapping[str, object]) -> None:
+    _write_new_bytes_at(
+        directory_fd,
+        filename,
+        (json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n").encode(
+            "utf-8"
+        ),
     )
 
 
-def _write_new_text(path: Path, text: str) -> None:
-    with path.open("x", encoding="utf-8") as handle:
-        handle.write(text)
-        handle.flush()
-        os.fsync(handle.fileno())
-
-
-def _fsync_files(paths: Iterable[Path]) -> None:
-    for path in paths:
-        with path.open("rb") as handle:
-            os.fsync(handle.fileno())
-
-
-def _fsync_directory(path: Path) -> None:
-    descriptor = os.open(path, os.O_RDONLY)
+def _write_new_bytes_at(directory_fd: int, filename: str, contents: bytes) -> None:
+    """Create and fsync one regular artifact without traversing a pathname."""
+    _require_safe_artifact_name(filename)
+    descriptor = os.open(
+        filename,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+        0o600,
+        dir_fd=directory_fd,
+    )
     try:
+        total = 0
+        while total < len(contents):
+            total += os.write(descriptor, contents[total:])
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
 
 
+def _fsync_directory_fd(descriptor: int) -> None:
+    os.fsync(descriptor)
+
+
+def _sha256_at(directory_fd: int, filename: str) -> str:
+    return hashlib.sha256(_read_regular_at(directory_fd, filename)).hexdigest()
+
+
 def _sha256(path: Path) -> str:
+    """Hash a validated input file outside the publication trust boundary."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 

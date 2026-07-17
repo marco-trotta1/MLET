@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from mlet.cli import main
-from mlet.outlook.build import build_outlook, resolve_published_run
+from mlet.outlook.build import build_outlook, read_published_run, resolve_published_run
 from mlet.outlook.manifest import RunManifest
 
 
@@ -52,11 +52,13 @@ def test_build_outlook_writes_twenty_days_for_each_fixture_cell(tmp_path: Path) 
     }
     manifest = RunManifest.from_json((run_dir / "manifest.json").read_text())
     assert manifest.run_id == result.run_id
-    assert result.run_dir == resolve_published_run(tmp_path, result.run_id)
-    assert not result.run_dir.is_symlink()
+    published = read_published_run(tmp_path, result.run_id)
+    assert resolve_published_run(tmp_path, result.run_id) == published
+    assert published.run_id == result.run_id
+    assert json.loads(published.artifact_bytes("outlook.json")) == payload
     assert result.run_dir.name.startswith(f".{result.run_id}.building-")
     assert all(
-        hashlib.sha256((run_dir / filename).read_bytes()).hexdigest() == digest
+        hashlib.sha256(published.artifact_bytes(filename)).hexdigest() == digest
         for filename, digest in manifest.artifact_sha256
     )
 
@@ -140,11 +142,21 @@ def test_build_outlook_exclusive_claim_does_not_clobber_a_concurrent_run(
         *,
         dir_fd: int | None = None,
     ) -> None:
-        del target_is_directory, dir_fd
-        run_dir = Path(link_name)
-        run_dir.mkdir()
-        (run_dir / "owner.txt").write_bytes(sentinel)
-        original_symlink(target, link_name)
+        del target_is_directory
+        assert isinstance(link_name, str)
+        assert dir_fd is not None
+        os.mkdir(link_name, dir_fd=dir_fd)
+        run_fd = os.open(link_name, os.O_RDONLY | os.O_DIRECTORY, dir_fd=dir_fd)
+        owner_fd = os.open(
+            "owner.txt", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600,
+            dir_fd=run_fd,
+        )
+        try:
+            os.write(owner_fd, sentinel)
+        finally:
+            os.close(owner_fd)
+            os.close(run_fd)
+        original_symlink(target, link_name, dir_fd=dir_fd)
 
     monkeypatch.setattr("mlet.outlook.build.os.symlink", claim_run_id_then_link)
 
@@ -162,21 +174,26 @@ def test_build_outlook_exclusive_claim_does_not_clobber_a_concurrent_run(
     assert not list(tmp_path.glob(".*.building-*"))
 
 
-def test_failed_publication_fsync_removes_only_its_own_link_and_generation(
+def test_failed_publication_fsync_preserves_claim_without_racy_rollback(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A post-claim durability failure leaves the run id available for retry."""
+    """A durability-ambiguous claim is never readlink-then-unlinked."""
     from mlet.outlook import build as outlook_build
 
-    original_fsync_directory = outlook_build._fsync_directory
+    original_fsync_directory = outlook_build._fsync_directory_fd
+    root_stat = tmp_path.stat()
 
-    def fail_after_public_claim(directory: Path) -> None:
-        if directory == tmp_path and any(path.is_symlink() for path in tmp_path.iterdir()):
+    def fail_after_public_claim(directory_fd: int) -> None:
+        current = os.fstat(directory_fd)
+        if (
+            (current.st_dev, current.st_ino) == (root_stat.st_dev, root_stat.st_ino)
+            and any(name and not name.startswith(".") for name in os.listdir(directory_fd))
+        ):
             raise OSError("injected publication root fsync failure")
-        original_fsync_directory(directory)
+        original_fsync_directory(directory_fd)
 
     monkeypatch.setattr(
-        "mlet.outlook.build._fsync_directory", fail_after_public_claim
+        "mlet.outlook.build._fsync_directory_fd", fail_after_public_claim
     )
 
     with pytest.raises(OSError, match="publication root fsync failure"):
@@ -187,55 +204,10 @@ def test_failed_publication_fsync_removes_only_its_own_link_and_generation(
             out_dir=tmp_path,
         )
 
-    assert not [path for path in tmp_path.iterdir() if not path.name.startswith(".")]
-    assert not list(tmp_path.glob(".*.building-*"))
-
-    monkeypatch.setattr("mlet.outlook.build._fsync_directory", original_fsync_directory)
-    retry = build_outlook(
-        weather_path=WEATHER_FIXTURE,
-        state_path=STATE_FIXTURE,
-        crop_path=CROP_FIXTURE,
-        out_dir=tmp_path,
-    )
-    assert retry.run_dir == resolve_published_run(tmp_path, retry.run_id)
-
-
-def test_failed_publication_fsync_never_removes_a_replaced_public_run(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Recovery leaves another publisher's replacement untouched."""
-    from mlet.outlook import build as outlook_build
-
-    original_fsync_directory = outlook_build._fsync_directory
-    sentinel = b"another publisher owns this run id"
-
-    def replace_claim_then_fail(directory: Path) -> None:
-        if directory == tmp_path:
-            claimed_links = [path for path in tmp_path.iterdir() if path.is_symlink()]
-            if claimed_links:
-                claimed_link = claimed_links[0]
-                claimed_link.unlink()
-                claimed_link.mkdir()
-                (claimed_link / "owner.txt").write_bytes(sentinel)
-                raise OSError("injected replacement publication fsync failure")
-        original_fsync_directory(directory)
-
-    monkeypatch.setattr(
-        "mlet.outlook.build._fsync_directory", replace_claim_then_fail
-    )
-
-    with pytest.raises(OSError, match="replacement publication fsync failure"):
-        build_outlook(
-            weather_path=WEATHER_FIXTURE,
-            state_path=STATE_FIXTURE,
-            crop_path=CROP_FIXTURE,
-            out_dir=tmp_path,
-        )
-
-    replacement = next(path for path in tmp_path.iterdir() if not path.name.startswith("."))
-    assert replacement.is_dir()
-    assert (replacement / "owner.txt").read_bytes() == sentinel
-    assert not list(tmp_path.glob(".*.building-*"))
+    stable = next(path for path in tmp_path.iterdir() if not path.name.startswith("."))
+    assert stable.is_symlink()
+    assert stable.resolve().is_dir()
+    assert list(tmp_path.glob(".*.building-*"))
 
 
 @pytest.mark.parametrize(
@@ -325,3 +297,147 @@ def test_build_outlook_refuses_to_write_through_a_symlinked_ancestor(
         )
 
     assert not (real_root / "outlooks").exists()
+
+
+def test_reader_returns_original_verified_bytes_when_public_link_is_replaced(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A replacement after readlink cannot redirect the pinned generation FD."""
+    from mlet.outlook import build as outlook_build
+
+    result = build_outlook(
+        weather_path=WEATHER_FIXTURE,
+        state_path=STATE_FIXTURE,
+        crop_path=CROP_FIXTURE,
+        out_dir=tmp_path,
+    )
+    expected = (result.run_dir / "outlook.json").read_bytes()
+    stable_link = tmp_path / result.run_id
+    hostile = tmp_path / ".hostile-generation"
+    hostile.mkdir()
+    original_target = outlook_build._read_pinned_stable_target
+
+    def replace_public_link(root_fd: int, run_id: str) -> str:
+        target = original_target(root_fd, run_id)
+        stable_link.unlink()
+        stable_link.symlink_to(hostile, target_is_directory=True)
+        return target
+
+    monkeypatch.setattr(
+        "mlet.outlook.build._read_pinned_stable_target", replace_public_link
+    )
+
+    published = read_published_run(tmp_path, result.run_id)
+    assert published.artifact_bytes("outlook.json") == expected
+    assert stable_link.resolve() == hostile
+
+
+def test_reader_returns_original_verified_bytes_when_generation_name_is_replaced(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An ancestor/name swap after generation open cannot affect member reads."""
+    from mlet.outlook import build as outlook_build
+
+    result = build_outlook(
+        weather_path=WEATHER_FIXTURE,
+        state_path=STATE_FIXTURE,
+        crop_path=CROP_FIXTURE,
+        out_dir=tmp_path,
+    )
+    expected = (result.run_dir / "outlook.json").read_bytes()
+    moved = tmp_path / ".moved-original"
+    original_read = outlook_build._read_regular_at
+    swapped = False
+
+    def move_generation_after_manifest(directory_fd: int, filename: str) -> bytes:
+        nonlocal swapped
+        contents = original_read(directory_fd, filename)
+        if filename == "manifest.json" and not swapped:
+            swapped = True
+            result.run_dir.rename(moved)
+            result.run_dir.mkdir()
+            (result.run_dir / "manifest.json").write_text("{}", encoding="utf-8")
+        return contents
+
+    monkeypatch.setattr("mlet.outlook.build._read_regular_at", move_generation_after_manifest)
+
+    published = read_published_run(tmp_path, result.run_id)
+    assert swapped
+    assert published.artifact_bytes("outlook.json") == expected
+    assert (result.run_dir / "manifest.json").read_text(encoding="utf-8") == "{}"
+
+
+def test_reader_rejects_member_replaced_between_lstat_and_open(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The inode comparison rejects a member swap before the FD is pinned."""
+    result = build_outlook(
+        weather_path=WEATHER_FIXTURE,
+        state_path=STATE_FIXTURE,
+        crop_path=CROP_FIXTURE,
+        out_dir=tmp_path,
+    )
+    original_open = os.open
+    swapped = False
+
+    def swap_then_open(
+        path: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        flags: int,
+        mode: int = 0o777,
+        *,
+        dir_fd: int | None = None,
+    ) -> int:
+        nonlocal swapped
+        if path == "outlook.json" and (flags & os.O_ACCMODE) == os.O_RDONLY and not swapped:
+            swapped = True
+            replacement = result.run_dir / "replacement.json"
+            replacement.write_bytes(b"replaced after lstat")
+            replacement.replace(result.run_dir / "outlook.json")
+        if dir_fd is None:
+            return original_open(path, flags, mode)
+        return original_open(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr("mlet.outlook.build.os.open", swap_then_open)
+
+    with pytest.raises(ValueError, match="changed while being read: outlook.json"):
+        read_published_run(tmp_path, result.run_id)
+    assert swapped
+
+
+def test_builder_keeps_writing_to_pinned_parent_after_ancestor_name_swap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A symlink substituted after parent open cannot redirect publication."""
+    from mlet.outlook import build as outlook_build
+
+    safe_parent = tmp_path / "safe-parent"
+    safe_parent.mkdir()
+    moved_parent = tmp_path / "moved-parent"
+    attacker_target = tmp_path / "attacker-target"
+    attacker_target.mkdir()
+    original_open_child = outlook_build._open_child_directory
+    swapped = False
+
+    def swap_parent_after_open(parent_fd: int, name: str) -> int:
+        nonlocal swapped
+        descriptor = original_open_child(parent_fd, name)
+        if name == "safe-parent" and not swapped:
+            swapped = True
+            safe_parent.rename(moved_parent)
+            safe_parent.symlink_to(attacker_target, target_is_directory=True)
+        return descriptor
+
+    monkeypatch.setattr(
+        "mlet.outlook.build._open_child_directory", swap_parent_after_open
+    )
+
+    result = build_outlook(
+        weather_path=WEATHER_FIXTURE,
+        state_path=STATE_FIXTURE,
+        crop_path=CROP_FIXTURE,
+        out_dir=safe_parent / "outlooks",
+    )
+
+    assert swapped
+    assert not (attacker_target / "outlooks").exists()
+    assert read_published_run(moved_parent / "outlooks", result.run_id).run_id == result.run_id

@@ -26,11 +26,27 @@ def write_serve_contract(
     It serializes named physical/conditional layers only; a delayed ETa analysis
     is never represented as a future actual-ET forecast.
     """
+    _write_new_bytes(Path(destination), serialize_serve_contract(days, manifest))
+
+
+def serialize_serve_contract(
+    days: Sequence[OutlookDay], manifest: RunManifest
+) -> bytes:
+    """Return the canonical serving-contract bytes without touching a path.
+
+    Builders that publish through descriptor-anchored directories use this
+    serializer and create the destination with ``openat(2)``.  Keeping the
+    serialization separate prevents a checked pathname from becoming a second
+    filesystem trust boundary.
+    """
     if not isinstance(manifest, RunManifest):
         raise ValueError("serve contract requires a RunManifest")
     manifest.to_json()
     payload = _contract_payload(days, manifest)
-    _write_new_json(Path(destination), payload)
+    return (
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        + "\n"
+    ).encode("utf-8")
 
 
 def _contract_payload(days: Sequence[OutlookDay], manifest: RunManifest) -> dict[str, object]:
@@ -197,15 +213,13 @@ def _layer_definitions() -> dict[str, dict[str, object]]:
     }
 
 
-def _write_new_json(destination: Path, payload: dict[str, object]) -> None:
+def _write_new_bytes(destination: Path, encoded: bytes) -> None:
     if destination.exists() or destination.is_symlink():
         raise ValueError("serve contract destination must not already exist")
     if not destination.parent.is_dir() or destination.parent.is_symlink():
         raise ValueError("serve contract destination parent must be a real directory")
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
-    with destination.open("x", encoding="utf-8") as handle:
+    with destination.open("xb") as handle:
         handle.write(encoded)
-        handle.write("\n")
 
 
 def _finite_nonnegative(value: object, label: str) -> float:
