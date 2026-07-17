@@ -23,6 +23,9 @@ def _manifest_json_with_valid_run_id(payload: dict[str, object]) -> str:
     """Serialize a deliberately modified payload with its matching digest."""
     identity_payload = dict(payload)
     identity_payload.pop("run_id")
+    # Output hashes are attached after the input-derived run ID is known; a
+    # manifest cannot include its own derived bytes in its identity digest.
+    identity_payload.pop("artifact_sha256")
     payload["run_id"] = hashlib.sha256(
         json.dumps(
             identity_payload, sort_keys=True, separators=(",", ":"), allow_nan=False
@@ -94,6 +97,26 @@ def test_changed_source_bytes_change_sha256_and_run_id(tmp_path: Path) -> None:
     assert first.run_id != second.run_id
 
 
+def test_build_manifest_retains_source_observed_through_dates(tmp_path: Path) -> None:
+    state = tmp_path / "state.jsonl"
+    weather = tmp_path / "weather.jsonl"
+    state.write_text('{"fixture": true, "non_scientific": true}\n')
+    weather.write_text('{"fixture": true, "non_scientific": true}\n')
+
+    manifest = build_manifest(
+        "2026-07-16T00:00:00Z",
+        {"weather": weather, "state": state},
+        "abc123",
+        "2026-07-16T00:05:00Z",
+        source_observed_through={"weather": None, "state": date(2026, 7, 14)},
+    )
+
+    assert {source.name: source.observed_through for source in manifest.sources} == {
+        "state": date(2026, 7, 14),
+        "weather": None,
+    }
+
+
 def test_manifest_round_trip_preserves_explicit_utc_timestamps(tmp_path: Path) -> None:
     source = tmp_path / "weather.jsonl"
     source.write_text('{"fixture": true, "non_scientific": true}\n')
@@ -109,6 +132,26 @@ def test_manifest_round_trip_preserves_explicit_utc_timestamps(tmp_path: Path) -
     assert restored == manifest
     assert '"issued_at":"2026-07-16T00:00:00Z"' in manifest.to_json()
     assert '"retrieved_at":"2026-07-16T00:05:00Z"' in manifest.to_json()
+
+
+def test_manifest_records_output_hashes_without_changing_input_run_identity(
+    tmp_path: Path,
+) -> None:
+    manifest = _two_source_manifest(tmp_path)
+
+    completed = manifest.with_artifact_sha256(
+        {
+            "outlook.json": "a" * 64,
+            "summary.json": "b" * 64,
+        }
+    )
+
+    assert completed.run_id == manifest.run_id
+    assert RunManifest.from_json(completed.to_json()) == completed
+    assert json.loads(completed.to_json())["artifact_sha256"] == {
+        "outlook.json": "a" * 64,
+        "summary.json": "b" * 64,
+    }
 
 
 @pytest.mark.parametrize(

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date
 import os
 import sys
 from pathlib import Path
@@ -11,7 +12,9 @@ import numpy as np
 from mlet.build_dataset import build_dataset
 from mlet.experiments import phase2_openet_value
 from mlet.loader import load_site_series
+from mlet.outlook.build import build_outlook
 from mlet.sources.gridmet import extract_eto
+from mlet.sources.gefs import fetch_gefs
 from mlet.sources.stations import load_station_metadata
 from mlet.validator import validate_csv
 
@@ -37,6 +40,19 @@ def main(argv: list[str] | None = None) -> int:
     experiment.add_argument("--interim", required=True)
     experiment.add_argument("--landcover", required=True)
     experiment.add_argument("--out", required=True)
+    fetch_outlook = subparsers.add_parser(
+        "fetch-outlook-inputs",
+        help="Acquire reproducible Idaho outlook inputs when source adapters are available.",
+    )
+    fetch_outlook.add_argument("--issue-date", required=True, metavar="YYYY-MM-DD")
+    fetch_outlook.add_argument("--out", required=True)
+    build_outlook_parser = subparsers.add_parser(
+        "build-outlook", help="Build an immutable 20-day Idaho ET outlook artifact."
+    )
+    build_outlook_parser.add_argument("--weather", required=True)
+    build_outlook_parser.add_argument("--state", required=True)
+    build_outlook_parser.add_argument("--crop", required=True)
+    build_outlook_parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
     if args.command == "validate-csv":
         return _run_validate(args.path)
@@ -45,9 +61,48 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "qc-gridmet":
         return _run_gridmet_qc(args.interim, args.gridmet_dir, args.metadata, args.n)
+    if args.command == "fetch-outlook-inputs":
+        return _run_fetch_outlook_inputs(args.issue_date, args.out)
+    if args.command == "build-outlook":
+        return _run_build_outlook(args.weather, args.state, args.crop, args.out)
     result = phase2_openet_value.run(args.interim, args.landcover)
     _write_report(args.out, result)
     print(f"decision: {result['decision']}")
+    return 0
+
+
+def _run_fetch_outlook_inputs(issue_date_text: str, destination: str) -> int:
+    """Return a source-failure code until live source adapters are reproducible."""
+    try:
+        issue_date = date.fromisoformat(issue_date_text)
+        if issue_date.isoformat() != issue_date_text:
+            raise ValueError("issue date must use YYYY-MM-DD")
+        fetch_gefs(
+            issue_date,
+            (-118.0, 41.0, -110.0, 50.0),
+            Path(destination),
+        )
+    except (NotImplementedError, OSError, ValueError) as exc:
+        print(f"error: cannot fetch reproducible outlook inputs: {exc}", file=sys.stderr)
+        return 2
+    print("error: source acquisition did not produce a complete outlook input set", file=sys.stderr)
+    return 2
+
+
+def _run_build_outlook(weather: str, state: str, crop: str, destination: str) -> int:
+    """Build only a complete, normalized outlook or return the data error code."""
+    try:
+        result = build_outlook(
+            weather_path=Path(weather),
+            state_path=Path(state),
+            crop_path=Path(crop),
+            out_dir=Path(destination),
+        )
+    except (OSError, ValueError) as exc:
+        print(f"error: cannot build outlook: {exc}", file=sys.stderr)
+        return 1
+    print(f"run_id: {result.run_id}")
+    print(f"out: {result.run_dir}")
     return 0
 
 

@@ -16,6 +16,7 @@ from mlet.outlook.contracts import SourceRecord
 _SCHEMA_VERSION = 1
 _MANIFEST_FIELDS = frozenset(
     {
+        "artifact_sha256",
         "schema_version",
         "run_id",
         "issued_at",
@@ -87,6 +88,7 @@ class RunManifest:
     retrieved_at: datetime
     git_revision: str
     sources: tuple[SourceRecord, ...]
+    artifact_sha256: tuple[tuple[str, str], ...] = ()
 
     def _payload_without_run_id(self) -> dict[str, object]:
         return {
@@ -101,12 +103,34 @@ class RunManifest:
         """Return canonical JSON suitable for an immutable run receipt."""
         _require_supported_schema_version(self.schema_version)
         _require_strictly_sorted_sources(self.sources)
+        artifact_sha256 = _validate_artifact_hashes(self.artifact_sha256)
         payload = self._payload_without_run_id()
         expected_run_id = _run_id(payload)
         if self.run_id != expected_run_id:
             raise ValueError("manifest run_id does not match its canonical content")
         payload["run_id"] = self.run_id
+        payload["artifact_sha256"] = dict(artifact_sha256)
         return _canonical_json(payload)
+
+    def with_artifact_sha256(
+        self, artifact_sha256: Mapping[str, str]
+    ) -> RunManifest:
+        """Attach immutable output hashes without changing input-derived identity.
+
+        A run ID identifies the normalized inputs and producing revision.  Output
+        bytes are derived from that identity, so adding their integrity hashes to
+        the final receipt must not introduce a self-referential manifest hash.
+        """
+        hashes = _validate_artifact_hashes(artifact_sha256)
+        return RunManifest(
+            schema_version=self.schema_version,
+            run_id=self.run_id,
+            issued_at=self.issued_at,
+            retrieved_at=self.retrieved_at,
+            git_revision=self.git_revision,
+            sources=self.sources,
+            artifact_sha256=hashes,
+        )
 
     @classmethod
     def from_json(cls, value: str) -> RunManifest:
@@ -134,6 +158,7 @@ class RunManifest:
                 retrieved_at=_parse_utc_timestamp(_required_str(payload, "retrieved_at")),
                 git_revision=_required_str(payload, "git_revision"),
                 sources=sources,
+                artifact_sha256=_artifact_hashes_from_payload(payload["artifact_sha256"]),
             )
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError("manifest does not satisfy the run receipt schema") from error
@@ -150,12 +175,17 @@ def build_manifest(
     source_paths: Mapping[str, Path],
     git_revision: str,
     retrieved_at: str,
+    *,
+    source_observed_through: Mapping[str, date | None] | None = None,
 ) -> RunManifest:
     """Build a deterministic receipt from caller-supplied times and input bytes."""
     issued_datetime = _parse_utc_timestamp(issued_at)
     retrieved_datetime = _parse_utc_timestamp(retrieved_at)
     if not isinstance(git_revision, str) or not git_revision:
         raise ValueError("git_revision must be a non-empty string")
+    observed_through = _validate_source_observed_through(
+        source_paths, source_observed_through
+    )
 
     sources = tuple(
         SourceRecord(
@@ -163,7 +193,7 @@ def build_manifest(
             uri=path.resolve().as_uri(),
             retrieved_at=retrieved_datetime,
             sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
-            observed_through=None,
+            observed_through=observed_through[name],
         )
         for name, path in sorted(source_paths.items())
     )
@@ -183,6 +213,24 @@ def build_manifest(
         git_revision=provisional.git_revision,
         sources=provisional.sources,
     )
+
+
+def _validate_source_observed_through(
+    source_paths: Mapping[str, Path],
+    values: Mapping[str, date | None] | None,
+) -> dict[str, date | None]:
+    if values is None:
+        return {name: None for name in source_paths}
+    if set(values) != set(source_paths):
+        raise ValueError("source_observed_through must name every source exactly once")
+    normalized: dict[str, date | None] = {}
+    for name, observed_date in values.items():
+        if observed_date is not None and (
+            not isinstance(observed_date, date) or isinstance(observed_date, datetime)
+        ):
+            raise ValueError("source_observed_through values must be dates or null")
+        normalized[name] = observed_date
+    return normalized
 
 
 def _source_from_payload(value: object) -> SourceRecord:
@@ -255,6 +303,36 @@ def _require_strictly_sorted_sources(sources: tuple[SourceRecord, ...]) -> None:
         set(source_names)
     ):
         raise ValueError("manifest sources must be strictly sorted by name")
+
+
+def _artifact_hashes_from_payload(value: object) -> tuple[tuple[str, str], ...]:
+    if not isinstance(value, dict):
+        raise TypeError("artifact_sha256 must be an object")
+    return _validate_artifact_hashes(value)
+
+
+def _validate_artifact_hashes(
+    value: Mapping[str, str] | tuple[tuple[str, str], ...],
+) -> tuple[tuple[str, str], ...]:
+    try:
+        items = tuple(value.items()) if isinstance(value, Mapping) else tuple(value)
+    except (AttributeError, TypeError) as error:
+        raise ValueError("artifact_sha256 must map output filenames to SHA-256 values") from error
+    normalized: list[tuple[str, str]] = []
+    for filename, digest in items:
+        if (
+            not isinstance(filename, str)
+            or not filename
+            or Path(filename).name != filename
+            or filename in {".", ".."}
+        ):
+            raise ValueError("artifact_sha256 filenames must be safe basenames")
+        if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+            raise ValueError("artifact_sha256 values must be lowercase SHA-256 hex")
+        normalized.append((filename, digest))
+    if normalized != sorted(normalized) or len({filename for filename, _ in normalized}) != len(normalized):
+        raise ValueError("artifact_sha256 entries must be strictly sorted by filename")
+    return tuple(normalized)
 
 
 def _run_id(payload_without_run_id: Mapping[str, object]) -> str:
