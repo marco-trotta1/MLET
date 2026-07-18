@@ -52,7 +52,11 @@ def summarize_members(values: Sequence[float]) -> OutlookQuantiles:
 def summarize_member_groups(
     members: Sequence[WeatherMember],
 ) -> dict[GridDay, OutlookQuantiles]:
-    """Summarize ETo by native-weather-grid identifier and valid UTC date."""
+    """Summarize ETo by grid identifier and Idaho-local calendar date.
+
+    ``valid_date`` follows the shared ``America/Boise`` outlook convention;
+    it is not a UTC-day aggregation label.
+    """
     grouped_values: dict[GridDay, list[float]] = {}
     grouped_member_ids: dict[GridDay, list[str]] = {}
     for member in members:
