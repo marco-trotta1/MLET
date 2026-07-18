@@ -1,0 +1,2 @@
+{"fixture_non_scientific":true,"fixture_note":"Deterministic software fixture; not a CDL acquisition or scientific evidence.","grid_id":"fixture-idaho-grid","crop_code":1,"crop_class":"fixture_corn","area_m2":60.0,"confidence":90.0,"source_year":2024}
+{"fixture_non_scientific":true,"fixture_note":"Deterministic software fixture; not a CDL acquisition or scientific evidence.","grid_id":"fixture-idaho-grid","crop_code":36,"crop_class":"fixture_alfalfa","area_m2":30.0,"confidence":80.0,"source_year":2024}

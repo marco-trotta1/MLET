@@ -1,18 +1,36 @@
 # MLET
 
-Open-source machine learning evapotranspiration (MLET) is a soil-moisture
-forecasting project built around a calibrated water balance, weather forecasts,
-in-situ observations, and satellite evapotranspiration.
+Open-source machine learning evapotranspiration (MLET) is building a
+reproducible, no-setup **Idaho regional evapotranspiration outlook** alongside
+leakage-controlled ET research. The first public product is a 20-day,
+native-weather-grid map—not a field-scale measurement, field-specific
+irrigation prescription, or irrigation recommendation.
 
-The goal is practical: forecast root-zone soil-water deficit far enough ahead
-to support irrigation timing decisions, with the strongest emphasis on the
-two-to-seven-day horizon.
+The [frozen Idaho outlook product contract](docs/outlook/PRODUCT_CONTRACT.md)
+defines exactly what each map layer means, including the distinction between
+forecast ETo, potential crop ET, delayed observed ETa analysis, and two
+conditional ETa scenarios. The
+[outlook preregistration](docs/evaluation/OUTLOOK_PREREGISTRATION.md) defines
+the issue-time cutoff and the gate required before any public validation claim.
 
-## Research Question
+## Research questions
 
-Given weather data, recent soil-moisture observations, and a calibrated water
-balance, does satellite evapotranspiration, specifically OpenET, measurably
-improve short-horizon soil-moisture forecasts?
+The current product question is whether real, issue-time-valid data can support
+an auditable 20-day Idaho ETo outlook with useful uncertainty characterization.
+Phase 2 answers a narrower, retrospective research question:
+
+> Given weather data and satellite ET, does OpenET measurably improve
+> daily actual-ET prediction at field-withheld flux-tower stations?
+
+The earlier, longer-term soil-moisture research question remains:
+
+> Given weather data, recent soil-moisture observations, and a calibrated water
+> balance, does satellite evapotranspiration, specifically OpenET, measurably
+> improve short-horizon soil-moisture forecasts?
+
+Neither question authorizes a generic future actual-ET label. Phase 2 is
+daily-ET evidence only; it does not validate a 20-day outlook, a soil-moisture
+forecast, or an irrigation decision.
 
 OpenET earns its place only if, for irrigated fields in the two-to-seven-day
 forecast window, assimilation reduces root-zone deficit error by at least 10%
@@ -124,7 +142,9 @@ The planned system should produce:
 
 ## Current Repository Status
 
-This repository is an early scaffold, not a complete forecasting product.
+This repository contains a reproducible Phase 2 daily-ET baseline and the
+frozen product and evaluation contracts for the Idaho outlook. It is not yet a
+validated 20-day forecasting product.
 
 Present contents:
 
@@ -136,18 +156,80 @@ Present contents:
   a pre-registered Phase 2 daily-ET comparison;
 - [data provenance and coverage notes](docs/data/DATA_CARD.md),
   [the frozen evaluation design](docs/evaluation/PREREGISTRATION.md), and
-  [generated Phase 2 results](docs/results/phase2_openet_value.md).
+  [generated Phase 2 results](docs/results/phase2_openet_value.md);
+- the [Idaho outlook product contract](docs/outlook/PRODUCT_CONTRACT.md),
+  [outlook preregistration](docs/evaluation/OUTLOOK_PREREGISTRATION.md), and
+  [operational source registry](data/outlook/source_registry.json).
 
 Phase 2 finds that, on the 85-station weather-complete public subset, the
 OpenET-inclusive model reduced field-withheld daily-ET MAE by 43.4% relative to
 the best OpenET-free baseline (95% CI 0.399–0.911 mm); this is daily-ET evidence
-only, not validation of soil-moisture forecasts or irrigation decisions.
+only, not validation of the Idaho outlook, soil-moisture forecasts, or
+irrigation decisions.
 
 Not yet present:
 
-- model-training code;
-- OpenET assimilation into a soil-moisture water balance;
-- dashboard or forecast output files.
+- a reproducible operational outlook build;
+- preregistered 20-day hindcast results;
+- a promoted or validated public forecast map;
+- model-training code or OpenET assimilation into a soil-moisture water balance.
+
+## Non-serving residual-model experiment
+
+The [frozen residual-model protocol](docs/evaluation/OUTLOOK_RESIDUAL_MODEL_PROTOCOL.md)
+adds a deliberately isolated advanced-ML proving ground. It trains quantile
+residuals only beside the physical well-watered ETa scenario, using frozen
+geographic-and-seasonal holdouts, chronological train/gap/calibration/gap/test
+partitions, issue-time feature availability, finite-sample conformal intervals,
+and recorded package/seed/data hashes.
+It cannot change the outlook artifact, map, Helios, or Irrigant input, and it
+always writes `promotion: false` for separately trusted external review.
+
+```bash
+python3 -m mlet evaluate-outlook-residual \
+  --cases examples/outlook/hindcast_cases.json \
+  --out /private/tmp/idaho_outlook_residual.md
+```
+
+That bundled input is a visibly non-scientific software fixture. Archive-local
+checksums for Task 8 cases, feature receipts, and target receipts are useful
+replay diagnostics, but are not independent provenance: an archive author can
+supply both the rows and receipts. Training/calibration target receipts must
+also prove availability by their frozen cutoffs; test targets may be later but
+remain bound. An external archive-reconstruction authority must rebuild the
+rows and target receipts from raw source artifacts before separate release
+review; this repository always emits `promotion: false` and
+`external_release_eligible: false`.
+
+## Static research-candidate map
+
+`mlet publish-outlook` renders a standalone `index.html`, `outlook.geojson`,
+`summary.json`, and `serve-contract.json` from a verified immutable
+`OUTPUT_ROOT/RUN_ID` handle. It is intentionally useful for inspecting the
+native weather-grid quantities and their uncertainty without a web-service or
+package setup, but it always returns exit code `1`: the output is a **research
+candidate**, with `promotion: false` and `validation_status:
+"validation_pending"`.
+
+```bash
+python3 -m mlet publish-outlook --run OUTPUT_ROOT/RUN_ID
+```
+
+The renderer reads input only through the descriptor-anchored run reader and
+does not alter the immutable generation. It stages candidate artifacts below a
+trusted output root and atomically exposes a new sibling candidate directory;
+it never overwrites one. Its map labels keep ETo outlook, potential
+crop ET, the dated ETa analysis, and the two conditional ETa scenarios
+separate. A weather-grid reference point, when included by the source contract,
+is not a field boundary. The candidate summary uses an explicitly labelled
+equal-cell descriptive mean—not a statewide area-weighted statistic—until
+source-grid cell areas are carried in the serving contract.
+
+Fixture input produces a conspicuous non-scientific software-fixture map. It is
+never a forecast claim or scientific evidence. For qualifying archived data,
+only the separately trusted external release authority described in the outlook
+preregistration may publish a promoted product; the MLET evaluator and map
+renderer have no local promotion or validation path.
 
 ## Development Notes
 

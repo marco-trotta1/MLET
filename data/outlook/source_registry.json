@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "gefs": {
+      "citation": "NOAA NCEP Global Ensemble Forecast System via NOMADS",
+      "acquisition_mode": "imported canonical daily artifact only; live GRIB fetch disabled",
+      "artifact_schema": "mlet.gefs.daily-artifact v1; docs/data/GEFS_DAILY_ARTIFACT.md",
+      "license": "U.S. government public data",
+      "latency": "forecast issue time",
+      "required_variables": [
+        "tmax_c",
+        "tmin_c",
+        "vapor_pressure_kpa",
+        "wind_m_s",
+        "solar_mj_m2_day",
+        "precip_mm"
+      ]
+    },
+    "openet_eta": {
+      "citation": "OpenET Consortium satellite actual evapotranspiration",
+      "license": "provider terms recorded in run receipt",
+      "latency": "recorded observed-date lag",
+      "required_variables": [
+        "eta_analysis_mm",
+        "observation_date",
+        "source_available_at",
+        "model",
+        "model_version"
+      ]
+    },
+    "usda_cdl": {
+      "citation": "USDA NASS Cropland Data Layer",
+      "legend": "usda-nass-cdl-2024",
+      "legend_url": "https://www.nass.usda.gov/Research_and_Science/Cropland/metadata/metadata_Cropland-Data-Layer-2024.htm",
+      "license": "public domain",
+      "latency": "annual release",
+      "required_variables": [
+        "crop_code",
+        "source_year",
+        "confidence"
+      ],
+      "required_metadata": [
+        "layer_version",
+        "legend_version",
+        "release_at",
+        "upstream_uri",
+        "sha256"
+      ]
+    }
+  }
+}

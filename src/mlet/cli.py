@@ -2,16 +2,33 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date
+import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 import numpy as np
 
 from mlet.build_dataset import build_dataset
 from mlet.experiments import phase2_openet_value
+from mlet.experiments.idaho_outlook_residual import (
+    evaluate_residual_evidence,
+    write_residual_authority_request,
+    write_residual_markdown,
+)
 from mlet.loader import load_site_series
+from mlet.outlook.build import build_outlook
+from mlet.outlook.hindcast import (
+    evaluate_hindcast_evidence,
+    write_hindcast_markdown,
+    write_hindcast_validation,
+    write_release_authority_request,
+)
+from mlet.outlook.publish import publish_outlook
 from mlet.sources.gridmet import extract_eto
+from mlet.sources.gefs import fetch_gefs
 from mlet.sources.stations import load_station_metadata
 from mlet.validator import validate_csv
 
@@ -37,6 +54,40 @@ def main(argv: list[str] | None = None) -> int:
     experiment.add_argument("--interim", required=True)
     experiment.add_argument("--landcover", required=True)
     experiment.add_argument("--out", required=True)
+    fetch_outlook = subparsers.add_parser(
+        "fetch-outlook-inputs",
+        help="Acquire reproducible Idaho outlook inputs when source adapters are available.",
+    )
+    fetch_outlook.add_argument("--issue-date", required=True, metavar="YYYY-MM-DD")
+    fetch_outlook.add_argument("--out", required=True)
+    build_outlook_parser = subparsers.add_parser(
+        "build-outlook", help="Build an immutable 20-day Idaho ET outlook artifact."
+    )
+    build_outlook_parser.add_argument("--weather", required=True)
+    build_outlook_parser.add_argument("--state", required=True)
+    build_outlook_parser.add_argument("--crop", required=True)
+    build_outlook_parser.add_argument("--out", required=True)
+    hindcast = subparsers.add_parser(
+        "hindcast-outlook",
+        help="Run the preregistered no-lookahead Idaho outlook release gate.",
+    )
+    hindcast.add_argument("--cases", required=True)
+    hindcast.add_argument("--out", required=True)
+    residual = subparsers.add_parser(
+        "evaluate-outlook-residual",
+        help="Run the frozen, non-serving Idaho outlook residual-model experiment.",
+    )
+    residual.add_argument("--cases", required=True)
+    residual.add_argument("--out", required=True)
+    publish = subparsers.add_parser(
+        "publish-outlook",
+        help="Render a standalone, non-promotable Idaho outlook map candidate.",
+    )
+    publish.add_argument("--run", required=True, help="Published OUTPUT_ROOT/RUN_ID handle.")
+    publish.add_argument(
+        "--out",
+        help="New candidate directory; defaults beside the immutable run handle.",
+    )
     args = parser.parse_args(argv)
     if args.command == "validate-csv":
         return _run_validate(args.path)
@@ -45,10 +96,139 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "qc-gridmet":
         return _run_gridmet_qc(args.interim, args.gridmet_dir, args.metadata, args.n)
+    if args.command == "fetch-outlook-inputs":
+        return _run_fetch_outlook_inputs(args.issue_date, args.out)
+    if args.command == "build-outlook":
+        return _run_build_outlook(args.weather, args.state, args.crop, args.out)
+    if args.command == "hindcast-outlook":
+        return _run_hindcast_outlook(args.cases, args.out)
+    if args.command == "evaluate-outlook-residual":
+        return _run_outlook_residual(args.cases, args.out)
+    if args.command == "publish-outlook":
+        return _run_publish_outlook(args.run, args.out)
     result = phase2_openet_value.run(args.interim, args.landcover)
     _write_report(args.out, result)
     print(f"decision: {result['decision']}")
     return 0
+
+
+def _run_fetch_outlook_inputs(issue_date_text: str, destination: str) -> int:
+    """Return a source-failure code until live source adapters are reproducible."""
+    try:
+        issue_date = date.fromisoformat(issue_date_text)
+        if issue_date.isoformat() != issue_date_text:
+            raise ValueError("issue date must use YYYY-MM-DD")
+        fetch_gefs(
+            issue_date,
+            (-118.0, 41.0, -110.0, 50.0),
+            Path(destination),
+        )
+    except (NotImplementedError, OSError, ValueError) as exc:
+        print(f"error: cannot fetch reproducible outlook inputs: {exc}", file=sys.stderr)
+        return 2
+    print("error: source acquisition did not produce a complete outlook input set", file=sys.stderr)
+    return 2
+
+
+def _run_build_outlook(weather: str, state: str, crop: str, destination: str) -> int:
+    """Build only a complete, normalized outlook or return the data error code."""
+    try:
+        result = build_outlook(
+            weather_path=Path(weather),
+            state_path=Path(state),
+            crop_path=Path(crop),
+            out_dir=Path(destination),
+        )
+    except (OSError, ValueError) as exc:
+        print(f"error: cannot build outlook: {exc}", file=sys.stderr)
+        return 1
+    print(f"run_id: {result.run_id}")
+    print(f"out_root: {result.output_root}")
+    print("read: use mlet.outlook.build.read_published_run(out_root, run_id)")
+    return 0
+
+
+def _run_hindcast_outlook(cases_path: str, destination: str) -> int:
+    """Write the auditable hindcast report and return its release-gate status."""
+    try:
+        report_path = _trusted_hindcast_output(Path(destination))
+        report, receipt = evaluate_hindcast_evidence(Path(cases_path))
+        write_hindcast_validation(receipt, report_path.parent / "validation.json")
+        write_release_authority_request(receipt, report_path.parent / "authority_request.json")
+        write_hindcast_markdown(report, report_path)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot run outlook hindcast: {exc}", file=sys.stderr)
+        return 2
+    print(f"report: {report_path}")
+    print(f"validation: {report_path.parent / 'validation.json'}")
+    print(f"authority request: {report_path.parent / 'authority_request.json'}")
+    print("promotion: false")
+    return 1
+
+
+def _run_outlook_residual(cases_path: str, destination: str) -> int:
+    """Write a permanently non-promotable ML research candidate."""
+    try:
+        report_path = _trusted_hindcast_output(Path(destination))
+        report, receipt = evaluate_residual_evidence(Path(cases_path))
+        authority_path = report_path.with_name(
+            f"{report_path.stem}.authority_request.json"
+        )
+        if authority_path.exists() or authority_path.is_symlink():
+            raise ValueError("residual authority request destination already exists")
+        write_residual_markdown(report, report_path)
+        write_residual_authority_request(receipt, authority_path)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot evaluate outlook residual experiment: {exc}", file=sys.stderr)
+        return 2
+    print(f"report: {report_path}")
+    print(f"authority request: {authority_path}")
+    print("promotion: false")
+    print("external_release_eligible: false")
+    print("status: non-serving research candidate")
+    return 1
+
+
+def _run_publish_outlook(run: str, destination: str | None) -> int:
+    """Render a research candidate and preserve the external-authority gate."""
+    try:
+        result = publish_outlook(
+            Path(run), out_dir=Path(destination) if destination is not None else None
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot publish outlook candidate: {exc}", file=sys.stderr)
+        return 2
+    print(f"index: {result.index_path}")
+    print(f"geojson: {result.geojson_path}")
+    print(f"serve_contract: {result.serve_contract_path}")
+    print(f"schema_version: {result.schema_version}")
+    print(f"run_id: {result.run_id}")
+    print("promotion: false")
+    print("validation: pending")
+    return 1
+
+
+def _trusted_hindcast_output(destination: Path) -> Path:
+    """Permit reports only under repository results or the local temporary root."""
+    resolved = destination.resolve(strict=False)
+    roots = (
+        (Path.cwd() / "docs" / "results").resolve(strict=False),
+        Path(tempfile.gettempdir()).resolve(strict=False),
+        Path("/private/tmp").resolve(strict=False),
+    )
+    if any(_is_relative_to(resolved, root) for root in roots):
+        return resolved
+    raise ValueError(
+        "hindcast output must be under docs/results or the local temporary directory"
+    )
+
+
+def _is_relative_to(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
 
 
 def _run_validate(path: str) -> int:

@@ -1,5 +1,11 @@
 .DS_Store
 __pycache__/
 *.egg-info/
+artifacts/
 data/*
 !data/manifest.json
+!data/outlook/
+data/outlook/*
+!data/outlook/source_registry.json
+data/cache/
+data/interim/
