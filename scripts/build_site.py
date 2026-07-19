@@ -42,7 +42,10 @@ def build_site(destination: Path) -> Path:
     shutil.copytree(SITE_SOURCE, destination)
     (destination / ".nojekyll").write_bytes(b"")
 
-    with tempfile.TemporaryDirectory() as scratch:
+    # The publish pipeline refuses output roots with group/other-writable
+    # ancestors, which rules out /tmp on CI runners; the repository checkout
+    # is a trusted root in both local and CI environments.
+    with tempfile.TemporaryDirectory(dir=REPO_ROOT) as scratch:
         scratch_root = Path(scratch).resolve()
         run = build_outlook(
             weather_path=WEATHER_FIXTURE,
