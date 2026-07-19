@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MLET — Idaho regional evapotranspiration outlook</title>
+<meta name="description" content="An auditable 20-day Idaho evapotranspiration outlook on the native weather grid, with p10/p50/p90 uncertainty, run receipts, and a frozen product contract.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FAFAF8; --surface:#FFFFFF; --surface-2:#F2F2EF;
+  --ink:#191D1B; --ink-2:#505652; --ink-3:#7C827E;
+  --line:#E0E0DB; --line-strong:#BFBFB8;
+  --accent:#17706B; --accent-strong:#0E5551; --accent-tint:#E4EFEE;
+  --warn-bg:#FBF3E4; --warn-border:#C77E1B; --warn-ink:#7A4A08;
+  --sans:"Söhne","Sohne","Inter",-apple-system,"Helvetica Neue",sans-serif;
+  --mono:"Söhne Mono","IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+}
+html.dark{
+  --paper:#111413; --surface:#191D1B; --surface-2:#212624;
+  --ink:#E9EAE7; --ink-2:#A8AEA9; --ink-3:#787E7A;
+  --line:#2B302D; --line-strong:#454B47;
+  --accent:#4CB8AE; --accent-strong:#7BD0C8; --accent-tint:#1B2E2B;
+  --warn-bg:#2B2213; --warn-ink:#E5B36A;
+}
+@media(prefers-color-scheme:dark){
+  html:not(.light){
+    --paper:#111413; --surface:#191D1B; --surface-2:#212624;
+    --ink:#E9EAE7; --ink-2:#A8AEA9; --ink-3:#787E7A;
+    --line:#2B302D; --line-strong:#454B47;
+    --accent:#4CB8AE; --accent-strong:#7BD0C8; --accent-tint:#1B2E2B;
+    --warn-bg:#2B2213; --warn-ink:#E5B36A;
+  }
+}
+*{margin:0;box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+main{max-width:1100px;margin:0 auto;padding:0 24px 80px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+section{margin-top:64px}
+h1{font-size:clamp(30px,4.4vw,44px);font-weight:600;letter-spacing:-.022em;line-height:1.12;max-width:22ch}
+h2{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-3);margin-bottom:16px}
+p{max-width:64ch}
+.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.05em;color:var(--accent);margin-bottom:14px}
+.lede{font-size:17px;color:var(--ink-2);max-width:56ch;margin-top:16px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--line);margin-bottom:56px}
+.wordmark{font-family:var(--mono);font-weight:600;font-size:14px;letter-spacing:.02em;color:var(--ink)}
+.wordmark span{color:var(--accent)}
+.nav{display:flex;gap:18px;align-items:center;font-size:13.5px}
+.nav a{color:var(--ink-2)}
+.nav a:hover{color:var(--ink);text-decoration:none}
+.toggle{font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer}
+.toggle:hover{border-color:var(--line-strong)}
+.note{font-size:13px;color:var(--ink-3);border-left:2px solid var(--line-strong);padding-left:14px;margin-top:14px;max-width:70ch}
+.comp-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:24px}
+.btn{display:inline-block;font-family:var(--sans);font-weight:600;font-size:13.5px;border-radius:6px;padding:9px 16px;cursor:pointer;border:1px solid transparent;transition:background .1s ease-out}
+.btn-primary{background:var(--accent);color:#fff}
+html.dark .btn-primary{color:#0D1512}
+.btn-primary:hover{background:var(--accent-strong);text-decoration:none}
+.btn-secondary{background:transparent;color:var(--ink);border-color:var(--line-strong)}
+.btn-secondary:hover{background:var(--surface-2);text-decoration:none}
+.btn-ghost{background:transparent;color:var(--accent);border:none}
+.btn-ghost:hover{background:var(--accent-tint);text-decoration:none}
+.banner{display:flex;gap:12px;align-items:baseline;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;padding:12px 15px;font-size:13.5px;max-width:760px;margin-top:20px}
+.banner b{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--warn-ink);white-space:nowrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.chip{display:inline-flex;gap:7px;align-items:center;font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:4px 9px;color:var(--ink-2)}
+.chip .dot-pending{width:6px;height:6px;border-radius:50%;background:var(--warn-border)}
+table.data{border-collapse:collapse;width:100%;font-size:13.5px;max-width:760px}
+table.data th{text-align:left;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);border-bottom:1px solid var(--line-strong);padding:7px 10px}
+table.data td{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--line);padding:7px 10px;color:var(--ink-2)}
+table.data td:first-child{color:var(--ink)}
+table.data td.sans{font-family:var(--sans);font-size:13px}
+.codehead{display:flex;justify-content:space-between;align-items:center;max-width:760px;margin-bottom:6px}
+.codehead .l{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3)}
+.codehead .copy{font-family:var(--mono);font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;padding:2px 4px}
+.code{font-family:var(--mono);font-size:12.5px;line-height:1.9;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:14px 16px;overflow-x:auto;color:var(--ink-2);max-width:760px;white-space:pre}
+.code .cmd{color:var(--accent-strong);font-weight:500}
+.code .cmt{color:var(--ink-3)}
+footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;font-size:13px;color:var(--ink-3)}
+footer .links{display:flex;gap:16px;flex-wrap:wrap}
+footer a{color:var(--ink-2)}
+@media(max-width:640px){.nav a.hide-sm{display:none}}
+</style>
+</head>
+<body>
+<main>
+<div class="topbar">
+  <div class="wordmark">MLET<span>·</span>Idaho ET Outlook</div>
+  <nav class="nav">
+    <a href="outlook/">Outlook map</a>
+    <a class="hide-sm" href="https://github.com/marco-trotta1/MLET/blob/main/docs/outlook/PRODUCT_CONTRACT.md">Contract</a>
+    <a class="hide-sm" href="https://github.com/marco-trotta1/MLET/blob/main/docs/results/phase2_openet_value.md">Results</a>
+    <a href="https://github.com/marco-trotta1/MLET">GitHub</a>
+    <button class="toggle" id="theme">light / dark</button>
+  </nav>
+</div>
+
+<div class="kicker">MLET · open-source ML evapotranspiration</div>
+<h1>Idaho regional evapotranspiration outlook</h1>
+<p class="lede">20 daily lead dates on the native weather grid. Every value carries p10/p50/p90. Every run carries a receipt. Frozen product contract, preregistered evaluation.</p>
+<div class="comp-row">
+  <a class="btn btn-primary" href="outlook/">Open the outlook map</a>
+  <a class="btn btn-secondary" href="https://github.com/marco-trotta1/MLET/blob/main/docs/outlook/PRODUCT_CONTRACT.md">Product contract</a>
+  <a class="btn btn-ghost" href="https://github.com/marco-trotta1/MLET">GitHub →</a>
+</div>
+<div class="banner"><b>Status</b><span>Research candidate — validation pending. No public forecast claim is made until the preregistered hindcast gate passes. The map on this site is rendered from the repository's software fixture and is labeled non-scientific; it demonstrates the artifact contract, not a forecast.</span></div>
+<div class="chips" id="chips">
+  <span class="chip">run <span id="run-id">—</span></span>
+  <span class="chip">issued <span id="issued-at">—</span></span>
+  <span class="chip"><span class="dot-pending"></span>validation_pending</span>
+  <span class="chip">promotion: false</span>
+</div>
+
+<section>
+<h2>Four deliberately separate layers</h2>
+<p style="margin-bottom:14px">The map never shows a generic “actual ET forecast.” Each layer has its own meaning, source path, and eligible timestamps, named verbatim from the product contract.</p>
+<table class="data">
+  <tr><th>Layer</th><th>Meaning</th><th>Time semantics</th></tr>
+  <tr><td>eto_mm</td><td class="sans">Weather-driven ASCE short-reference ET forecast</td><td class="sans">Future daily forecast from ensemble weather members</td></tr>
+  <tr><td>potential_et_c_mm</td><td class="sans">Kc × ETo under ample-water conditions</td><td class="sans">Future daily, conditional on the crop-coefficient assumption</td></tr>
+  <tr><td>eta_analysis_mm</td><td class="sans">Latest observed-date satellite ET analysis</td><td class="sans">Historical observation at source lag; never a future forecast</td></tr>
+  <tr><td>eta_well_watered_mm</td><td class="sans">Conditional scenario: crop water not limiting</td><td class="sans">Future daily scenario, not a measurement</td></tr>
+  <tr><td>eta_no_irrigation_mm</td><td class="sans">Conditional scenario: no irrigation after issue time</td><td class="sans">Future daily scenario, not a measurement</td></tr>
+</table>
+</section>
+
+<section>
+<h2>Phase 2 evidence — field-withheld daily ET</h2>
+<p style="margin-bottom:14px">85 flux-tower stations, field-withheld split. OpenET assimilation reduced daily actual-ET MAE by 43.4% against the best OpenET-free baseline (Δ 0.658 mm/day, 95% CI [0.399, 0.911]).</p>
+<table class="data">
+  <tr><th>Model</th><th>MAE (mm/day)</th><th>RMSE (mm/day)</th><th>n</th></tr>
+  <tr><td>M2_OpenETRecal</td><td>0.781</td><td>1.060</td><td>7923</td></tr>
+  <tr><td>M1_OpenETDirect</td><td>0.784</td><td>1.066</td><td>7923</td></tr>
+  <tr><td>M3_OpenETRidge</td><td>0.856</td><td>1.386</td><td>7923</td></tr>
+  <tr><td>B2_WeatherRidge (best OpenET-free)</td><td>1.514</td><td>2.687</td><td>7923</td></tr>
+  <tr><td>B1_CropCoefficient</td><td>1.532</td><td>2.005</td><td>7923</td></tr>
+</table>
+<p class="note">Daily-ET evidence only; not validation of the 20-day outlook, soil-moisture forecasts, or irrigation decisions. Full tables, stratified results, and the preregistered decision rule: <a href="https://github.com/marco-trotta1/MLET/blob/main/docs/results/phase2_openet_value.md">phase2_openet_value.md</a>.</p>
+</section>
+
+<section>
+<h2>Reproduce</h2>
+<div class="codehead"><span class="l">From the repository root</span><button class="copy" data-copy="repro">copy</button></div>
+<div class="code" id="repro"><span class="cmt"># build an immutable outlook run from the example fixtures,</span>
+<span class="cmt"># then render the same map candidate served on this site</span>
+<span class="cmd">python3 -m pip</span> install -e .
+<span class="cmd">mlet</span> build-outlook --weather examples/outlook/weather_members.jsonl \
+  --state examples/outlook/state.jsonl --crop examples/outlook/crop_grid.jsonl --out runs
+<span class="cmd">mlet</span> publish-outlook --run runs/RUN_ID</div>
+</section>
+
+<section>
+<h2>Artifacts</h2>
+<p style="margin-bottom:14px">Every deployed file is regenerated from source at deploy time by <a href="https://github.com/marco-trotta1/MLET/blob/main/scripts/build_site.py">scripts/build_site.py</a> and checksummed below.</p>
+<table class="data">
+  <thead><tr><th>File</th><th>Size</th><th>sha256</th></tr></thead>
+  <tbody id="artifact-rows"><tr><td colspan="3" class="sans">Loading manifest.json…</td></tr></tbody>
+</table>
+</section>
+
+<section>
+<h2>Cite</h2>
+<div class="codehead"><span class="l">BibTeX</span><button class="copy" data-copy="cite">copy</button></div>
+<div class="code" id="cite">@misc{trotta2026mlet,
+  title  = {MLET: An Auditable Idaho Regional Evapotranspiration Outlook},
+  author = {Trotta, Marco},
+  year   = {2026},
+  url    = {https://github.com/marco-trotta1/MLET}
+}</div>
+</section>
+
+<footer>
+  <div>MLET — open-source machine learning evapotranspiration.</div>
+  <div class="links">
+    <a href="https://github.com/marco-trotta1/MLET/blob/main/docs/outlook/PRODUCT_CONTRACT.md">Product contract</a>
+    <a href="https://github.com/marco-trotta1/MLET/blob/main/docs/evaluation/OUTLOOK_PREREGISTRATION.md">Preregistration</a>
+    <a href="https://github.com/marco-trotta1/MLET/blob/main/docs/data/DATA_CARD.md">Data card</a>
+    <a href="https://github.com/marco-trotta1/MLET">GitHub</a>
+  </div>
+</footer>
+</main>
+<script>
+(function(){
+  var root=document.documentElement;
+  document.getElementById('theme').addEventListener('click',function(){
+    var dark=getComputedStyle(root).getPropertyValue('--paper').trim()==='#111413';
+    root.classList.toggle('dark',!dark);
+    root.classList.toggle('light',dark);
+  });
+  document.querySelectorAll('.copy').forEach(function(button){
+    button.addEventListener('click',function(){
+      var source=document.getElementById(button.dataset.copy);
+      navigator.clipboard.writeText(source.innerText).then(function(){
+        button.textContent='copied';
+        setTimeout(function(){button.textContent='copy';},1500);
+      });
+    });
+  });
+  var rows=document.getElementById('artifact-rows');
+  fetch('manifest.json').then(function(r){return r.json();}).then(function(m){
+    document.getElementById('run-id').textContent=m.run_id;
+    document.getElementById('issued-at').textContent=m.issued_at;
+    rows.replaceChildren();
+    m.files.forEach(function(f){
+      var tr=document.createElement('tr');
+      var name=document.createElement('td');
+      var link=document.createElement('a');
+      link.href='outlook/'+f.name; link.textContent=f.name;
+      name.append(link);
+      var size=document.createElement('td');
+      size.textContent=(f.bytes/1024).toFixed(1)+' KB';
+      var sha=document.createElement('td');
+      sha.textContent=f.sha256.slice(0,8)+'…'+f.sha256.slice(-8);
+      sha.title=f.sha256;
+      tr.append(name,size,sha);
+      rows.append(tr);
+    });
+  }).catch(function(){
+    rows.replaceChildren();
+    var tr=document.createElement('tr'),td=document.createElement('td');
+    td.colSpan=3; td.className='sans';
+    td.textContent='manifest.json unavailable — artifacts are generated at deploy time.';
+    tr.append(td); rows.append(tr);
+  });
+})();
+</script>
+</body>
+</html>
