@@ -29,8 +29,15 @@ CROP_FIXTURE = REPO_ROOT / "examples/outlook/crop_grid.jsonl"
 CANDIDATE_FILES = ("index.html", "outlook.geojson", "summary.json", "serve-contract.json")
 
 
-def build_site(destination: Path) -> Path:
-    """Write the complete site to ``destination`` and return that path."""
+def build_site(destination: Path, *, scratch_dir: Path | None = None) -> Path:
+    """Write the complete site to ``destination`` and return that path.
+
+    ``scratch_dir`` hosts the intermediate immutable run and map candidate.
+    It must satisfy the publish pipeline's trusted-output-root rules (owned
+    by the effective user, no group/other write, no ACL metadata on any path
+    component). It defaults to the repository checkout; CI runners whose
+    checkout carries ACL metadata must provision a bare directory instead.
+    """
     from mlet.outlook.build import build_outlook
     from mlet.outlook.publish import publish_outlook
 
@@ -42,10 +49,7 @@ def build_site(destination: Path) -> Path:
     shutil.copytree(SITE_SOURCE, destination)
     (destination / ".nojekyll").write_bytes(b"")
 
-    # The publish pipeline refuses output roots with group/other-writable
-    # ancestors, which rules out /tmp on CI runners; the repository checkout
-    # is a trusted root in both local and CI environments.
-    with tempfile.TemporaryDirectory(dir=REPO_ROOT) as scratch:
+    with tempfile.TemporaryDirectory(dir=scratch_dir or REPO_ROOT) as scratch:
         scratch_root = Path(scratch).resolve()
         run = build_outlook(
             weather_path=WEATHER_FIXTURE,
@@ -92,9 +96,16 @@ def build_site(destination: Path) -> Path:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="build_site")
     parser.add_argument("--out", default="_site", help="Site output directory.")
+    parser.add_argument(
+        "--scratch",
+        help="Trusted scratch root for the intermediate run; defaults to the repository checkout.",
+    )
     args = parser.parse_args(argv)
     try:
-        destination = build_site(Path(args.out))
+        destination = build_site(
+            Path(args.out),
+            scratch_dir=Path(args.scratch) if args.scratch else None,
+        )
     except (OSError, ValueError) as exc:
         print(f"error: cannot build site: {exc}", file=sys.stderr)
         return 2

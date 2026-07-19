@@ -25,7 +25,13 @@ jobs:
       - name: Install package
         run: python -m pip install -e .
       - name: Build site from source
-        run: python scripts/build_site.py --out _site
+        # The publish pipeline requires a trusted scratch root: owned by the
+        # build user, no group/other write, and no ACL metadata on any path
+        # component. The runner's checkout and /tmp both fail those rules, so
+        # provision a bare directory directly under /.
+        run: |
+          sudo install -d -m 0755 -o "$(id -u)" -g "$(id -g)" /mlet-scratch
+          python scripts/build_site.py --out _site --scratch /mlet-scratch
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
