@@ -9,3 +9,5 @@ data/outlook/*
 !data/outlook/source_registry.json
 data/cache/
 data/interim/
+.gstack/
+design-preview.html
