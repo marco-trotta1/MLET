@@ -45,6 +45,90 @@ not raise the count has added no executable evidence, which is a review finding.
 | 6 | probabilistic scoring primitives: pinball loss, interval coverage, width | 409 |
 | 7 | residual-report pinball scores and preregistration amendment | 411 |
 | 8 | bounded dynamic parameterization in isolated hybrid tier | 421 |
+| 9 | FAO-56 dual-coefficient scaffold with bounded learned seams | 432 |
+
+## Hybrid scaffold audit trail
+
+The Task 9 scaffold is documented in `docs/methods/HYBRID_MODEL_SCAFFOLD.md`.
+Its load-bearing check is:
+
+```bash
+python3 -m pytest tests/test_hybrid_fao56_dual.py -q
+```
+
+That file proves three things:
+
+- with `ks=None` and `deep_percolation_fraction=1.0`, the depletion trajectory
+  matches an independent transcription of vendored `pyfao56` to `1e-12`
+- out-of-range learned terms are rejected loudly rather than silently clipped
+- the mass-conservative balance refuses standardised units
+
+The ten-day fixture's second wetting event is 100 mm. An earlier 25 mm draft
+was internally impossible for the non-scientific partial-percolation assertion:
+the Eq. 88 excess term stayed at zero for all ten days. The fixture was corrected
+only to create a genuine excess-water case; no production equation was changed.
+
+The independent transcription and the actual vendored `pyfao56.Model` were
+also checked over the same dates and drivers. The vendored model's full output
+is intentionally not treated as a bit-for-bit oracle for the scaffold because
+it computes its own surface evaporation coefficient and crop-stage dynamics;
+the load-bearing bit-for-bit check remains the independent Eq. 82--88
+transcription in the focused test.
+
+The actual-model cross-check was run with the vendored package (using
+`MPLCONFIGDIR=/tmp/mlet-mpl` only to keep its plotting cache out of the
+workspace):
+
+```bash
+MPLCONFIGDIR=/tmp/mlet-mpl PYTHONPATH="src:vendor/pyfao56/src" python3 - <<'PY'
+import numpy as np
+import pandas as pd
+from pyfao56 import Model, Parameters, Weather
+
+rain = [0.0, 0.0, 18.0, 0.0, 0.0, 0.0, 0.0, 100.0, 0.0, 0.0]
+keys = [f"2026-{day:03d}" for day in range(1, 11)]
+weather = Weather()
+weather.rfcrp = "S"
+weather.wndht = 2.0
+weather.wdata = pd.DataFrame(
+    {"Srad": np.nan, "Tmax": np.nan, "Tmin": np.nan, "Vapr": np.nan,
+     "Tdew": np.nan, "RHmax": np.nan, "RHmin": 45.0, "Wndsp": 2.0,
+     "Rain": rain, "ETref": 7.0, "MorP": "M"}, index=keys)
+params = Parameters(
+    Kcmini=1.05, Kcmmid=1.05, Kcmend=1.05,
+    Kcbini=1.05, Kcbmid=1.0500000001, Kcbend=1.05,
+    Lini=25, Ldev=50, Lmid=50, Lend=25, hini=1.0, hmax=1.0,
+    thetaFC=0.28, thetaWP=0.13,
+    theta0=0.28 - 40.0 / (1000.0 * 1.2),
+    Zrini=1.2, Zrmax=1.2, pbase=0.55)
+model = Model("2026-001", "2026-010", params, weather, cons_p=True)
+model.run()
+for key, row in model.odata.iterrows():
+    print(f"{key} ETa={row['ETa']:7.4f} DP={row['DP']:7.4f} "
+          f"Dr={row['Dr']:8.4f} Ks={row['Ks']:6.4f}")
+PY
+```
+
+Recorded output:
+
+```text
+2026-001 ETa= 7.3500 DP= 0.0000 Dr= 47.3500 Ks= 1.0000
+2026-002 ETa= 7.3500 DP= 0.0000 Dr= 54.7000 Ks= 1.0000
+2026-003 ETa= 7.3500 DP= 0.0000 Dr= 44.0500 Ks= 1.0000
+2026-004 ETa= 8.4001 DP= 0.0000 Dr= 52.4501 Ks= 1.0000
+2026-005 ETa= 8.4001 DP= 0.0000 Dr= 60.8502 Ks= 1.0000
+2026-006 ETa= 8.4001 DP= 0.0000 Dr= 69.2503 Ks= 1.0000
+2026-007 ETa= 8.4001 DP= 0.0000 Dr= 77.6504 Ks= 1.0000
+2026-008 ETa= 8.4001 DP=13.9496 Dr=  0.0000 Ks= 1.0000
+2026-009 ETa= 8.4001 DP= 0.0000 Dr=  8.4001 Ks= 1.0000
+2026-010 ETa= 8.4001 DP= 0.0000 Dr= 16.8002 Ks= 1.0000
+```
+
+This confirms the expected qualitative behavior. The actual package computes
+its surface-evaporation `Ke` and crop-stage terms, so its ETa values are not
+expected to be identical to the scaffold's intentionally supplied fixed
+`Kcb=1.05` and `Ke=0.12`; the independent Eq. 82--88 test is the numerical
+equivalence gate.
 
 ## Regenerating published artifacts
 
