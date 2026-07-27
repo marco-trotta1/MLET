@@ -30,4 +30,4 @@ where = ["src", "vendor/pyfao56/src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "vendor/pyfao56/src"]

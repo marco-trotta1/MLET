@@ -241,6 +241,15 @@ Keep new work reproducible and auditable:
 - keep negative results visible when thresholds are not met;
 - document assumptions before they enter the model.
 
+Run the full gate before every commit:
+
+```bash
+./scripts/verify.sh
+```
+
+See [reproducibility notes](docs/REPRODUCIBILITY.md) for the environment
+contract and the test-count ledger.
+
 ## Source Brief
 
 This README summarizes the project direction from the "Forecasting Soil
