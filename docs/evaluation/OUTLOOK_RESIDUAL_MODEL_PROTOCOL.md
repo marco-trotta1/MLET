@@ -37,6 +37,23 @@ provenance-kind layer is MLET's addition.
 `feature_provenance` has no default value. An archive that omits it fails
 construction rather than validating with unstated provenance.
 
+## Frozen normalisation
+
+Feature normalisation is fitted on training cases available by the frozen
+training cutoff, serialised to JSON, and passed explicitly to every prediction.
+`predict_interval` takes `scaler` as a required keyword argument; there is no
+path that normalises a calibration or test row with statistics derived from it.
+
+The artifact records `feature_names`, `mean`, `scale`, `n_training_cases`, and
+`training_cutoff`, and is content-hashed with SHA-256. The hash belongs in the
+run receipt alongside the package, seed, and data hashes.
+
+JSON rather than pickle: a scaler is two float vectors, and the serialised form
+must be reviewable, diffable, stable across scikit-learn versions, and safe to
+load. This is adapted from neuralhydrology's `train_data_scaler.yml` contract
+(v1.13.0, BSD-3-Clause), which requires the training scaler as an input when
+evaluating.
+
 The experiment records the complete case-file SHA-256, canonical report digest, split ID/cutoffs and fold IDs, feature schema, exact estimator hyperparameters, seed, fitted calibration method/rank/value/case hashes, Task 8/source-receipt revisions and hashes, target-receipt hashes and availability times, row hashes, and Python/NumPy/scikit-learn versions. The archived raw data itself is not committed here.
 
 ### Overlap consistency

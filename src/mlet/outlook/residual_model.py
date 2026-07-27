@@ -18,6 +18,11 @@ from sklearn.preprocessing import StandardScaler
 
 from mlet.outlook.dates import idaho_local_day_end_utc, outlook_valid_date
 from mlet.outlook.namespaces import validate_feature_provenance
+from mlet.outlook.scaler_artifact import (
+    ScalerArtifact,
+    apply_scaler,
+    scaler_artifact_from_model,
+)
 
 
 FEATURES = (
@@ -195,13 +200,22 @@ def fit_residual_model(
     )
 
 
-def predict_interval(model: ResidualModel, row: ResidualCase) -> OutlookQuantiles:
-    """Predict a residual interval and add it to the physical p50 baseline."""
+def predict_interval(
+    model: ResidualModel, row: ResidualCase, *, scaler: ScalerArtifact,
+) -> OutlookQuantiles:
+    """Predict a residual interval using frozen training-split normalisation.
+
+    ``scaler`` is required, not optional. Passing the frozen artifact rather than
+    reaching for ``model.scaler`` is what makes it impossible to normalise a
+    calibration or test row with statistics that saw it.
+    """
     if not isinstance(model, ResidualModel):
         raise ValueError("predict_interval requires a ResidualModel")
     if model.feature_names != FEATURES or len(model.estimators) != len(QUANTILES):
         raise ValueError("residual model feature or quantile contract is invalid")
-    scaled = model.scaler.transform(np.asarray([row.features], dtype=float))
+    if tuple(scaler.feature_names) != model.feature_names:
+        raise ValueError("scaler artifact features do not match the fitted model")
+    scaled = apply_scaler(scaler, row.features).reshape(1, -1)
     residuals = sorted(float(estimator.predict(scaled)[0]) for estimator in model.estimators)
     return OutlookQuantiles(
         p10=max(0.0, row.physical_p50 + residuals[0]),

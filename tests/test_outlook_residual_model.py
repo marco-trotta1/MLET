@@ -24,6 +24,7 @@ from mlet.experiments.idaho_outlook_residual import (
 from mlet.outlook.dates import outlook_valid_date
 from mlet.outlook.namespaces import ProvenanceKind
 from mlet.outlook.residual_model import FEATURES, ResidualCase, fit_residual_model
+from mlet.outlook.scaler_artifact import scaler_artifact_from_model
 
 
 ISSUE = "2024-01-01T00:00:00Z"
@@ -120,6 +121,13 @@ def _write(path: Path, value: dict[str, object]) -> Path:
     return path
 
 
+def _training_cases() -> tuple[ResidualCase, ...]:
+    return tuple(
+        _parse_case(_case(f"train-{index}", "train", target=3.5 + index / 10))
+        for index in range(2)
+    )
+
+
 def test_residual_fit_receives_only_training_issue_times() -> None:
     issue = datetime(2024, 1, 1, tzinfo=timezone.utc)
     available = tuple((name, issue) for name in FEATURES)
@@ -183,13 +191,15 @@ def test_target_availability_is_cutoff_gated(
 
 def test_calibration_inflation_rechecks_target_cutoff_before_predicting() -> None:
     """The calibration helper cannot be called with a future target receipt."""
-    train = tuple(
-        _parse_case(_case(f"train-{index}", "train", target=3.5 + index / 10))
-        for index in range(2)
-    )
+    train = _training_cases()
     model = fit_residual_model(
         train,
         cutoff=datetime(2023, 5, 1, tzinfo=timezone.utc),
+    )
+    scaler = scaler_artifact_from_model(
+        model,
+        n_training_cases=len(train),
+        training_cutoff=datetime(2023, 5, 1, tzinfo=timezone.utc),
     )
     late_calibration = _parse_case(_case("calibration-late", "calibration"))
     object.__setattr__(
@@ -201,6 +211,7 @@ def test_calibration_inflation_rechecks_target_cutoff_before_predicting() -> Non
     with pytest.raises(ValueError, match="calibration target_available_at"):
         _calibration_interval_inflation(
             model,
+            scaler,
             (late_calibration,),
             cutoff=datetime(2023, 6, 3, tzinfo=timezone.utc),
         )

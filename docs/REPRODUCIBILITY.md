@@ -10,6 +10,9 @@ the commands on this page. Nothing here requires private data.
 - Vendored FAO-56 implementation: `pyfao56` 1.4.3, upstream commit
   `1d242ee985be0edbc4946f06e7e94a487d4bc0c9`, provenance in
   `vendor/pyfao56/UPSTREAM.md`
+- Residual-model normalisation is a frozen JSON artifact, SHA-256 hashed and
+  recorded in the run receipt. Reproducing a published interval requires the
+  artifact, not just the code and seed.
 
 ## Single verification command
 
@@ -38,6 +41,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | 2 | Priestley-Taylor PET and three-way ETo cross-check | 376 |
 | 3 | hindcast / forecast / static namespaces and provenance validation | 383 |
 | 4 | forecast-overlap disagreement diagnostic and qc-overlap CLI | 392 |
+| 5 | frozen train-only scaler artifact and required prediction-time use | 399 |
 
 ## Regenerating published artifacts
 

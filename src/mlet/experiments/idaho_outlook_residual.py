@@ -29,6 +29,11 @@ from mlet.outlook.residual_model import (
     fit_residual_model,
     predict_interval,
 )
+from mlet.outlook.scaler_artifact import (
+    ScalerArtifact,
+    artifact_sha256,
+    scaler_artifact_from_model,
+)
 from mlet.outlook.hindcast import evaluate_hindcast_evidence
 
 
@@ -263,8 +268,14 @@ def _evaluate(path: Path) -> tuple[ResidualReport, str]:
     calibration_details: dict[str, object] = {}
     if not blockers or blockers == [_FIXTURE_BLOCKER]:
         model = fit_residual_model(train, cutoff=split.train_cutoff)
+        scaler = scaler_artifact_from_model(
+            model,
+            n_training_cases=len(train),
+            training_cutoff=split.train_cutoff,
+        )
         calibration_widths = _calibration_interval_inflation(
             model,
+            scaler,
             calibration,
             cutoff=split.calibration_cutoff,
         )
@@ -282,7 +293,7 @@ def _evaluate(path: Path) -> tuple[ResidualReport, str]:
                 for lead in range(1, 21)
             },
         }
-        metrics = _score(model, test, calibration_widths, split)
+        metrics = _score(model, scaler, test, calibration_widths, split)
     # Even an unfittable archive must name every preregistered unsupported
     # stratum instead of hiding it behind an aggregate failure message.
     blockers.extend(_metric_blockers(metrics, calibration, test, split))
@@ -298,6 +309,9 @@ def _evaluate(path: Path) -> tuple[ResidualReport, str]:
             "hyperparameters": MODEL_HYPERPARAMETERS,
             "random_seed": MODEL_RANDOM_SEED,
             "features": list(FEATURES),
+            "scaler_artifact_sha256": (
+                artifact_sha256(scaler) if calibration_details else None
+            ),
             "python": platform.python_version(),
             "numpy": np.__version__,
             "scikit_learn": sklearn.__version__,
@@ -694,6 +708,7 @@ def _validate_split_roles(cases: Sequence[ResidualCase], split: FrozenSplit) -> 
 
 def _calibration_interval_inflation(
     model: ResidualModel,
+    scaler: ScalerArtifact,
     calibration: Sequence[ResidualCase],
     *,
     cutoff: datetime,
@@ -712,7 +727,7 @@ def _calibration_interval_inflation(
         raise ValueError("calibration target_available_at is after frozen calibration_cutoff")
     residuals_by_lead: dict[str, list[float]] = defaultdict(list)
     for case in calibration:
-        predicted = predict_interval(model, case)
+        predicted = predict_interval(model, case, scaler=scaler)
         lead = str(int(case.features[0]))
         residuals_by_lead[lead].append(
             max(predicted.p10 - case.target_mm, case.target_mm - predicted.p90, 0.0)
@@ -728,7 +743,11 @@ def _calibration_interval_inflation(
 
 
 def _score(
-    model: ResidualModel, test: Sequence[ResidualCase], inflations: dict[str, float], split: FrozenSplit,
+    model: ResidualModel,
+    scaler: ScalerArtifact,
+    test: Sequence[ResidualCase],
+    inflations: dict[str, float],
+    split: FrozenSplit,
 ) -> tuple[ResidualMetric, ...]:
     """Score named preregistered strata, including unsupported ones.
 
@@ -748,7 +767,7 @@ def _score(
             # its preregistered calibration support; the named zero-count
             # metric and explicit lead blocker remain visible below.
             continue
-        predicted = predict_interval(model, case)
+        predicted = predict_interval(model, case, scaler=scaler)
         p10 = max(0.0, predicted.p10 - inflation)
         p90 = predicted.p90 + inflation
         grouped[("lead_day", str(int(case.features[0])))].append((case, p10, predicted.p50, p90))
