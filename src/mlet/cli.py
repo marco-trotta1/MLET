@@ -144,24 +144,28 @@ def _run_qc_eto(member_json: str) -> int:
     from mlet.outlook.contracts import WeatherMember
     from mlet.reference.priestley_taylor import compare_eto_implementations
 
-    with open(member_json, encoding="utf-8") as handle:
-        payload = json.load(handle)
-    member = WeatherMember(
-        grid_id=payload["grid_id"],
-        latitude=float(payload["latitude"]),
-        longitude=float(payload["longitude"]),
-        elevation_m=float(payload["elevation_m"]),
-        member_id=payload["member_id"],
-        issued_at=datetime.fromisoformat(payload["issued_at"]),
-        valid_date=date.fromisoformat(payload["valid_date"]),
-        tmax_c=float(payload["tmax_c"]),
-        tmin_c=float(payload["tmin_c"]),
-        vapor_pressure_kpa=float(payload["vapor_pressure_kpa"]),
-        wind_m_s=float(payload["wind_m_s"]),
-        solar_mj_m2_day=float(payload["solar_mj_m2_day"]),
-        precip_mm=float(payload["precip_mm"]),
-    )
-    comparison = compare_eto_implementations(member)
+    try:
+        with open(member_json, encoding="utf-8") as handle:
+            payload = json.load(handle)
+        member = WeatherMember(
+            grid_id=payload["grid_id"],
+            latitude=float(payload["latitude"]),
+            longitude=float(payload["longitude"]),
+            elevation_m=float(payload["elevation_m"]),
+            member_id=payload["member_id"],
+            issued_at=datetime.fromisoformat(payload["issued_at"]),
+            valid_date=date.fromisoformat(payload["valid_date"]),
+            tmax_c=float(payload["tmax_c"]),
+            tmin_c=float(payload["tmin_c"]),
+            vapor_pressure_kpa=float(payload["vapor_pressure_kpa"]),
+            wind_m_s=float(payload["wind_m_s"]),
+            solar_mj_m2_day=float(payload["solar_mj_m2_day"]),
+            precip_mm=float(payload["precip_mm"]),
+        )
+        comparison = compare_eto_implementations(member)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot run qc-eto: {exc}", file=sys.stderr)
+        return 2
     print(f"ASCE-PM (mlet)        : {comparison.asce_mlet_mm:.4f} mm/day")
     print(f"ASCE-PM (pyfao56)     : {comparison.asce_pyfao56_mm:.4f} mm/day")
     print(f"Priestley-Taylor      : {comparison.priestley_taylor_mm:.4f} mm/day")

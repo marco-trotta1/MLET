@@ -35,13 +35,15 @@ def test_qc_eto_reports_agreement_and_exits_zero(tmp_path, capsys) -> None:
     assert "ok: both paths agree" in captured
 
 
-def test_qc_eto_fails_when_solar_units_are_wrong(tmp_path) -> None:
+def test_qc_eto_fails_when_solar_units_are_wrong(tmp_path, capsys) -> None:
     """A W m-2 solar value must be rejected, not silently cross-checked."""
-    import pytest
-
     payload = dict(MEMBER, solar_mj_m2_day=324.0)
     path = tmp_path / "member_watts.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="MJ m-2 d-1"):
-        main(["qc-eto", "--member-json", str(path)])
+    exit_code = main(["qc-eto", "--member-json", str(path)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "error:" in captured.err
+    assert "MJ m-2 d-1" in captured.err
