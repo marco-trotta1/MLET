@@ -121,6 +121,27 @@ def _write(path: Path, value: dict[str, object]) -> Path:
     return path
 
 
+def _fixture_cases_path() -> Path:
+    return Path("examples/outlook/hindcast_cases.json")
+
+
+def _scored_evidence() -> dict[str, object]:
+    evidence = _evidence()
+    evidence["cases"] = [
+        _case("train-1", "train", target=3.5),
+        _case("train-2", "train", target=3.8),
+        *[
+            _case(f"calibration-{index}", "calibration", target=3.6 + index / 20)
+            for index in range(1, 6)
+        ],
+        *[
+            _case(f"test-{index}", "test", block="44:-116", target=3.7 + index / 20)
+            for index in range(1, 6)
+        ],
+    ]
+    return evidence
+
+
 def _training_cases() -> tuple[ResidualCase, ...]:
     return tuple(
         _parse_case(_case(f"train-{index}", "train", target=3.5 + index / 10))
@@ -406,9 +427,9 @@ def test_lead_calibration_support_is_feasible_without_a_held_season_claim() -> N
         for lead in range(1, 21) for replicate in range(5)
     )
     metrics = tuple(
-        ResidualMetric("lead_day", str(lead), 5, 1.0, 0.5, 0.8, 1.0)
+        ResidualMetric("lead_day", str(lead), 5, 1.0, 0.5, 0.8, 1.0, None, None)
         for lead in range(1, 21)
-    ) + (ResidualMetric("season", "DJF", 100, 1.0, 0.5, 0.8, 1.0),)
+    ) + (ResidualMetric("season", "DJF", 100, 1.0, 0.5, 0.8, 1.0, None, None),)
 
     blockers = _metric_blockers(metrics, calibration, test, split)
 
@@ -452,12 +473,43 @@ def test_documented_zero_case_fixture_command_writes_false_only_candidate(
     authority_path = report_path.with_name("idaho_outlook_residual.authority_request.json")
     request = json.loads(authority_path.read_text(encoding="utf-8"))
     assert report_path.exists()
-    assert "software fixture" in report_path.read_text(encoding="utf-8").lower()
+    report_text = report_path.read_text(encoding="utf-8")
+    assert "software fixture" in report_text.lower()
+    assert "physical pinball (mm/day)" in report_text
+    assert "residual pinball (mm/day)" in report_text
+    assert "Pinball is the mean pinball loss over the p10/p50/p90 levels" in report_text
     assert request["promotion"] is False
     assert request["external_release_eligible"] is False
     output = capsys.readouterr().out.lower()
     assert "promotion: false" in output
     assert "external_release_eligible: false" in output
+
+
+def test_report_scores_a_proper_rule_for_both_arms(tmp_path: Path) -> None:
+    """Coverage alone cannot separate a sharp forecast from a vague one."""
+    report, _receipt = evaluate_residual_evidence(_write(tmp_path / "scored.json", _scored_evidence()))
+    scored = [metric for metric in report.metrics if metric.residual_pinball_mm is not None]
+    assert scored, "at least one metric group must carry a pinball score"
+    for metric in scored:
+        assert metric.physical_pinball_mm is not None
+        assert metric.residual_pinball_mm >= 0.0
+        assert metric.physical_pinball_mm >= 0.0
+
+
+def test_physical_baseline_pinball_uses_a_degenerate_interval() -> None:
+    """The physics arm has no interval, so its three quantiles are all p50.
+
+    Scoring it any other way would compare a point forecast against an interval
+    forecast on a rule that rewards interval sharpness, which is not a fair
+    baseline comparison.
+    """
+    from mlet.evaluate import mean_pinball_loss
+    from mlet.outlook.residual_model import QUANTILES
+
+    observed = [5.0]
+    point = [[4.0, 4.0, 4.0]]
+    expected = mean_pinball_loss(observed, point, QUANTILES)
+    assert expected == pytest.approx((0.1 * 1.0 + 0.5 * 1.0 + 0.9 * 1.0) / 3)
 
 
 def test_cli_does_not_clobber_an_authority_request_destination(

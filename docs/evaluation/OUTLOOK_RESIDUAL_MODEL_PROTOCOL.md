@@ -76,6 +76,12 @@ The fitted target is `target_mm - physical_p50`. A `StandardScaler` and three `G
 
 The split-conformal interval is **lead-stratified, not season-conditioned**. Held-out output lists every preregistered lead day and held-out season. Lead-day metrics require at least 5 calibration and 5 test cases for that exact lead; season diagnostics require at least 20 held-out test cases for that exact calendar season. There is deliberately no seasonal calibration-support claim because held-out seasons are excluded from calibration. Underpowered strata remain named with `n` but no metric and create explicit blockers rather than silently contributing a claim. These are experiment diagnostics—not an operational forecast layer.
 
+Reported per group: physical p50 MAE, residual p50 MAE, p10-p90 coverage, mean
+interval width, and mean pinball loss for both arms. Coverage and width together
+describe calibration and sharpness but cannot rank two forecasts that are both
+calibrated; the pinball loss can, which is why it is reported alongside rather
+than instead of them.
+
 ## Pre-registered candidate gates
 
 A real archive can satisfy the local numerical diagnostics only if all 20 support-qualified held-out lead days improve p50 MAE, all lead-day p10-p90 coverages lie within 0.70–0.90 of the 0.80 target, no support-qualified held-out season has worse MAE than the physical baseline, every required lead/test support threshold is met, every feature availability time is at or before issue time, and every training/calibration target receipt is available by its frozen cutoff. Missing partitions, leakage, a missing/mutated/fabricated target receipt, a named unsupported stratum, missing lead metrics, or failed thresholds are blockers. A `software_fixture` is permanently non-scientific even if its values satisfy a gate. Local numerical success is never an eligibility or release conclusion.

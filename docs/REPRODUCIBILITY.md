@@ -43,6 +43,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | 4 | forecast-overlap disagreement diagnostic and qc-overlap CLI | 392 |
 | 5 | frozen train-only scaler artifact and required prediction-time use | 399 |
 | 6 | probabilistic scoring primitives: pinball loss, interval coverage, width | 409 |
+| 7 | residual-report pinball scores and preregistration amendment | 411 |
 
 ## Regenerating published artifacts
 

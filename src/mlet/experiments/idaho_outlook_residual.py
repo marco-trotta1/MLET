@@ -20,10 +20,12 @@ from urllib.parse import urlparse
 import numpy as np
 import sklearn
 
+from mlet.evaluate import interval_coverage, mean_interval_width, mean_pinball_loss
 from mlet.outlook.residual_model import (
     FEATURES,
     MODEL_HYPERPARAMETERS,
     MODEL_RANDOM_SEED,
+    QUANTILES,
     ResidualCase,
     ResidualModel,
     fit_residual_model,
@@ -100,6 +102,8 @@ class ResidualMetric:
     residual_mae_mm: float | None
     coverage_p10_p90: float | None
     interval_width_mm: float | None
+    physical_pinball_mm: float | None
+    residual_pinball_mm: float | None
 
 
 @dataclass(frozen=True)
@@ -172,12 +176,12 @@ def write_residual_markdown(report: ResidualReport, destination: Path) -> Path:
         "",
         "## Held-out metrics",
         "",
-        "| group | key | n | physical p50 MAE (mm/day) | residual p50 MAE (mm/day) | p10-p90 coverage | mean interval width (mm/day) |",
-        "|---|---|---:|---:|---:|---:|---:|",
+        "| group | key | n | physical p50 MAE (mm/day) | residual p50 MAE (mm/day) | p10-p90 coverage | mean interval width (mm/day) | physical pinball (mm/day) | residual pinball (mm/day) |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
     ])
     for metric in report.metrics:
         lines.append(
-            "| {group} | {key} | {n} | {physical} | {residual} | {coverage} | {width} |".format(
+            "| {group} | {key} | {n} | {physical} | {residual} | {coverage} | {width} | {physical_pinball} | {residual_pinball} |".format(
                 group=metric.group,
                 key=metric.key,
                 n=metric.sample_count,
@@ -185,9 +189,17 @@ def write_residual_markdown(report: ResidualReport, destination: Path) -> Path:
                 residual=_number(metric.residual_mae_mm),
                 coverage=_number(metric.coverage_p10_p90),
                 width=_number(metric.interval_width_mm),
+                physical_pinball=_number(metric.physical_pinball_mm),
+                residual_pinball=_number(metric.residual_pinball_mm),
             )
         )
     lines.extend([
+        "",
+        "Pinball is the mean pinball loss over the p10/p50/p90 levels: a proper",
+        "scoring rule and a discrete approximation to CRPS, not CRPS itself. The",
+        "physical arm is scored with a degenerate interval (all three quantiles",
+        "equal to its point forecast) so the comparison does not credit the",
+        "residual arm merely for having an interval.",
         "",
         "The learned residual is evaluated beside, never substituted for, the physical ETo/ETc baseline. Fixtures are software checks only, not scientific evidence.",
         "",
@@ -785,11 +797,13 @@ def _unsupported_metrics(split: FrozenSplit) -> tuple[ResidualMetric, ...]:
     """Render every preregistered diagnostic stratum when fitting is impossible."""
     return tuple(
         ResidualMetric(group="lead_day", key=str(lead), sample_count=0, physical_mae_mm=None,
-                       residual_mae_mm=None, coverage_p10_p90=None, interval_width_mm=None)
+                       residual_mae_mm=None, coverage_p10_p90=None, interval_width_mm=None,
+                       physical_pinball_mm=None, residual_pinball_mm=None)
         for lead in range(1, 21)
     ) + tuple(
         ResidualMetric(group="season", key=season, sample_count=0, physical_mae_mm=None,
-                       residual_mae_mm=None, coverage_p10_p90=None, interval_width_mm=None)
+                       residual_mae_mm=None, coverage_p10_p90=None, interval_width_mm=None,
+                       physical_pinball_mm=None, residual_pinball_mm=None)
         for season in split.held_out_seasons
     )
 
@@ -801,19 +815,25 @@ def _metric(
         return ResidualMetric(
             group=group, key=key, sample_count=len(values), physical_mae_mm=None,
             residual_mae_mm=None, coverage_p10_p90=None, interval_width_mm=None,
+            physical_pinball_mm=None, residual_pinball_mm=None,
         )
     physical = [abs(case.physical_p50 - case.target_mm) for case, _p10, _p50, _p90 in values]
     residual = [abs(p50 - case.target_mm) for case, _p10, p50, _p90 in values]
-    coverage = [p10 <= case.target_mm <= p90 for case, p10, _p50, p90 in values]
-    widths = [p90 - p10 for _case, p10, _p50, p90 in values]
+    observed = [case.target_mm for case, _p10, _p50, _p90 in values]
+    lower = [p10 for _case, p10, _p50, _p90 in values]
+    upper = [p90 for _case, _p10, _p50, p90 in values]
+    residual_rows = [[p10, p50, p90] for _case, p10, p50, p90 in values]
+    physical_rows = [[case.physical_p50] * len(QUANTILES) for case, *_ in values]
     return ResidualMetric(
         group=group,
         key=key,
         sample_count=len(values),
         physical_mae_mm=float(np.mean(physical)),
         residual_mae_mm=float(np.mean(residual)),
-        coverage_p10_p90=float(np.mean(coverage)),
-        interval_width_mm=float(np.mean(widths)),
+        coverage_p10_p90=float(interval_coverage(observed, lower, upper)),
+        interval_width_mm=float(mean_interval_width(lower, upper)),
+        physical_pinball_mm=float(mean_pinball_loss(observed, physical_rows, QUANTILES)),
+        residual_pinball_mm=float(mean_pinball_loss(observed, residual_rows, QUANTILES)),
     )
 
 

@@ -43,7 +43,9 @@ local date of the strict-UTC issue timestamp and leads 2–20 are consecutive
 Idaho local dates. GEFS and every daily target/ETa aggregate must explicitly
 state that same Idaho-local aggregation label; UTC-day or unspecified-day
 aggregates are invalid inputs. Daily outputs retain `p10`, `p50`, and `p90`; all
-metrics are computed by lead day before any pooled summary is reported.
+metrics are computed by lead day before any pooled summary is reported. See the
+2026-07-27 amendment below for the probabilistic-skill terminology used when
+only those published quantiles are available.
 
 ## Holdouts
 
@@ -198,6 +200,23 @@ the external release system publish the promoted product together with both
 artifacts. A local qualifying archive exits with code 1 as a release candidate;
 fixtures also exit with code 1 but remain permanently non-scientific and are
 not eligible for external release review.
+
+## Amendment (2026-07-27): probabilistic skill terminology for published quantiles
+
+Probabilistic skill is reported as the **mean pinball loss over the p10, p50, and
+p90 levels**, not as the continuous ranked probability score. CRPS integrates the
+pinball loss over all quantile levels; the outlook contract emits three
+quantiles, so CRPS is not identified from the published output. Mean pinball loss
+over the emitted levels is a proper scoring rule and a discrete approximation to
+CRPS, and it is what the code computes (`mlet.evaluate.mean_pinball_loss`).
+
+Any comparison against a point forecast scores that forecast with a degenerate
+interval whose three quantiles all equal its point value, so that the interval
+arm is not credited merely for emitting an interval.
+
+This dated amendment narrows the probabilistic-skill claim to mean pinball loss
+over the emitted levels. It changes no threshold, cutoff, split, or gate. The
+coverage target and tolerance are unchanged.
 
 ## Static research-candidate rendering
 
