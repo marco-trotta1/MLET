@@ -89,15 +89,36 @@ def _looks_like_identifier(name: object) -> bool:
     )
 
 
+def _export_root(root: Path) -> Path:
+    """Create an export root only when its existing path is a real directory."""
+    root = Path(root)
+    if root.is_symlink():
+        raise ValueError("export root must not be a symlink")
+    if root.exists() and not root.is_dir():
+        raise ValueError("export root must be a directory")
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
 def _output_directory(root: Path, name: str) -> Path:
     """Create an output tree only when its existing path is a real directory."""
-    destination = root / name
+    destination = _export_root(root) / name
     if destination.is_symlink():
         raise ValueError(f"{name} output directory must not be a symlink")
     if destination.exists() and not destination.is_dir():
         raise ValueError(f"{name} output path must be a directory")
     destination.mkdir(parents=True, exist_ok=True)
     return destination
+
+
+def _output_file(destination: Path, name: str, context: str) -> Path:
+    """Return a final output path without following an existing link or directory."""
+    path = destination / name
+    if path.is_symlink():
+        raise ValueError(f"{context} must not be a symlink")
+    if path.exists() and not path.is_file():
+        raise ValueError(f"{context} must be a file")
+    return path
 
 
 def _validate_scalar_numeric(value: object, context: str) -> None:
@@ -206,7 +227,7 @@ def write_time_series(root: Path, site_id: str, frame: pd.DataFrame) -> Path:
         _reject_sentinels(frame[column].to_numpy(), f"site {site_id} column {column!r}")
 
     destination = _output_directory(root, "time_series")
-    path = destination / f"{site_id}.nc"
+    path = _output_file(destination, f"{site_id}.nc", "time-series output file")
 
     dataset = frame.rename_axis("date").to_xarray()
     dataset.to_netcdf(path)
@@ -223,7 +244,7 @@ def write_attributes(
     items = _validate_attributes(attributes)
 
     destination = _output_directory(root, "attributes")
-    path = destination / filename
+    path = _output_file(destination, filename, "attribute output file")
 
     frame = pd.DataFrame(
         [item.values for item in items],

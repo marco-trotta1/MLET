@@ -47,7 +47,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | 8 | bounded dynamic parameterization in isolated hybrid tier | 421 |
 | 9 | FAO-56 dual-coefficient scaffold with bounded learned seams | 432 |
 | 10 | differentiable torch adapter, optional extra, and AST isolation enforcement | 467 |
-| 11 | neuralhydrology GenericDataset export layout and validation | 541 |
+| 11 | neuralhydrology GenericDataset export layout and validation | 546 |
 
 Task 10 adds 35 passing structural/executable checks locally. The four torch
 tests are optional at the local level: they pass when `mlet[hybrid]` is
@@ -68,8 +68,13 @@ strictly one-day-spaced dates, safe single-component site ids and filenames,
 shared attribute names, identifier-like attribute names in both static and
 time-series fields, generic identifier names and code/key forms in both static
 and time-series fields, scalar numeric static values, case-insensitive site
-uniqueness, exact site coverage, and rejection of pre-existing symlinked or
-non-directory `time_series/` and `attributes/` output paths.
+uniqueness, exact site coverage, and rejection of a symlinked export root,
+pre-existing symlinked or non-directory `time_series/` and `attributes/` output
+paths, and symlinked or non-file final `.nc`/`.csv` outputs. These path checks
+run before xarray or pandas writes, so the exporter cannot escape its declared
+root or overwrite an external symlink target. The full canonical gate
+completed with 546 passing tests and one optional PyTorch test skipped because
+the local environment does not install the `hybrid` extra.
 Case-insensitive matching is used only for collision/coverage validation; the
 original spelling is retained in each emitted path or CSV index when unique.
 This is intentional defensive validation: GenericDataset treats a sentinel as an

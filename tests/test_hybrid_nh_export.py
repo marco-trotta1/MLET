@@ -23,6 +23,13 @@ def _frame(with_gap: bool = False) -> pd.DataFrame:
     return pd.DataFrame({"eto_mm": eto, "measured_et_mm": measured}, index=dates)
 
 
+def _make_symlink(link: Path, target: Path, *, target_is_directory: bool = False) -> None:
+    try:
+        link.symlink_to(target, target_is_directory=target_is_directory)
+    except (NotImplementedError, OSError) as exc:
+        pytest.skip(f"platform cannot create symlinks: {exc}")
+
+
 def test_time_series_uses_the_required_layout_and_coordinate(tmp_path) -> None:
     path = write_time_series(tmp_path, "site-a", _frame())
     assert path == tmp_path / "time_series" / "site-a.nc"
@@ -217,7 +224,7 @@ def test_scalar_numeric_attribute_values_are_allowed(tmp_path, value) -> None:
 def test_existing_output_symlink_is_rejected(tmp_path, tree) -> None:
     target = tmp_path / "outside"
     target.mkdir()
-    (tmp_path / tree).symlink_to(target, target_is_directory=True)
+    _make_symlink(tmp_path / tree, target, target_is_directory=True)
     if tree == "time_series":
         with pytest.raises(ValueError, match="must not be a symlink"):
             write_time_series(tmp_path, "site-a", _frame())
@@ -234,6 +241,60 @@ def test_existing_output_non_directory_is_rejected(tmp_path, tree) -> None:
             write_time_series(tmp_path, "site-a", _frame())
     else:
         with pytest.raises(ValueError, match="must be a directory"):
+            write_attributes(tmp_path, [SiteAttributes("site-a", {"taw_mm": 180.0})])
+
+
+def test_symlinked_export_root_is_rejected_without_touching_target(tmp_path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    _make_symlink(tmp_path / "export", outside, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="export root must not be a symlink"):
+        write_time_series(tmp_path / "export", "site-a", _frame())
+
+    assert not (outside / "time_series").exists()
+
+
+def test_symlinked_time_series_file_is_rejected_without_touching_target(tmp_path) -> None:
+    destination = tmp_path / "time_series"
+    destination.mkdir()
+    outside = tmp_path / "outside.nc"
+    outside.write_bytes(b"preserve this netcdf target")
+    _make_symlink(destination / "site-a.nc", outside)
+
+    with pytest.raises(ValueError, match="time-series output file must not be a symlink"):
+        write_time_series(tmp_path, "site-a", _frame())
+
+    assert outside.read_bytes() == b"preserve this netcdf target"
+
+
+def test_symlinked_attributes_file_is_rejected_without_touching_target(tmp_path) -> None:
+    destination = tmp_path / "attributes"
+    destination.mkdir()
+    outside = tmp_path / "outside.csv"
+    outside.write_bytes(b"preserve this csv target")
+    _make_symlink(destination / "attributes.csv", outside)
+
+    with pytest.raises(ValueError, match="attribute output file must not be a symlink"):
+        write_attributes(tmp_path, [SiteAttributes("site-a", {"taw_mm": 180.0})])
+
+    assert outside.read_bytes() == b"preserve this csv target"
+
+
+@pytest.mark.parametrize(
+    ("tree", "filename"),
+    [("time_series", "site-a.nc"), ("attributes", "attributes.csv")],
+)
+def test_existing_final_output_directory_is_rejected(tmp_path, tree, filename) -> None:
+    destination = tmp_path / tree
+    destination.mkdir()
+    (destination / filename).mkdir()
+
+    if tree == "time_series":
+        with pytest.raises(ValueError, match="output file must be a file"):
+            write_time_series(tmp_path, "site-a", _frame())
+    else:
+        with pytest.raises(ValueError, match="output file must be a file"):
             write_attributes(tmp_path, [SiteAttributes("site-a", {"taw_mm": 180.0})])
 
 

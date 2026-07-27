@@ -122,7 +122,12 @@ one to prefer. The exporter also requires a sorted, unique index with exactly
 one-day spacing, safe single-component site ids and filenames, shared attribute
 keys, no identifier-like time-series columns, case-insensitive site uniqueness,
 and exact series/attribute site coverage so an incomplete, colliding, or
-escaping tree cannot be mistaken for a valid experiment. Case-insensitive
+escaping tree cannot be mistaken for a valid experiment. The declared export
+root must be a real directory; existing `time_series/` and `attributes/`
+directories must also be real directories, and existing final `.nc` or `.csv`
+paths must be real files rather than symlinks or directories. These checks are
+performed before xarray or pandas writes, so an export cannot follow a link out
+of its declared tree or overwrite a target outside it. Case-insensitive
 comparison is used for validation only; original site spelling is retained in
 emitted paths and CSV indices when unique.
 The identifier predicate also rejects generic identity fields (`id`, `site`,
@@ -132,7 +137,10 @@ features. Static attribute values must be scalar real numeric values (Python
 or NumPy integers/floats); scalar NaN remains the missing-value marker, while
 lists, strings, and other sequences are rejected. Before writing, existing
 `time_series/` and `attributes/` paths must be real directories rather than
-symlinks or files, preventing an export from escaping its declared root.
+symlinks or files, and existing final output paths must be real files rather
+than symlinks or directories. The root itself is also rejected when it is a
+symlink. These checks happen before xarray/pandas writes, preventing an export
+from escaping its declared root or overwriting an external symlink target.
 
 ## Isolation
 
