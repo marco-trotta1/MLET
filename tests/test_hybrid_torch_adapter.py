@@ -59,6 +59,12 @@ def test_torch_forward_matches_the_numpy_balance() -> None:
         rtol=0,
         atol=1e-6,
     )
+    assert np.allclose(
+        produced.detach().numpy()[:, 1],
+        [result.deep_percolation_mm for result in expected],
+        rtol=0,
+        atol=1e-6,
+    )
 
 
 def test_gradients_reach_both_learned_terms() -> None:
@@ -68,12 +74,20 @@ def test_gradients_reach_both_learned_terms() -> None:
     dp = torch.full((len(steps),), 0.8, dtype=torch.float64, requires_grad=True)
 
     output = torch_water_balance(INITIAL, drivers_to_tensor(steps), LIMITS, ks, dp)
-    output[:, 2].sum().backward()
+    output[:, 2].sum().backward(retain_graph=True)
 
     assert ks.grad is not None and torch.all(torch.isfinite(ks.grad))
+    # Higher Ks means more ET, so at least one unclipped day must carry a
+    # positive gradient. A saturated day is intentionally gradient-free.
+    assert torch.any(ks.grad > 0)
+
+    # Drainage is directly observable in the deep-percolation output. Its
+    # effect on depletion is clipped to zero after an excess-water event.
+    ks.grad.zero_()
+    dp.grad.zero_()
+    output[:, 1].sum().backward()
     assert dp.grad is not None and torch.all(torch.isfinite(dp.grad))
-    # Higher Ks means more ET, so more depletion: the gradient must be positive.
-    assert torch.all(ks.grad > 0)
+    assert torch.any(torch.abs(dp.grad) > 0)
 
 
 def test_gradient_matches_a_finite_difference() -> None:
@@ -94,6 +108,27 @@ def test_gradient_matches_a_finite_difference() -> None:
         )
 
     numeric = (_total(base_ks + delta) - _total(base_ks - delta)) / (2 * delta)
+    assert analytic == pytest.approx(numeric, rel=1e-4)
+
+
+def test_drainage_gradient_matches_a_finite_difference() -> None:
+    steps = _steps()
+    base_dp = 0.8
+    delta = 1e-6
+
+    ks = torch.full((len(steps),), 0.7, dtype=torch.float64)
+    dp = torch.full((len(steps),), base_dp, dtype=torch.float64, requires_grad=True)
+    total = torch_water_balance(INITIAL, drivers_to_tensor(steps), LIMITS, ks, dp)[:, 1].sum()
+    total.backward()
+    analytic = float(dp.grad.sum())
+
+    def _total(value: float) -> float:
+        series = torch.full((len(steps),), value, dtype=torch.float64)
+        return float(
+            torch_water_balance(INITIAL, drivers_to_tensor(steps), LIMITS, ks, series)[:, 1].sum()
+        )
+
+    numeric = (_total(base_dp + delta) - _total(base_dp - delta)) / (2 * delta)
     assert analytic == pytest.approx(numeric, rel=1e-4)
 
 
