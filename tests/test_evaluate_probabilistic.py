@@ -82,3 +82,8 @@ def test_empty_input_is_rejected() -> None:
         mean_pinball_loss([], [], LEVELS)
     with pytest.raises(ValueError, match="at least one case"):
         interval_coverage([], [], [])
+
+
+def test_empty_quantile_levels_are_rejected() -> None:
+    with pytest.raises(ValueError, match="quantile levels require at least one level"):
+        mean_pinball_loss([5.0], [[]], ())

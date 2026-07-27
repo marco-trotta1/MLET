@@ -92,6 +92,8 @@ def mean_pinball_loss(
         raise ValueError("mean pinball loss requires at least one case")
     if len(observed) != len(quantiles):
         raise ValueError("observed and quantile rows must have the same length")
+    if not levels:
+        raise ValueError("quantile levels require at least one level")
     if any(not 0.0 < level < 1.0 for level in levels):
         raise ValueError("quantile levels must be in (0, 1)")
     if any(len(row) != len(levels) for row in quantiles):

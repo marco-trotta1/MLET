@@ -20,17 +20,77 @@ Added deterministic coverage in `tests/test_evaluate_probabilistic.py` for:
 - invalid interval bounds
 - length / level mismatches
 - empty-input rejection
+- empty quantile-level rejection
 
-Updated `docs/REPRODUCIBILITY.md` with the actual post-task test count: `408`.
+Updated `docs/REPRODUCIBILITY.md` with the actual post-fix test count: `409`.
 
-Verification completed:
+Verification completed after the empty-level guard fix:
 
 - Focused tests: `python3 -m pytest tests/test_evaluate_probabilistic.py -q`
-  - Result: `9 passed`
 - Full gate: `PYTHONPATH=src:vendor/pyfao56/src ./scripts/verify.sh`
-  - Result: `408 passed, 1 warning`
-  - Serving-path isolation: `ok`
+
+Exact focused-test output:
+
+```text
+..........                                                               [100%]
+10 passed in 0.09s
+```
+
+Exact full-gate output:
+
+```text
+== python version ==
+Python 3.13.5
+== test suite ==
+........................................................................ [ 17%]
+........................................................................ [ 35%]
+........................................................................ [ 52%]
+........................................................................ [ 70%]
+........................................................................ [ 88%]
+.................................................                        [100%]
+=============================== warnings summary ===============================
+tests/test_cli_phase2.py::test_qc_gridmet_prints_mean_absolute_delta
+  <frozen importlib._bootstrap>:488: RuntimeWarning: numpy.ndarray size changed, may indicate binary incompatibility. Expected 16 from C header, got 96 from PyObject
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+409 passed, 1 warning in 29.13s
+== serving-path isolation ==
+ok
+== VERIFY PASSED ==
+```
 
 Concern to carry forward:
 
 - Running `./scripts/verify.sh` without the expected `PYTHONPATH=src:vendor/pyfao56/src` environment can fail an existing CLI smoke test because `python -m mlet` cannot see the source tree.
+
+Final follow-up verification (rerun immediately before commit):
+
+- Focused command: `python3 -m pytest tests/test_evaluate_probabilistic.py -q`
+
+```text
+..........                                                               [100%]
+10 passed in 0.08s
+```
+
+- Full-gate command: `PYTHONPATH=src:vendor/pyfao56/src ./scripts/verify.sh`
+
+```text
+== python version ==
+Python 3.13.5
+== test suite ==
+........................................................................ [ 17%]
+........................................................................ [ 35%]
+........................................................................ [ 52%]
+........................................................................ [ 70%]
+........................................................................ [ 88%]
+.................................................                        [100%]
+=============================== warnings summary ===============================
+tests/test_cli_phase2.py::test_qc_gridmet_prints_mean_absolute_delta
+  <frozen importlib._bootstrap>:488: RuntimeWarning: numpy.ndarray size changed, may indicate binary incompatibility. Expected 16 from C header, got 96 from PyObject
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+409 passed, 1 warning in 27.62s
+== serving-path isolation ==
+ok
+== VERIFY PASSED ==
+```
