@@ -17,6 +17,26 @@ A real archive must include a relative, checksummed Task 8 hindcast evidence bun
 
 Each case records only these issue-time features, with a strict-UTC availability timestamp for every feature: `lead_day`, `eto_p50`, `eto_spread`, `precip_p50`, `crop_fraction`, `kc`, `taw_mm`, `initial_depletion_mm`, and `eta_analysis_age_days`. `lead_day` is an integer 1–20; `valid_date` must equal `outlook_valid_date(issue_time, lead_day)`: the lead offset from the issue instant's `America/Boise` civil date, including MST/MDT transitions. The evaluator derives the meteorological season from that Idaho-local date rather than trusting a label. No feature may have become available after issue time. Training is at or before its cutoff; after a one-day temporal gap, calibration is between the cutoffs; after another gap, test begins. Training and calibration exclude both held-out geography and season, and each test row belongs to both. All declared blocks and seasons must occur in test data.
 
+## Feature namespaces and provenance
+
+Each residual feature belongs to exactly one namespace — `static`, `hindcast`,
+or `forecast` — and carries a declared provenance kind. `src/mlet/outlook/namespaces.py`
+holds the assignment and is the normative reference.
+
+Availability by issue time is necessary but not sufficient. A forecast product
+issued before issue time passes an availability check while carrying information
+about the future that the observation record does not have. The `hindcast`
+namespace therefore admits `observation` provenance only. `initial_depletion_mm`
+is the state the outlook integrates forward from; sourcing it from a forecast
+would invalidate the leakage-control argument, so `ResidualCase` rejects it.
+
+This separation is adapted from neuralhydrology's config-level
+`hindcast_inputs` / `forecast_inputs` split (v1.13.0, BSD-3-Clause). The
+provenance-kind layer is MLET's addition.
+
+`feature_provenance` has no default value. An archive that omits it fails
+construction rather than validating with unstated provenance.
+
 The experiment records the complete case-file SHA-256, canonical report digest, split ID/cutoffs and fold IDs, feature schema, exact estimator hyperparameters, seed, fitted calibration method/rank/value/case hashes, Task 8/source-receipt revisions and hashes, target-receipt hashes and availability times, row hashes, and Python/NumPy/scikit-learn versions. The archived raw data itself is not committed here.
 
 ## Model and calibration

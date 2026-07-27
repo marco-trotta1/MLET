@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -21,10 +22,30 @@ from mlet.experiments.idaho_outlook_residual import (
     write_residual_authority_request,
 )
 from mlet.outlook.dates import outlook_valid_date
+from mlet.outlook.namespaces import ProvenanceKind
 from mlet.outlook.residual_model import FEATURES, ResidualCase, fit_residual_model
 
 
 ISSUE = "2024-01-01T00:00:00Z"
+
+
+def _feature_provenance_dict() -> dict[str, str]:
+    return {
+        "lead_day": ProvenanceKind.STRUCTURAL,
+        "eto_p50": ProvenanceKind.FORECAST_PRODUCT,
+        "eto_spread": ProvenanceKind.FORECAST_PRODUCT,
+        "precip_p50": ProvenanceKind.FORECAST_PRODUCT,
+        "crop_fraction": ProvenanceKind.STATIC_ATTRIBUTE,
+        "kc": ProvenanceKind.STATIC_ATTRIBUTE,
+        "taw_mm": ProvenanceKind.STATIC_ATTRIBUTE,
+        "initial_depletion_mm": ProvenanceKind.OBSERVATION,
+        "eta_analysis_age_days": ProvenanceKind.OBSERVATION,
+    }
+
+
+def _feature_provenance_tuple() -> tuple[tuple[str, str], ...]:
+    provenance = _feature_provenance_dict()
+    return tuple((name, provenance[name]) for name in FEATURES)
 
 
 def _case(case_id: str, role: str, *, issue: str | None = None, block: str = "43:-117", target: float = 4.0) -> dict[str, object]:
@@ -47,6 +68,7 @@ def _case(case_id: str, role: str, *, issue: str | None = None, block: str = "43
         "spatial_block": block,
         "season": season,
         "feature_available_at": {name: issue for name in FEATURES},
+        "feature_provenance": _feature_provenance_dict(),
         "features": {
             "lead_day": 1,
             "eto_p50": 4.0,
@@ -101,6 +123,7 @@ def _write(path: Path, value: dict[str, object]) -> Path:
 def test_residual_fit_receives_only_training_issue_times() -> None:
     issue = datetime(2024, 1, 1, tzinfo=timezone.utc)
     available = tuple((name, issue) for name in FEATURES)
+    provenance = _feature_provenance_tuple()
     cases = tuple(
         ResidualCase(
             case_id=f"train-{index}",
@@ -112,6 +135,7 @@ def test_residual_fit_receives_only_training_issue_times() -> None:
             spatial_block="43:-117",
                 season="DJF",
             feature_available_at=available,
+            feature_provenance=provenance,
             features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
             physical_p50=3.0,
             target_mm=3.5 + index / 10,
@@ -259,6 +283,7 @@ def test_case_valid_date_and_caller_season_cannot_disagree_with_issue_and_lead()
             target_kind="declared_well_watered_scenario_target", issue_time=issue,
             valid_date="2024-01-03", spatial_block="43:-117", season="DJF",
             feature_available_at=tuple((name, issue) for name in FEATURES),
+            feature_provenance=_feature_provenance_tuple(),
             features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0), physical_p50=3.0, target_mm=3.5,
             target_available_at=issue + timedelta(days=3),
         )
@@ -268,6 +293,7 @@ def test_case_valid_date_and_caller_season_cannot_disagree_with_issue_and_lead()
             target_kind="declared_well_watered_scenario_target", issue_time=issue,
             valid_date=outlook_valid_date(issue, 1).isoformat(), spatial_block="43:-117", season="MAM",
             feature_available_at=tuple((name, issue) for name in FEATURES),
+            feature_provenance=_feature_provenance_tuple(),
             features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0), physical_p50=3.0, target_mm=3.5,
             target_available_at=issue + timedelta(days=3),
         )
@@ -295,11 +321,12 @@ def test_residual_case_uses_idaho_local_valid_date_at_utc_and_dst_boundaries(
         valid_date=valid_date.isoformat(),
         spatial_block="43:-117",
         season="JJA" if valid_date.month == 7 else "MAM",
-            feature_available_at=tuple((name, issue) for name in FEATURES),
-            features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
-            physical_p50=3.0,
-            target_mm=3.5,
-            target_available_at=issue + timedelta(days=3),
+        feature_available_at=tuple((name, issue) for name in FEATURES),
+        feature_provenance=_feature_provenance_tuple(),
+        features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
+        physical_p50=3.0,
+        target_mm=3.5,
+        target_available_at=issue + timedelta(days=3),
     )
 
     assert case.valid_date == expected_valid_date
@@ -353,6 +380,7 @@ def test_lead_calibration_support_is_feasible_without_a_held_season_claim() -> N
             target_kind="declared_well_watered_scenario_target", issue_time=issue,
             valid_date=valid.isoformat(), spatial_block="43:-117", season=season,
             feature_available_at=tuple((name, issue) for name in FEATURES),
+            feature_provenance=_feature_provenance_tuple(),
             features=(float(lead), 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
             physical_p50=3.0, target_mm=3.5,
             target_available_at=issue + timedelta(days=lead + 2),
@@ -432,3 +460,37 @@ def test_cli_does_not_clobber_an_authority_request_destination(
     assert authority_path.read_text(encoding="utf-8") == "outside-process request"
     assert not report_path.exists()
     assert "destination already exists" in capsys.readouterr().err
+
+
+def _valid_case() -> ResidualCase:
+    issue = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    return ResidualCase(
+        case_id="valid-case",
+        role="train",
+        layer="eta_well_watered_mm",
+        target_kind="declared_well_watered_scenario_target",
+        issue_time=issue,
+        valid_date=outlook_valid_date(issue, 1).isoformat(),
+        spatial_block="43:-117",
+        season="DJF",
+        feature_available_at=tuple((name, issue) for name in FEATURES),
+        feature_provenance=_feature_provenance_tuple(),
+        features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
+        physical_p50=3.0,
+        target_mm=3.5,
+        target_available_at=issue + timedelta(days=3),
+    )
+
+
+def test_residual_case_rejects_forecast_sourced_initial_depletion() -> None:
+    """A forecast standing in for the observed initial state must not validate."""
+    valid = _valid_case()
+    bad_provenance = tuple(
+        (
+            name,
+            ProvenanceKind.FORECAST_PRODUCT if name == "initial_depletion_mm" else kind,
+        )
+        for name, kind in valid.feature_provenance
+    )
+    with pytest.raises(ValueError, match="initial_depletion_mm"):
+        replace(valid, feature_provenance=bad_provenance)

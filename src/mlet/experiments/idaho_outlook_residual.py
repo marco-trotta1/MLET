@@ -437,19 +437,23 @@ def _parse_case(value: object) -> ResidualCase:
         raise ValueError("residual case must be an object")
     expected = {
         "case_id", "role", "layer", "target_kind", "issue_time", "valid_date",
-        "spatial_block", "season", "feature_available_at", "features",
+        "spatial_block", "season", "feature_available_at", "feature_provenance", "features",
         "physical_p50", "target_mm", "target_available_at",
     }
     extensions = {"hindcast_case_sha256", "feature_receipts", "target_receipt"}
     if set(value) != expected and set(value) != expected | extensions:
         raise ValueError("residual case fields must match the schema exactly")
     availability = value["feature_available_at"]
+    provenance = value["feature_provenance"]
     features = value["features"]
     if not isinstance(availability, dict) or set(availability) != set(FEATURES):
         raise ValueError("feature_available_at must contain exactly FEATURES")
+    if not isinstance(provenance, dict) or set(provenance) != set(FEATURES):
+        raise ValueError("feature_provenance must contain exactly FEATURES")
     if not isinstance(features, dict) or set(features) != set(FEATURES):
         raise ValueError("features must contain exactly FEATURES")
     ordered_availability = tuple((name, _parse_timestamp(availability[name], f"feature {name} available_at")) for name in FEATURES)
+    ordered_provenance = tuple((name, cast(str, provenance[name])) for name in FEATURES)
     try:
         ordered_features = tuple(float(features[name]) for name in FEATURES)
         physical_p50 = float(value["physical_p50"])
@@ -466,6 +470,7 @@ def _parse_case(value: object) -> ResidualCase:
         spatial_block=cast(str, value["spatial_block"]),
         season=cast(str, value["season"]),
         feature_available_at=ordered_availability,
+        feature_provenance=ordered_provenance,
         features=ordered_features,
         physical_p50=physical_p50,
         target_mm=target_mm,
@@ -956,6 +961,7 @@ def _case_digest(case: ResidualCase) -> str:
                 "feature_available_at": [
                     [name, _format_utc(available_at)] for name, available_at in case.feature_available_at
                 ],
+                "feature_provenance": [list(item) for item in case.feature_provenance],
                 "features": list(case.features),
                 "physical_p50": case.physical_p50,
                 "target_mm": case.target_mm,

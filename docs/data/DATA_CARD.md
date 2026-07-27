@@ -45,6 +45,10 @@ The full variable inventory, citations, and licenses are in the source registry.
 The product contract defines the difference between forecast ETo, potential ET,
 observed ETa analysis, and conditional ETa scenarios. No entry in this section
 establishes forecast accuracy; that requires the preregistered hindcast gate.
+Frozen namespace bounds by source: GEFS-derived features may occupy only the
+`forecast` namespace; gridMET and OpenET observation-derived features may
+occupy only `hindcast`; CDL- and soil-attribute-derived features may occupy
+only `static`.
 
 ## Sources and provenance
 
