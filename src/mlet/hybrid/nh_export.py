@@ -46,6 +46,22 @@ IDENTIFIER_FRAGMENTS = (
     "one_hot",
 )
 
+IDENTIFIER_NAMES = frozenset(
+    {
+        "id",
+        "basin",
+        "site",
+        "station",
+        "site_code",
+        "basin_code",
+        "station_code",
+        "entity_code",
+        "grid_id",
+        "cell_id",
+        "field_id",
+    }
+)
+
 
 def _safe_component(value: object, context: str) -> str:
     """Return a filename component that cannot escape its export directory."""
@@ -63,6 +79,35 @@ def _safe_component(value: object, context: str) -> str:
     return value
 
 
+def _looks_like_identifier(name: object) -> bool:
+    """Return whether a field name can encode entity identity."""
+    if not isinstance(name, str):
+        return False
+    lowered = name.casefold()
+    return lowered in IDENTIFIER_NAMES or any(
+        fragment in lowered for fragment in IDENTIFIER_FRAGMENTS
+    )
+
+
+def _output_directory(root: Path, name: str) -> Path:
+    """Create an output tree only when its existing path is a real directory."""
+    destination = root / name
+    if destination.is_symlink():
+        raise ValueError(f"{name} output directory must not be a symlink")
+    if destination.exists() and not destination.is_dir():
+        raise ValueError(f"{name} output path must be a directory")
+    destination.mkdir(parents=True, exist_ok=True)
+    return destination
+
+
+def _validate_scalar_numeric(value: object, context: str) -> None:
+    """Require a real numeric scalar; NaN is the permitted missing marker."""
+    if isinstance(value, (bool, np.bool_)) or not isinstance(
+        value, (int, float, np.integer, np.floating)
+    ):
+        raise ValueError(f"{context} must be a scalar numeric value or NaN")
+
+
 @dataclass(frozen=True)
 class SiteAttributes:
     """Static physical attributes for one site."""
@@ -74,16 +119,16 @@ class SiteAttributes:
         _safe_component(self.site_id, "site_id")
         if not isinstance(self.values, Mapping) or not self.values:
             raise ValueError(f"site {self.site_id} has no attributes")
-        for name in self.values:
+        for name, value in self.values.items():
             if not isinstance(name, str) or not name.strip():
                 raise ValueError("attribute names must be non-empty strings")
-            lowered = name.lower()
-            if any(fragment in lowered for fragment in IDENTIFIER_FRAGMENTS):
+            if _looks_like_identifier(name):
                 raise ValueError(
                     f"attribute {name!r} looks like an entity identifier; conditioning "
                     "on identity rather than physical attributes invalidates "
                     "withheld-field evaluation"
                 )
+            _validate_scalar_numeric(value, f"site {self.site_id} attribute {name!r}")
 
 
 def _numeric_values(values: object, context: str) -> np.ndarray:
@@ -152,9 +197,7 @@ def write_time_series(root: Path, site_id: str, frame: pd.DataFrame) -> Path:
         raise ValueError(f"site {site_id} dates must have one-day spacing")
 
     for column in frame.columns:
-        if isinstance(column, str) and any(
-            fragment in column.lower() for fragment in IDENTIFIER_FRAGMENTS
-        ):
+        if _looks_like_identifier(column):
             raise ValueError(
                 f"column {column!r} looks like an entity identifier; conditioning "
                 "on identity rather than physical observations invalidates "
@@ -162,8 +205,7 @@ def write_time_series(root: Path, site_id: str, frame: pd.DataFrame) -> Path:
             )
         _reject_sentinels(frame[column].to_numpy(), f"site {site_id} column {column!r}")
 
-    destination = root / "time_series"
-    destination.mkdir(parents=True, exist_ok=True)
+    destination = _output_directory(root, "time_series")
     path = destination / f"{site_id}.nc"
 
     dataset = frame.rename_axis("date").to_xarray()
@@ -180,8 +222,7 @@ def write_attributes(
     root = Path(root)
     items = _validate_attributes(attributes)
 
-    destination = root / "attributes"
-    destination.mkdir(parents=True, exist_ok=True)
+    destination = _output_directory(root, "attributes")
     path = destination / filename
 
     frame = pd.DataFrame(

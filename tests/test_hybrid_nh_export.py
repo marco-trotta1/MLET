@@ -167,6 +167,76 @@ def test_time_series_identifier_columns_are_never_written_as_features(tmp_path) 
         write_time_series(tmp_path, "site-a", frame)
 
 
+GENERIC_IDENTIFIER_NAMES = [
+    "id",
+    "basin",
+    "site",
+    "station",
+    "site_code",
+    "basin_code",
+    "station_code",
+    "entity_code",
+    "grid_id",
+    "cell_id",
+    "field_id",
+]
+
+
+@pytest.mark.parametrize("name", GENERIC_IDENTIFIER_NAMES)
+def test_generic_identifier_names_are_rejected_for_attributes(tmp_path, name) -> None:
+    with pytest.raises(ValueError, match="identifier"):
+        write_attributes(tmp_path, [SiteAttributes("site-a", {name: 3.0})])
+
+
+@pytest.mark.parametrize("name", GENERIC_IDENTIFIER_NAMES)
+def test_generic_identifier_names_are_rejected_for_time_series(tmp_path, name) -> None:
+    frame = _frame().assign(**{name: np.arange(5, dtype=float)})
+    with pytest.raises(ValueError, match="identifier"):
+        write_time_series(tmp_path, "site-a", frame)
+
+
+@pytest.mark.parametrize("value", [[180.0], (180.0,), "180.0"])
+def test_attribute_values_must_be_scalar_numeric_values(tmp_path, value) -> None:
+    with pytest.raises(ValueError, match="scalar numeric"):
+        SiteAttributes("site-a", {"taw_mm": value})
+
+
+@pytest.mark.parametrize(
+    "value", [180, 180.0, np.int64(180), np.float32(180.0), np.nan]
+)
+def test_scalar_numeric_attribute_values_are_allowed(tmp_path, value) -> None:
+    path = write_attributes(tmp_path, [SiteAttributes("site-a", {"taw_mm": value})])
+    frame = pd.read_csv(path, index_col=0)
+    if np.isnan(value):
+        assert np.isnan(frame.loc["site-a", "taw_mm"])
+    else:
+        assert frame.loc["site-a", "taw_mm"] == pytest.approx(float(value))
+
+
+@pytest.mark.parametrize("tree", ["time_series", "attributes"])
+def test_existing_output_symlink_is_rejected(tmp_path, tree) -> None:
+    target = tmp_path / "outside"
+    target.mkdir()
+    (tmp_path / tree).symlink_to(target, target_is_directory=True)
+    if tree == "time_series":
+        with pytest.raises(ValueError, match="must not be a symlink"):
+            write_time_series(tmp_path, "site-a", _frame())
+    else:
+        with pytest.raises(ValueError, match="must not be a symlink"):
+            write_attributes(tmp_path, [SiteAttributes("site-a", {"taw_mm": 180.0})])
+
+
+@pytest.mark.parametrize("tree", ["time_series", "attributes"])
+def test_existing_output_non_directory_is_rejected(tmp_path, tree) -> None:
+    (tmp_path / tree).write_text("not a directory")
+    if tree == "time_series":
+        with pytest.raises(ValueError, match="must be a directory"):
+            write_time_series(tmp_path, "site-a", _frame())
+    else:
+        with pytest.raises(ValueError, match="must be a directory"):
+            write_attributes(tmp_path, [SiteAttributes("site-a", {"taw_mm": 180.0})])
+
+
 def test_export_writes_both_trees_and_every_site(tmp_path) -> None:
     root = export_generic_dataset(
         tmp_path,

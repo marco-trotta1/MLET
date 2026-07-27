@@ -125,6 +125,14 @@ and exact series/attribute site coverage so an incomplete, colliding, or
 escaping tree cannot be mistaken for a valid experiment. Case-insensitive
 comparison is used for validation only; original site spelling is retained in
 emitted paths and CSV indices when unique.
+The identifier predicate also rejects generic identity fields (`id`, `site`,
+`basin`, `station`) and common code/key forms such as `site_code`,
+`entity_code`, `grid_id`, `cell_id`, and `field_id`, in both static and dynamic
+features. Static attribute values must be scalar real numeric values (Python
+or NumPy integers/floats); scalar NaN remains the missing-value marker, while
+lists, strings, and other sequences are rejected. Before writing, existing
+`time_series/` and `attributes/` paths must be real directories rather than
+symlinks or files, preventing an export from escaping its declared root.
 
 ## Isolation
 

@@ -47,7 +47,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | 8 | bounded dynamic parameterization in isolated hybrid tier | 421 |
 | 9 | FAO-56 dual-coefficient scaffold with bounded learned seams | 432 |
 | 10 | differentiable torch adapter, optional extra, and AST isolation enforcement | 467 |
-| 11 | neuralhydrology GenericDataset export layout and validation | 507 |
+| 11 | neuralhydrology GenericDataset export layout and validation | 541 |
 
 Task 10 adds 35 passing structural/executable checks locally. The four torch
 tests are optional at the local level: they pass when `mlet[hybrid]` is
@@ -66,7 +66,10 @@ The focused exporter checks round-trip NaN preservation, rejection of the three
 known GenericDataset sentinels (`-999`, `-9999`, and `-99.999`), sorted, unique,
 strictly one-day-spaced dates, safe single-component site ids and filenames,
 shared attribute names, identifier-like attribute names in both static and
-time-series fields, case-insensitive site uniqueness, and exact site coverage.
+time-series fields, generic identifier names and code/key forms in both static
+and time-series fields, scalar numeric static values, case-insensitive site
+uniqueness, exact site coverage, and rejection of pre-existing symlinked or
+non-directory `time_series/` and `attributes/` output paths.
 Case-insensitive matching is used only for collision/coverage validation; the
 original spelling is retained in each emitted path or CSV index when unique.
 This is intentional defensive validation: GenericDataset treats a sentinel as an
