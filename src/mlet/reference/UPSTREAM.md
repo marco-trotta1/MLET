@@ -74,7 +74,33 @@ already MJ m-2 d-1, so the ports take MJ m-2 d-1 and omit the conversion.
 Passing W m-2 to these functions silently produces PET roughly 11.6x too large;
 callers must use the documented unit.
 
-### 4. Priestley-Taylor alpha
+### 4. Priestley-Taylor energy conversion applied twice — upstream defect, corrected
+
+Upstream `get_priestley_taylor_pet` computes:
+
+    pet = (alpha / _lambda) * (slope_svp * net_rad) / (slope_svp + gamma)
+    pet = pet * 0.408
+
+`alpha / _lambda` divides by the latent heat of vaporisation (2.45 MJ kg-1),
+which is the energy-to-depth conversion. The factor `0.408` is `1 / 2.45` — the
+same conversion. Applying both understates PET by a factor of 2.451.
+
+On the shared test fixture (2026-07-15, 43.6175 N, 824 m, Rs 28 MJ m-2 d-1,
+Tmax 33 C, Tmin 15 C) upstream returns 2.5575 mm d-1. The published
+Priestley-Taylor form gives 6.2683 mm d-1, which is 0.861 of the ASCE-PM
+short-reference ETo of 7.2813 mm d-1 from vendored pyfao56 — the expected
+PT/PM relationship for semi-arid advective conditions. 2.56 mm d-1 for July in
+southern Idaho is not physically plausible.
+
+MLET applies the conversion once, via `alpha / LATENT_HEAT_VAPOURISATION`.
+`tests/test_reference_priestley_taylor.py` pins both the corrected value and the
+2.451 ratio to the upstream form.
+
+This defect is independent of, and larger than, the Eq. 37 defect in section 1.
+Both were found by the three-way cross-check this task adds, which is the
+argument for keeping that cross-check in CI.
+
+### 5. Priestley-Taylor alpha
 
 Upstream hardcodes `alpha = 1.26` with the comment "Calibrated in CAMELS, here
 static". MLET exposes `alpha` as an explicit keyword argument defaulting to

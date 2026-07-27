@@ -35,6 +35,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | baseline | before this plan | 357 |
 | 0 | reproducibility baseline | 357 |
 | 1 | independent FAO-56 radiation chain | 366 |
+| 2 | Priestley-Taylor PET and three-way reference-ET cross-check | 374 |
 
 ## Regenerating published artifacts
 
@@ -42,3 +43,6 @@ not raise the count has added no executable evidence, which is a review finding.
 - Idaho outlook candidate map: `python3 -m mlet publish-outlook --run OUTPUT_ROOT/RUN_ID`
   (always exits 1 by contract — the output is a research candidate)
 - Residual-model experiment: `python3 -m mlet evaluate-outlook-residual --cases examples/outlook/hindcast_cases.json --out <path>`
+- Reference-ET cross-check: `python3 -m mlet qc-eto --member-json <path>`
+  (exits 0 when the ASCE paths agree exactly and PT/ASCE-PM is inside the
+  documented 0.60-1.05 band)

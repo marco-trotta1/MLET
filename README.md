@@ -231,6 +231,22 @@ only the separately trusted external release authority described in the outlook
 preregistration may publish a promoted product; the MLET evaluator and map
 renderer have no local promotion or validation path.
 
+## Reference-ET cross-check
+
+MLET carries two independent implementations of reference evapotranspiration:
+the ASCE-PM short-reference path used by the outlook (via vendored `pyfao56`),
+and a Priestley-Taylor path in `src/mlet/reference/` ported from
+neuralhydrology. `qc-eto` compares them on a single weather member:
+
+```bash
+python3 -m mlet qc-eto --member-json examples/outlook/weather_member.json
+```
+
+The two ASCE paths must agree exactly; Priestley-Taylor is a different equation
+and is checked against a documented ratio band instead. Building this check
+found two defects in the upstream neuralhydrology implementation, both recorded
+in `src/mlet/reference/UPSTREAM.md`.
+
 ## Development Notes
 
 Keep new work reproducible and auditable:
