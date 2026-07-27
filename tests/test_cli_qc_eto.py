@@ -47,3 +47,24 @@ def test_qc_eto_fails_when_solar_units_are_wrong(tmp_path, capsys) -> None:
     assert exit_code == 2
     assert "error:" in captured.err
     assert "MJ m-2 d-1" in captured.err
+
+
+def test_qc_eto_returns_2_for_missing_member_json(capsys, tmp_path) -> None:
+    missing = tmp_path / "missing.json"
+
+    exit_code = main(["qc-eto", "--member-json", str(missing)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "error:" in captured.err
+
+
+def test_qc_eto_returns_2_for_malformed_json(tmp_path, capsys) -> None:
+    path = tmp_path / "malformed.json"
+    path.write_text("{not valid json", encoding="utf-8")
+
+    exit_code = main(["qc-eto", "--member-json", str(path)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "error:" in captured.err
