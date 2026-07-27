@@ -34,8 +34,8 @@ not raise the count has added no executable evidence, which is a review finding.
 |---|---|---|
 | baseline | before this plan | 357 |
 | 0 | reproducibility baseline | 357 |
-| 1 | independent FAO-56 radiation chain | 366 |
-| 2 | Priestley-Taylor PET and three-way reference-ET cross-check | 374 |
+| 1 | independent FAO-56 radiation reference | 366 |
+| 2 | Priestley-Taylor PET and three-way ETo cross-check | 376 |
 
 ## Regenerating published artifacts
 
