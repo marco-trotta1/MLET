@@ -50,16 +50,24 @@
   Headings 600 weight with −0.02em tracking; body 400. One family carries the
   whole interface — hierarchy comes from size, weight, and case, not from
   mixing families.
-- **Data/Provenance/Code:** Söhne Mono with `tabular-nums` — all numbers, run
-  IDs, timestamps, checksums, chips, table cells, axis labels.
+- **Data/Provenance:** Inter with `tabular-nums` — all numbers, run IDs,
+  timestamps, checksums, chips, table cells, axis labels. Tabular figures keep
+  columns aligned without a monospace, so data sits in the same family as the
+  interface and only the figures are special-cased.
+- **Code only:** Söhne Mono / IBM Plex Mono. Reserved for the quickstart block
+  and BibTeX, where character-cell alignment is load-bearing. Code is the one
+  place a monospace still earns its place.
 - **Licensing/fallback:** Söhne is a commercial license — buy from Klim and
   self-host woff2 on Pages; it must never be hotlinked or committed to a
-  public repo unlicensed. Stack: `"Söhne", "Inter", -apple-system, sans-serif`
-  and `"Söhne Mono", "IBM Plex Mono", ui-monospace`. Until the license is in
-  place, the site renders Inter/IBM Plex Mono (both Google Fonts).
+  public repo unlicensed. Stacks: `"Söhne", "Inter", -apple-system, sans-serif`
+  (interface), `"Inter", -apple-system, sans-serif` (data), and
+  `"Söhne Mono", "IBM Plex Mono", ui-monospace` (code). Until the license is in
+  place, the site renders Inter/IBM Plex Mono (both Google Fonts). The
+  published outlook artifact is standalone and never fetches a font: it uses
+  whatever of that stack is installed and otherwise falls back to system sans.
 - **Scale:** hero clamp(30px, 4.4vw, 44px)/600 · section heads 18px/600 ·
   labels 11.5–12px uppercase +0.08em tracking · body 15px/1.6 · data
-  12.5–13.5px mono · caption 11.5px mono. Kept deliberately smaller than
+  10.5–13.5px tabular · caption 11.5px. Kept deliberately smaller than
   consumer-product scale — instrument, not billboard.
 
 ## Color
@@ -133,3 +141,6 @@
 | 2026-07-19 | Rev 2: serif removed; Söhne everywhere; frontier-lab register | User direction: scientific research tool, no fluff, should feel like it comes out of a frontier lab |
 | 2026-07-19 | Söhne with Inter/IBM Plex Mono fallback | Söhne is a commercial Klim license — self-host licensed woff2; fallbacks render until then |
 | 2026-07-19 | Rev 3: adopt scientific-ML ecosystem conventions | Survey of 23 frontier-lab projects (Aurora, NeuralGCM, Earth2Studio, Open Catalyst, Oceananigans et al.): quickstart code block, BibTeX citation, limitations-in-nav, artifact tables with checksums |
+| 2026-07-27 | Rev 4: chrome goes fully monochrome | User direction: no teal accent, no glow, keep it white. Hue now appears only in the viridis data ramp and the amber status banner, so nothing in the interface competes with a reading. Links carry underlines because colour no longer signals them |
+| 2026-07-27 | Data set in Inter with tabular figures, not a monospace | User direction. Tabular numerals give column alignment without a second family, so data and interface share one voice; monospace is now reserved for code, where character-cell alignment is load-bearing |
+| 2026-07-27 | Outlook viewer rebuilt as a three-pane instrument | /design-shotgun variant D. Layer × lead-day matrix, basemap map, p10–p90 fan. Implements signature pattern 3, which had no implementation: the 20-day uncertainty band was previously not drawn anywhere |
