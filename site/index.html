@@ -9,49 +9,62 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+/* Chrome is monochrome: viridis is reserved for data, and the outlook map is
+   the only place data appears, so the landing spends no colour at all. Links
+   are marked by underline rather than by hue. */
 :root{
-  --paper:#FAFAF8; --surface:#FFFFFF; --surface-2:#F2F2EF;
-  --ink:#191D1B; --ink-2:#505652; --ink-3:#7C827E;
-  --line:#E0E0DB; --line-strong:#BFBFB8;
-  --accent:#17706B; --accent-strong:#0E5551; --accent-tint:#E4EFEE;
-  --warn-bg:#FBF3E4; --warn-border:#C77E1B; --warn-ink:#7A4A08;
+  --paper:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F4;
+  --ink:#131514; --ink-2:#4C4F4D; --ink-3:#7A7E7C;
+  --line:#EAEAE8; --line-strong:#B9BBB8;
+  --accent:#131514; --accent-strong:#000000; --accent-tint:#F0F0EE;
+  --warn-bg:#FBF2DF; --warn-border:#C77E1B; --warn-ink:#8A5406;
   --sans:"Söhne","Sohne","Inter",-apple-system,"Helvetica Neue",sans-serif;
-  --mono:"Söhne Mono","IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+  /* Data face: Inter with tabular figures carries numbers, run ids, chips and
+     table cells. --code stays monospace, because code must not be reflowed
+     into a proportional face. */
+  --data:"Inter",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --code:"Söhne Mono","IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
 }
 html.dark{
-  --paper:#111413; --surface:#191D1B; --surface-2:#212624;
-  --ink:#E9EAE7; --ink-2:#A8AEA9; --ink-3:#787E7A;
-  --line:#2B302D; --line-strong:#454B47;
-  --accent:#4CB8AE; --accent-strong:#7BD0C8; --accent-tint:#1B2E2B;
-  --warn-bg:#2B2213; --warn-ink:#E5B36A;
+  --paper:#0F1110; --surface:#171918; --surface-2:#1E211F;
+  --ink:#EDEEEC; --ink-2:#A0A4A1; --ink-3:#767A78;
+  --line:#232624; --line-strong:#3F4341;
+  --accent:#EDEEEC; --accent-strong:#FFFFFF; --accent-tint:#222523;
+  --warn-bg:#211A0E; --warn-ink:#E5B36A;
 }
 @media(prefers-color-scheme:dark){
   html:not(.light){
-    --paper:#111413; --surface:#191D1B; --surface-2:#212624;
-    --ink:#E9EAE7; --ink-2:#A8AEA9; --ink-3:#787E7A;
-    --line:#2B302D; --line-strong:#454B47;
-    --accent:#4CB8AE; --accent-strong:#7BD0C8; --accent-tint:#1B2E2B;
-    --warn-bg:#2B2213; --warn-ink:#E5B36A;
+    --paper:#0F1110; --surface:#171918; --surface-2:#1E211F;
+    --ink:#EDEEEC; --ink-2:#A0A4A1; --ink-3:#767A78;
+    --line:#232624; --line-strong:#3F4341;
+    --accent:#EDEEEC; --accent-strong:#FFFFFF; --accent-tint:#222523;
+    --warn-bg:#211A0E; --warn-ink:#E5B36A;
   }
 }
 *{margin:0;box-sizing:border-box}
 body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
 main{max-width:1100px;margin:0 auto;padding:0 24px 80px}
-a{color:var(--accent);text-decoration:none}
-a:hover{text-decoration:underline}
+/* With the palette monochrome, hue can no longer signal a link, so prose links
+   carry a permanent underline. Nav items and buttons opt out: they have their
+   own affordances. */
+a{color:var(--ink);text-decoration:underline;text-underline-offset:2px;
+  text-decoration-color:var(--line-strong)}
+a:hover{text-decoration-color:var(--ink)}
+.nav a,.btn,footer .links a{text-decoration:none}
+.nav a:hover,footer .links a:hover{text-decoration:underline;text-underline-offset:2px}
 section{margin-top:64px}
 h1{font-size:clamp(30px,4.4vw,44px);font-weight:600;letter-spacing:-.022em;line-height:1.12;max-width:22ch}
 h2{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-3);margin-bottom:16px}
 p{max-width:64ch}
-.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.05em;color:var(--accent);margin-bottom:14px}
+.kicker{font-family:var(--data);font-size:12px;letter-spacing:.05em;color:var(--ink-3);margin-bottom:14px}
 .lede{font-size:17px;color:var(--ink-2);max-width:56ch;margin-top:16px}
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--line);margin-bottom:56px}
-.wordmark{font-family:var(--mono);font-weight:600;font-size:14px;letter-spacing:.02em;color:var(--ink)}
+.wordmark{font-family:var(--data);font-weight:600;font-size:14px;letter-spacing:.02em;color:var(--ink)}
 .wordmark span{color:var(--accent)}
 .nav{display:flex;gap:18px;align-items:center;font-size:13.5px}
 .nav a{color:var(--ink-2)}
 .nav a:hover{color:var(--ink);text-decoration:none}
-.toggle{font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer}
+.toggle{font-family:var(--data);font-size:12px;background:var(--surface);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer}
 .toggle:hover{border-color:var(--line-strong)}
 .note{font-size:13px;color:var(--ink-3);border-left:2px solid var(--line-strong);padding-left:14px;margin-top:14px;max-width:70ch}
 .comp-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:24px}
@@ -64,19 +77,20 @@ html.dark .btn-primary{color:#0D1512}
 .btn-ghost{background:transparent;color:var(--accent);border:none}
 .btn-ghost:hover{background:var(--accent-tint);text-decoration:none}
 .banner{display:flex;gap:12px;align-items:baseline;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;padding:12px 15px;font-size:13.5px;max-width:760px;margin-top:20px}
-.banner b{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--warn-ink);white-space:nowrap}
+.banner b{font-family:var(--data);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--warn-ink);white-space:nowrap}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
-.chip{display:inline-flex;gap:7px;align-items:center;font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:4px 9px;color:var(--ink-2)}
+.chip{display:inline-flex;gap:7px;align-items:center;font-family:var(--data);font-variant-numeric:tabular-nums;font-size:12px;background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:4px 9px;color:var(--ink-2)}
 .chip .dot-pending{width:6px;height:6px;border-radius:50%;background:var(--warn-border)}
 table.data{border-collapse:collapse;width:100%;font-size:13.5px;max-width:760px}
 table.data th{text-align:left;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);border-bottom:1px solid var(--line-strong);padding:7px 10px}
-table.data td{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--line);padding:7px 10px;color:var(--ink-2)}
+table.data td{font-family:var(--data);font-size:12.5px;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--line);padding:7px 10px;color:var(--ink-2)}
 table.data td:first-child{color:var(--ink)}
 table.data td.sans{font-family:var(--sans);font-size:13px}
 .codehead{display:flex;justify-content:space-between;align-items:center;max-width:760px;margin-bottom:6px}
 .codehead .l{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3)}
-.codehead .copy{font-family:var(--mono);font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;padding:2px 4px}
-.code{font-family:var(--mono);font-size:12.5px;line-height:1.9;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:14px 16px;overflow-x:auto;color:var(--ink-2);max-width:760px;white-space:pre}
+.codehead .copy{font-family:var(--data);font-size:11px;color:var(--ink-2);background:none;border:none;cursor:pointer;padding:2px 4px;text-decoration:underline;text-underline-offset:2px}
+.codehead .copy:hover{color:var(--ink)}
+.code{font-family:var(--code);font-size:12.5px;line-height:1.9;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:14px 16px;overflow-x:auto;color:var(--ink-2);max-width:760px;white-space:pre}
 .code .cmd{color:var(--accent-strong);font-weight:500}
 .code .cmt{color:var(--ink-3)}
 footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;font-size:13px;color:var(--ink-3)}
