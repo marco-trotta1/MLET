@@ -37,6 +37,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | 1 | independent FAO-56 radiation reference | 366 |
 | 2 | Priestley-Taylor PET and three-way ETo cross-check | 376 |
 | 3 | hindcast / forecast / static namespaces and provenance validation | 383 |
+| 4 | forecast-overlap disagreement diagnostic and qc-overlap CLI | 390 |
 
 ## Regenerating published artifacts
 
@@ -47,3 +48,5 @@ not raise the count has added no executable evidence, which is a review finding.
 - Reference-ET cross-check: `python3 -m mlet qc-eto --member-json <path>`
   (exits 0 when the ASCE paths agree exactly and PT/ASCE-PM is inside the
   documented 0.60-1.05 band)
+- Overlap consistency: `python3 -m mlet qc-overlap --window-json <path>`
+  (exit 0 only when the verdict is `consistent`)

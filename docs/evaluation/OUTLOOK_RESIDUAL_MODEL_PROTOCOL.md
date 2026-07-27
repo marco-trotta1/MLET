@@ -39,6 +39,20 @@ construction rather than validating with unstated provenance.
 
 The experiment records the complete case-file SHA-256, canonical report digest, split ID/cutoffs and fold IDs, feature schema, exact estimator hyperparameters, seed, fitted calibration method/rank/value/case hashes, Task 8/source-receipt revisions and hashes, target-receipt hashes and availability times, row hashes, and Python/NumPy/scikit-learn versions. The archived raw data itself is not committed here.
 
+### Overlap consistency
+
+`mlet qc-overlap` measures observation-driven against forecast-driven ETo over a
+window that ends before issue time, adapting neuralhydrology's `forecast_overlap`
+regularisation as a diagnostic. Thresholds are in `src/mlet/outlook/overlap.py`:
+mean absolute difference above 1.5 mm/day is `inconsistent`, below 0.01 mm/day is
+`suspiciously_identical`.
+
+The lower bound is the leakage check. A forecast that reproduces the observed
+series to within 0.01 mm/day is not an independent product, and the namespace
+rules above would be satisfied while the separation they exist to guarantee is
+absent. This diagnostic consumes no labels and no held-out data, so it can be run
+on every archive before any evaluation is performed.
+
 ## Model and calibration
 
 The fitted target is `target_mm - physical_p50`. A `StandardScaler` and three `GradientBoostingRegressor(loss="quantile")` estimators (0.1, 0.5, 0.9; `n_estimators=80`, `max_depth=2`, `min_samples_leaf=2`, `learning_rate=0.05`) are fit on training cases only with seed `20260717`. Their residual quantiles are added back to the unchanged physical p50. A symmetric **lead-stratified** split-conformal inflation is estimated on the separate calibration partition at 80% nominal coverage using the finite-sample order statistic `k = min(n, ceil((n + 1) * 0.80))` of sorted nonconformity scores for that exact lead day. It is applied only when scoring test cases at the same lead, preserving p10 ≤ p50 ≤ p90.

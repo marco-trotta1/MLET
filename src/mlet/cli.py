@@ -55,6 +55,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Cross-check ASCE-PM and Priestley-Taylor reference ET on one weather member.",
     )
     qc_eto.add_argument("--member-json", required=True)
+    qc_overlap = subparsers.add_parser(
+        "qc-overlap",
+        help="Measure forecast/observation ETo disagreement over a pre-issue-time window.",
+    )
+    qc_overlap.add_argument("--window-json", required=True)
     experiment = subparsers.add_parser("evaluate", help="Run the pre-registered Phase 2 experiment.")
     experiment.add_argument("--interim", required=True)
     experiment.add_argument("--landcover", required=True)
@@ -103,6 +108,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_gridmet_qc(args.interim, args.gridmet_dir, args.metadata, args.n)
     if args.command == "qc-eto":
         return _run_qc_eto(args.member_json)
+    if args.command == "qc-overlap":
+        return _run_qc_overlap(args.window_json)
     if args.command == "fetch-outlook-inputs":
         return _run_fetch_outlook_inputs(args.issue_date, args.out)
     if args.command == "build-outlook":
@@ -178,6 +185,51 @@ def _run_qc_eto(member_json: str) -> int:
         return 1
     print("ok: both paths agree and the ratio is inside the documented band")
     return 0
+
+
+def _run_qc_overlap(window_json: str) -> int:
+    """Print the forecast-overlap disagreement diagnostic for one window."""
+    from datetime import datetime
+
+    from mlet.outlook.contracts import WeatherMember
+    from mlet.outlook.overlap import OverlapWindow, evaluate_overlap
+
+    def _member(payload: dict) -> WeatherMember:
+        return WeatherMember(
+            grid_id=payload["grid_id"],
+            latitude=float(payload["latitude"]),
+            longitude=float(payload["longitude"]),
+            elevation_m=float(payload["elevation_m"]),
+            member_id=payload["member_id"],
+            issued_at=datetime.fromisoformat(payload["issued_at"]),
+            valid_date=date.fromisoformat(payload["valid_date"]),
+            tmax_c=float(payload["tmax_c"]),
+            tmin_c=float(payload["tmin_c"]),
+            vapor_pressure_kpa=float(payload["vapor_pressure_kpa"]),
+            wind_m_s=float(payload["wind_m_s"]),
+            solar_mj_m2_day=float(payload["solar_mj_m2_day"]),
+            precip_mm=float(payload["precip_mm"]),
+        )
+
+    try:
+        with open(window_json, encoding="utf-8") as handle:
+            payload = json.load(handle)
+        window = OverlapWindow(
+            issue_time=datetime.fromisoformat(payload["issue_time"]),
+            overlap_days=int(payload["overlap_days"]),
+            observed=tuple(_member(row) for row in payload["observed"]),
+            forecast=tuple(_member(row) for row in payload["forecast"]),
+        )
+        diagnostic = evaluate_overlap(window)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot run qc-overlap: {exc}", file=sys.stderr)
+        return 2
+    print(f"overlap days            : {diagnostic.n_days}")
+    print(f"mean abs difference     : {diagnostic.mean_absolute_difference_mm:.4f} mm/day")
+    print(f"bias (forecast-observed): {diagnostic.bias_mm:+.4f} mm/day")
+    print(f"max abs difference      : {diagnostic.max_absolute_difference_mm:.4f} mm/day")
+    print(f"verdict               : {diagnostic.verdict}")
+    return 0 if diagnostic.verdict == "consistent" else 1
 
 
 def _run_build_outlook(weather: str, state: str, crop: str, destination: str) -> int:
