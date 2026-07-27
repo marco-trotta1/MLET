@@ -84,8 +84,29 @@ models, which exists for the same reason.
 
 None of the above is in scope for the plan that created this scaffold.
 
+## Differentiable path
+
+`src/mlet/hybrid/torch_adapter.py` is an optional PyTorch reimplementation of
+the same eleven lines of FAO-56 arithmetic. The duplication is intentional:
+there is no backend abstraction in the load-bearing physics code. Instead,
+`tests/test_hybrid_torch_adapter.py::test_torch_forward_matches_the_numpy_balance`
+asserts that the torch and NumPy paths agree to `1e-6` for identical drivers.
+
+`drivers_to_tensor` produces an `(n_steps, 5)` tensor in `DailyStep` field order.
+`torch_water_balance` returns `(n_steps, 3)` columns in the order
+`eta_mm`, `deep_percolation_mm`, `depletion_mm`. Autograd reaches both learned
+terms: `Ks` and the deep-percolation fraction. This is a gradient path for a
+future experiment, not training code.
+
+PyTorch is not a core dependency. It is available only through
+`python -m pip install -e ".[hybrid]"`; the plain NumPy scaffold remains
+importable without it. The CI hybrid leg installs that extra, runs the focused
+tests, and then runs the canonical serving-path gate.
+
 ## Isolation
 
 `scripts/verify.sh` greps the serving path for imports of `torch` or
-`mlet.hybrid` and fails the build if any appear.
-`tests/test_hybrid_isolation.py` enforces the same boundary in the test suite.
+`mlet.hybrid` and fails the build if any appear. The authoritative
+`tests/test_hybrid_isolation.py` walks the Python AST, including deferred
+imports inside functions, and checks the same boundary. It also proves that
+`mlet.hybrid.bounded` and `mlet.hybrid.fao56_dual` import on a plain install.

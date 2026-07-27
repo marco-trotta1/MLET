@@ -22,3 +22,21 @@ jobs:
         run: python -m pip install -e .
       - name: Verify
         run: ./scripts/verify.sh
+
+  test-hybrid:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package with the hybrid extra
+        run: python -m pip install -e ".[hybrid]"
+      - name: Run the hybrid tests
+        run: |
+          python -m pytest tests/test_hybrid_bounded.py \
+                           tests/test_hybrid_fao56_dual.py \
+                           tests/test_hybrid_torch_adapter.py \
+                           tests/test_hybrid_isolation.py -v
+      - name: Confirm the serving path still does not reach torch
+        run: ./scripts/verify.sh

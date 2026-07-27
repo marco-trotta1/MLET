@@ -25,6 +25,11 @@ dependencies = [
 [project.scripts]
 mlet = "mlet.cli:main"
 
+[project.optional-dependencies]
+hybrid = [
+    "torch>=2.0",
+]
+
 [tool.setuptools.packages.find]
 where = ["src", "vendor/pyfao56/src"]
 

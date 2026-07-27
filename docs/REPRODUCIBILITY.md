@@ -46,6 +46,12 @@ not raise the count has added no executable evidence, which is a review finding.
 | 7 | residual-report pinball scores and preregistration amendment | 411 |
 | 8 | bounded dynamic parameterization in isolated hybrid tier | 421 |
 | 9 | FAO-56 dual-coefficient scaffold with bounded learned seams | 432 |
+| 10 | differentiable torch adapter, optional extra, and AST isolation enforcement | 462 |
+
+Task 10 adds 30 passing structural/executable checks locally. The four torch
+tests are optional at the local level: they pass when `mlet[hybrid]` is
+installed and are reported as skipped when PyTorch is absent. The CI
+`test-hybrid` job installs the extra and exercises the torch path.
 
 ## Hybrid scaffold audit trail
 
