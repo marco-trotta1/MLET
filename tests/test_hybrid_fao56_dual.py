@@ -109,6 +109,7 @@ def test_mass_closes_on_every_unclipped_day() -> None:
     previous = initial
     for result, step in zip(results, _steps()):
         if result.clipped:
+            previous = result.depletion_mm
             continue
         expected_change = (
             result.eta_mm
