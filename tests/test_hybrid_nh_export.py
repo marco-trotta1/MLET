@@ -1,5 +1,6 @@
 """Non-scientific deterministic checks for the GenericDataset export layout."""
 
+import errno
 from pathlib import Path
 
 import numpy as np
@@ -26,8 +27,19 @@ def _frame(with_gap: bool = False) -> pd.DataFrame:
 def _make_symlink(link: Path, target: Path, *, target_is_directory: bool = False) -> None:
     try:
         link.symlink_to(target, target_is_directory=target_is_directory)
-    except (NotImplementedError, OSError) as exc:
+    except NotImplementedError as exc:
         pytest.skip(f"platform cannot create symlinks: {exc}")
+    except OSError as exc:
+        unavailable = {
+            errno.EACCES,
+            errno.EPERM,
+            errno.ENOSYS,
+            getattr(errno, "ENOTSUP", errno.EPERM),
+            getattr(errno, "EOPNOTSUPP", errno.EPERM),
+        }
+        if exc.errno in unavailable:
+            pytest.skip(f"platform cannot create symlinks: {exc}")
+        raise
 
 
 def test_time_series_uses_the_required_layout_and_coordinate(tmp_path) -> None:
@@ -46,6 +58,17 @@ def test_missing_values_round_trip_as_nan(tmp_path) -> None:
         values = dataset["measured_et_mm"].values
         assert np.isnan(values[2])
         assert np.count_nonzero(np.isnan(values)) == 1
+
+
+def test_numeric_string_features_are_rejected_before_export(tmp_path) -> None:
+    """Numeric-looking strings must not become Unicode netCDF variables."""
+    frame = _frame()
+    frame["eto_mm"] = frame["eto_mm"].map(lambda value: f"{value:.1f}")
+
+    with pytest.raises(ValueError, match="numeric dtype"):
+        write_time_series(tmp_path, "site-a", frame)
+
+    assert not (tmp_path / "time_series" / "site-a.nc").exists()
 
 
 @pytest.mark.parametrize("sentinel", FORBIDDEN_SENTINELS)
@@ -182,6 +205,15 @@ GENERIC_IDENTIFIER_NAMES = [
     "site_code",
     "basin_code",
     "station_code",
+    "catchment_id",
+    "catchment_index",
+    "catchment_code",
+    "gauge_id",
+    "gauge_index",
+    "gauge_code",
+    "location_id",
+    "location_index",
+    "location_code",
     "entity_code",
     "grid_id",
     "cell_id",
@@ -328,6 +360,33 @@ def test_export_rejects_case_insensitive_series_collisions(tmp_path) -> None:
         export_generic_dataset(
             tmp_path,
             {"site-a": _frame(), "SITE-A": _frame()},
+            [SiteAttributes("site-a", {"taw_mm": 180.0})],
+        )
+
+
+def test_export_preflights_every_series_before_writing(tmp_path) -> None:
+    invalid = _frame()
+    invalid["eto_mm"] = invalid["eto_mm"].map(lambda value: f"{value:.1f}")
+
+    with pytest.raises(ValueError, match="numeric dtype"):
+        export_generic_dataset(
+            tmp_path,
+            {"site-a": _frame(), "site-b": invalid},
+            [
+                SiteAttributes("site-a", {"taw_mm": 180.0}),
+                SiteAttributes("site-b", {"taw_mm": 210.0}),
+            ],
+        )
+
+    assert not (tmp_path / "time_series").exists()
+    assert not (tmp_path / "attributes").exists()
+
+
+def test_export_rejects_non_string_series_keys_as_value_errors(tmp_path) -> None:
+    with pytest.raises(ValueError, match="safe path component"):
+        export_generic_dataset(
+            tmp_path,
+            {42: _frame()},
             [SiteAttributes("site-a", {"taw_mm": 180.0})],
         )
 

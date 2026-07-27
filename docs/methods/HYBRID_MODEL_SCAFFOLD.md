@@ -122,25 +122,25 @@ one to prefer. The exporter also requires a sorted, unique index with exactly
 one-day spacing, safe single-component site ids and filenames, shared attribute
 keys, no identifier-like time-series columns, case-insensitive site uniqueness,
 and exact series/attribute site coverage so an incomplete, colliding, or
-escaping tree cannot be mistaken for a valid experiment. The declared export
-root must be a real directory; existing `time_series/` and `attributes/`
-directories must also be real directories, and existing final `.nc` or `.csv`
-paths must be real files rather than symlinks or directories. These checks are
-performed before xarray or pandas writes, so an export cannot follow a link out
-of its declared tree or overwrite a target outside it. Case-insensitive
-comparison is used for validation only; original site spelling is retained in
-emitted paths and CSV indices when unique.
+escaping tree cannot be mistaken for a valid experiment. Every time-series
+column must already have a numeric dtype; numeric-looking strings are rejected
+rather than silently becoming Unicode netCDF variables. `export_generic_dataset`
+preflights every series frame, site/attribute coverage, and pre-existing output
+path before creating or writing either output tree. Case-insensitive comparison
+is used for validation only; original site spelling is retained in emitted paths
+and CSV indices when unique.
 The identifier predicate also rejects generic identity fields (`id`, `site`,
 `basin`, `station`) and common code/key forms such as `site_code`,
-`entity_code`, `grid_id`, `cell_id`, and `field_id`, in both static and dynamic
-features. Static attribute values must be scalar real numeric values (Python
-or NumPy integers/floats); scalar NaN remains the missing-value marker, while
-lists, strings, and other sequences are rejected. Before writing, existing
-`time_series/` and `attributes/` paths must be real directories rather than
-symlinks or files, and existing final output paths must be real files rather
-than symlinks or directories. The root itself is also rejected when it is a
-symlink. These checks happen before xarray/pandas writes, preventing an export
-from escaping its declared root or overwriting an external symlink target.
+`entity_code`, `grid_id`, `cell_id`, `field_id`, `catchment_id`, `gauge_id`, and
+`location_id`, in both static and dynamic features. Static attribute values must
+be scalar real numeric values (Python or NumPy integers/floats); scalar NaN
+remains the missing-value marker, while lists, strings, and other sequences are
+rejected. The declared export root must be a real directory; existing
+`time_series/` and `attributes/` paths must be real directories, and existing
+final output paths must be real files rather than symlinks or directories. These
+checks reject pre-existing symlink paths immediately before the corresponding
+xarray/pandas writes. They define the normal single-process path boundary, not
+a race-safe guarantee against an adversary replacing a path concurrently.
 
 ## Isolation
 

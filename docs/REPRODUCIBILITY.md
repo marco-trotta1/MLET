@@ -47,7 +47,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | 8 | bounded dynamic parameterization in isolated hybrid tier | 421 |
 | 9 | FAO-56 dual-coefficient scaffold with bounded learned seams | 432 |
 | 10 | differentiable torch adapter, optional extra, and AST isolation enforcement | 467 |
-| 11 | neuralhydrology GenericDataset export layout and validation | 546 |
+| 11 | neuralhydrology GenericDataset export layout and validation | 567 |
 
 Task 10 adds 35 passing structural/executable checks locally. The four torch
 tests are optional at the local level: they pass when `mlet[hybrid]` is
@@ -67,14 +67,16 @@ known GenericDataset sentinels (`-999`, `-9999`, and `-99.999`), sorted, unique,
 strictly one-day-spaced dates, safe single-component site ids and filenames,
 shared attribute names, identifier-like attribute names in both static and
 time-series fields, generic identifier names and code/key forms in both static
-and time-series fields, scalar numeric static values, case-insensitive site
-uniqueness, exact site coverage, and rejection of a symlinked export root,
+and time-series fields, numeric-string time-series rejection, scalar numeric
+static values, case-insensitive site uniqueness, exact site coverage, complete
+preflight validation before writing, and rejection of a symlinked export root,
 pre-existing symlinked or non-directory `time_series/` and `attributes/` output
 paths, and symlinked or non-file final `.nc`/`.csv` outputs. These path checks
-run before xarray or pandas writes, so the exporter cannot escape its declared
-root or overwrite an external symlink target. The full canonical gate
-completed with 546 passing tests and one optional PyTorch test skipped because
-the local environment does not install the `hybrid` extra.
+reject pre-existing symlink paths immediately before the corresponding xarray or
+pandas write. They define the normal single-process boundary, not a concurrent
+race-safe filesystem guarantee. The full canonical gate completed with 567
+passing tests; the local verification environment had the optional PyTorch
+extra installed.
 Case-insensitive matching is used only for collision/coverage validation; the
 original spelling is retained in each emitted path or CSV index when unique.
 This is intentional defensive validation: GenericDataset treats a sentinel as an

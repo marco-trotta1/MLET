@@ -43,6 +43,12 @@ IDENTIFIER_FRAGMENTS = (
     "station_index",
     "entity_id",
     "entity_index",
+    "catchment_id",
+    "catchment_index",
+    "gauge_id",
+    "gauge_index",
+    "location_id",
+    "location_index",
     "one_hot",
 )
 
@@ -52,9 +58,15 @@ IDENTIFIER_NAMES = frozenset(
         "basin",
         "site",
         "station",
+        "catchment",
+        "gauge",
+        "location",
         "site_code",
         "basin_code",
         "station_code",
+        "catchment_code",
+        "gauge_code",
+        "location_code",
         "entity_code",
         "grid_id",
         "cell_id",
@@ -89,24 +101,36 @@ def _looks_like_identifier(name: object) -> bool:
     )
 
 
-def _export_root(root: Path) -> Path:
-    """Create an export root only when its existing path is a real directory."""
+def _validate_export_root(root: Path) -> Path:
+    """Validate an export root without creating it."""
     root = Path(root)
     if root.is_symlink():
         raise ValueError("export root must not be a symlink")
     if root.exists() and not root.is_dir():
         raise ValueError("export root must be a directory")
+    return root
+
+
+def _export_root(root: Path) -> Path:
+    """Create an export root only when its existing path is a real directory."""
+    root = _validate_export_root(root)
     root.mkdir(parents=True, exist_ok=True)
     return root
 
 
-def _output_directory(root: Path, name: str) -> Path:
-    """Create an output tree only when its existing path is a real directory."""
-    destination = _export_root(root) / name
+def _validate_output_directory(root: Path, name: str) -> Path:
+    """Validate an output directory without creating it."""
+    destination = _validate_export_root(root) / name
     if destination.is_symlink():
         raise ValueError(f"{name} output directory must not be a symlink")
     if destination.exists() and not destination.is_dir():
         raise ValueError(f"{name} output path must be a directory")
+    return destination
+
+
+def _output_directory(root: Path, name: str) -> Path:
+    """Create an output tree only when its existing path is a real directory."""
+    destination = _validate_output_directory(_export_root(root), name)
     destination.mkdir(parents=True, exist_ok=True)
     return destination
 
@@ -119,6 +143,20 @@ def _output_file(destination: Path, name: str, context: str) -> Path:
     if path.exists() and not path.is_file():
         raise ValueError(f"{context} must be a file")
     return path
+
+
+def _validate_output_tree(
+    root: Path, site_ids: Sequence[str], *, attribute_filename: str
+) -> None:
+    """Validate every pre-existing export path without creating or writing it."""
+    root = _validate_export_root(root)
+    for tree_name, filenames in (
+        ("time_series", [f"{site_id}.nc" for site_id in site_ids]),
+        ("attributes", [attribute_filename]),
+    ):
+        destination = _validate_output_directory(root, tree_name)
+        for filename in filenames:
+            _output_file(destination, filename, f"{tree_name} output file")
 
 
 def _validate_scalar_numeric(value: object, context: str) -> None:
@@ -173,6 +211,42 @@ def _reject_sentinels(values: object, context: str) -> None:
             )
 
 
+def _validate_time_series(site_id: str, frame: pd.DataFrame) -> None:
+    """Validate one complete daily frame before any output directory is made."""
+    site_id = _safe_component(site_id, "site_id")
+    if not isinstance(frame, pd.DataFrame):
+        raise ValueError("time-series data must be a pandas DataFrame")
+    if not isinstance(frame.index, pd.DatetimeIndex):
+        raise ValueError("time-series frame must be indexed by a DatetimeIndex")
+    if frame.index.has_duplicates:
+        raise ValueError(f"site {site_id} has duplicate dates")
+    if not frame.index.is_monotonic_increasing:
+        raise ValueError(f"site {site_id} dates must be sorted ascending")
+    if frame.empty:
+        raise ValueError(f"site {site_id} has no rows")
+    if len(frame.index) > 1 and not np.all(
+        frame.index[1:] - frame.index[:-1] == pd.Timedelta(days=1)
+    ):
+        raise ValueError(f"site {site_id} dates must have one-day spacing")
+
+    for column in frame.columns:
+        if _looks_like_identifier(column):
+            raise ValueError(
+                f"column {column!r} looks like an entity identifier; conditioning "
+                "on identity rather than physical observations invalidates "
+                "withheld-field evaluation"
+            )
+        values = frame[column]
+        if not pd.api.types.is_numeric_dtype(values) or pd.api.types.is_bool_dtype(
+            values
+        ):
+            raise ValueError(
+                f"site {site_id} column {column!r} must have a numeric dtype; "
+                "numeric strings are not accepted"
+            )
+        _reject_sentinels(values.to_numpy(), f"site {site_id} column {column!r}")
+
+
 def _validate_unique_site_ids(site_ids: Sequence[str], context: str) -> None:
     """Reject ids that collide under case-insensitive filesystem semantics."""
     folded = [site_id.casefold() for site_id in site_ids]
@@ -202,29 +276,7 @@ def write_time_series(root: Path, site_id: str, frame: pd.DataFrame) -> Path:
     """Write one site's daily series to ``root/time_series/<site_id>.nc``."""
     site_id = _safe_component(site_id, "site_id")
     root = Path(root)
-    if not isinstance(frame, pd.DataFrame):
-        raise ValueError("time-series data must be a pandas DataFrame")
-    if not isinstance(frame.index, pd.DatetimeIndex):
-        raise ValueError("time-series frame must be indexed by a DatetimeIndex")
-    if frame.index.has_duplicates:
-        raise ValueError(f"site {site_id} has duplicate dates")
-    if not frame.index.is_monotonic_increasing:
-        raise ValueError(f"site {site_id} dates must be sorted ascending")
-    if frame.empty:
-        raise ValueError(f"site {site_id} has no rows")
-    if len(frame.index) > 1 and not np.all(
-        frame.index[1:] - frame.index[:-1] == pd.Timedelta(days=1)
-    ):
-        raise ValueError(f"site {site_id} dates must have one-day spacing")
-
-    for column in frame.columns:
-        if _looks_like_identifier(column):
-            raise ValueError(
-                f"column {column!r} looks like an entity identifier; conditioning "
-                "on identity rather than physical observations invalidates "
-                "withheld-field evaluation"
-            )
-        _reject_sentinels(frame[column].to_numpy(), f"site {site_id} column {column!r}")
+    _validate_time_series(site_id, frame)
 
     destination = _output_directory(root, "time_series")
     path = _output_file(destination, f"{site_id}.nc", "time-series output file")
@@ -264,6 +316,8 @@ def export_generic_dataset(
 
     items = _validate_attributes(attributes)
     series_site_ids = list(series)
+    for site_id in series_site_ids:
+        _safe_component(site_id, "site_id")
     _validate_unique_site_ids(series_site_ids, "series export")
     series_by_folded_id = {site_id.casefold(): site_id for site_id in series_site_ids}
     attribute_by_folded_id = {
@@ -281,6 +335,10 @@ def export_generic_dataset(
     ]
     if extra:
         raise ValueError(f"site coverage must match exactly; attributes have {extra}")
+
+    for site_id in sorted(series):
+        _validate_time_series(site_id, series[site_id])
+    _validate_output_tree(root, sorted(series), attribute_filename="attributes.csv")
 
     for site_id in sorted(series):
         write_time_series(root, site_id, series[site_id])
