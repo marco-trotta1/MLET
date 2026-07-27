@@ -1,11 +1,14 @@
 """Non-scientific deterministic checks for the GenericDataset export layout."""
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 import xarray
 
 from mlet.hybrid.nh_export import (
+    FORBIDDEN_SENTINELS,
     SiteAttributes,
     export_generic_dataset,
     write_attributes,
@@ -38,9 +41,10 @@ def test_missing_values_round_trip_as_nan(tmp_path) -> None:
         assert np.count_nonzero(np.isnan(values)) == 1
 
 
-def test_sentinel_values_are_rejected(tmp_path) -> None:
+@pytest.mark.parametrize("sentinel", FORBIDDEN_SENTINELS)
+def test_sentinel_values_are_rejected(tmp_path, sentinel) -> None:
     frame = _frame()
-    frame.loc[frame.index[1], "measured_et_mm"] = -999.0
+    frame.loc[frame.index[1], "measured_et_mm"] = sentinel
     with pytest.raises(ValueError, match="sentinel"):
         write_time_series(tmp_path, "site-a", frame)
 
@@ -53,6 +57,15 @@ def test_time_series_requires_sorted_unique_dates(tmp_path) -> None:
     frame = _frame()
     frame.index = frame.index.where(frame.index != frame.index[-1], frame.index[-2])
     with pytest.raises(ValueError, match="duplicate"):
+        write_time_series(tmp_path, "site-a", frame)
+
+
+def test_time_series_requires_one_day_spacing(tmp_path) -> None:
+    frame = _frame()
+    frame.index = pd.to_datetime(
+        ["2026-06-01", "2026-06-02", "2026-06-04", "2026-06-05", "2026-06-06"]
+    )
+    with pytest.raises(ValueError, match="one-day spacing"):
         write_time_series(tmp_path, "site-a", frame)
 
 
@@ -82,9 +95,53 @@ def test_attributes_must_share_the_same_keys(tmp_path) -> None:
         )
 
 
-def test_attribute_sentinels_are_rejected(tmp_path) -> None:
+@pytest.mark.parametrize("sentinel", FORBIDDEN_SENTINELS)
+def test_attribute_sentinels_are_rejected(tmp_path, sentinel) -> None:
     with pytest.raises(ValueError, match="sentinel"):
-        write_attributes(tmp_path, [SiteAttributes("site-a", {"taw_mm": -999.0})])
+        write_attributes(tmp_path, [SiteAttributes("site-a", {"taw_mm": sentinel})])
+
+
+@pytest.mark.parametrize(
+    "bad_component",
+    [
+        None,
+        42,
+        Path("site-a"),
+        "",
+        ".",
+        "..",
+        "../escape",
+        r"..\escape",
+        "/tmp/escape",
+        "C:escape",
+    ],
+)
+def test_site_id_components_cannot_escape_export_root(tmp_path, bad_component) -> None:
+    with pytest.raises(ValueError, match="safe path component"):
+        SiteAttributes(bad_component, {"taw_mm": 180.0})
+    with pytest.raises(ValueError, match="safe path component"):
+        write_time_series(tmp_path, bad_component, _frame())
+
+
+@pytest.mark.parametrize(
+    "bad_component",
+    [
+        None,
+        42,
+        Path("attributes.csv"),
+        "",
+        ".",
+        "..",
+        "../escape",
+        r"..\escape",
+        "/tmp/escape",
+        "C:escape",
+    ],
+)
+def test_attribute_filenames_cannot_escape_export_root(tmp_path, bad_component) -> None:
+    attributes = [SiteAttributes("site-a", {"taw_mm": 180.0})]
+    with pytest.raises(ValueError, match="safe path component"):
+        write_attributes(tmp_path, attributes, filename=bad_component)
 
 
 def test_site_identifier_is_never_written_as_an_attribute(tmp_path) -> None:

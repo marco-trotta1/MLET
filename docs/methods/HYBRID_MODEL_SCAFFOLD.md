@@ -118,8 +118,9 @@ identifiers are rejected, because conditioning on site identity rather than
 physical properties invalidates withheld-field evaluation—the evaluation the
 MLET research question rests on. `use_basin_id_encoding` is the upstream
 mechanism to avoid; EA-LSTM, which gates the input on static attributes, is the
-one to prefer. The exporter also requires a sorted, unique daily index, shared
-attribute keys, and exact series/attribute site coverage so an incomplete tree
+one to prefer. The exporter also requires a sorted, unique index with exactly
+one-day spacing, safe single-component site ids and filenames, shared attribute
+keys, and exact series/attribute site coverage so an incomplete or escaping tree
 cannot be mistaken for a valid experiment.
 
 ## Isolation

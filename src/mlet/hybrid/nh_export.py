@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import numpy as np
 import pandas as pd
@@ -47,6 +47,22 @@ IDENTIFIER_FRAGMENTS = (
 )
 
 
+def _safe_component(value: object, context: str) -> str:
+    """Return a filename component that cannot escape its export directory."""
+    if not isinstance(value, str):
+        raise ValueError(f"{context} must be a safe path component string")
+    if value in {"", ".", ".."}:
+        raise ValueError(f"{context} must be a safe path component")
+    if "\x00" in value or "/" in value or "\\" in value:
+        raise ValueError(f"{context} must be a safe path component")
+
+    posix_path = Path(value)
+    windows_path = PureWindowsPath(value)
+    if posix_path.is_absolute() or windows_path.is_absolute() or windows_path.drive:
+        raise ValueError(f"{context} must be a safe path component")
+    return value
+
+
 @dataclass(frozen=True)
 class SiteAttributes:
     """Static physical attributes for one site."""
@@ -55,8 +71,7 @@ class SiteAttributes:
     values: dict[str, float]
 
     def __post_init__(self) -> None:
-        if not self.site_id:
-            raise ValueError("site attributes need a non-empty site_id")
+        _safe_component(self.site_id, "site_id")
         if not isinstance(self.values, Mapping) or not self.values:
             raise ValueError(f"site {self.site_id} has no attributes")
         for name in self.values:
@@ -113,6 +128,7 @@ def _validate_attributes(attributes: Sequence[SiteAttributes]) -> list[SiteAttri
 
 def write_time_series(root: Path, site_id: str, frame: pd.DataFrame) -> Path:
     """Write one site's daily series to ``root/time_series/<site_id>.nc``."""
+    site_id = _safe_component(site_id, "site_id")
     root = Path(root)
     if not isinstance(frame, pd.DataFrame):
         raise ValueError("time-series data must be a pandas DataFrame")
@@ -124,6 +140,10 @@ def write_time_series(root: Path, site_id: str, frame: pd.DataFrame) -> Path:
         raise ValueError(f"site {site_id} dates must be sorted ascending")
     if frame.empty:
         raise ValueError(f"site {site_id} has no rows")
+    if len(frame.index) > 1 and not np.all(
+        frame.index[1:] - frame.index[:-1] == pd.Timedelta(days=1)
+    ):
+        raise ValueError(f"site {site_id} dates must have one-day spacing")
 
     for column in frame.columns:
         _reject_sentinels(frame[column].to_numpy(), f"site {site_id} column {column!r}")
@@ -142,6 +162,7 @@ def write_attributes(
     root: Path, attributes: Sequence[SiteAttributes], *, filename: str = "attributes.csv"
 ) -> Path:
     """Write static attributes to ``root/attributes/<filename>``, indexed by site."""
+    filename = _safe_component(filename, "filename")
     root = Path(root)
     items = _validate_attributes(attributes)
 

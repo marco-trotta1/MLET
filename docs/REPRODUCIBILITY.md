@@ -47,7 +47,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | 8 | bounded dynamic parameterization in isolated hybrid tier | 421 |
 | 9 | FAO-56 dual-coefficient scaffold with bounded learned seams | 432 |
 | 10 | differentiable torch adapter, optional extra, and AST isolation enforcement | 467 |
-| 11 | neuralhydrology GenericDataset export layout and validation | 478 |
+| 11 | neuralhydrology GenericDataset export layout and validation | 503 |
 
 Task 10 adds 35 passing structural/executable checks locally. The four torch
 tests are optional at the local level: they pass when `mlet[hybrid]` is
@@ -63,12 +63,12 @@ attributes to `attributes/attributes.csv` with `site_id` as the CSV index. The
 site id is a row key only; it is never emitted as a model feature.
 
 The focused exporter checks round-trip NaN preservation, rejection of the three
-known GenericDataset sentinels (`-999`, `-9999`, and `-99.999`), sorted and unique
-dates, shared attribute names, identifier-like attribute names, and exact site
-coverage. This is intentional defensive validation: GenericDataset treats a
-sentinel as an observed number rather than a missing value, and either an
-identifier feature or incomplete site coverage would change the meaning of a
-withheld-field evaluation.
+known GenericDataset sentinels (`-999`, `-9999`, and `-99.999`), sorted, unique,
+strictly one-day-spaced dates, safe single-component site ids and filenames,
+shared attribute names, identifier-like attribute names, and exact site coverage.
+This is intentional defensive validation: GenericDataset treats a sentinel as an
+observed number rather than a missing value, and either an identifier feature or
+incomplete site coverage would change the meaning of a withheld-field evaluation.
 
 ## Hybrid scaffold audit trail
 
