@@ -103,6 +103,25 @@ PyTorch is not a core dependency. It is available only through
 importable without it. The CI hybrid leg installs that extra, runs the focused
 tests, and then runs the canonical serving-path gate.
 
+## Exporting to neuralhydrology
+
+`src/mlet/hybrid/nh_export.py` writes MLET series in the `GenericDataset` layout:
+one netCDF per site under `time_series/`, coordinate named `date`, static
+attributes as CSV under `attributes/` indexed by site id, missing values as NaN.
+Any neuralhydrology model can then be run against MLET data without modifying
+the library.
+
+Two refusals are deliberate. Sentinel values (`-999` and similar) are rejected,
+because `GenericDataset` recognises only NaN as missing and would otherwise read
+a sentinel as an observation. Attributes whose names look like entity
+identifiers are rejected, because conditioning on site identity rather than
+physical properties invalidates withheld-field evaluation—the evaluation the
+MLET research question rests on. `use_basin_id_encoding` is the upstream
+mechanism to avoid; EA-LSTM, which gates the input on static attributes, is the
+one to prefer. The exporter also requires a sorted, unique daily index, shared
+attribute keys, and exact series/attribute site coverage so an incomplete tree
+cannot be mistaken for a valid experiment.
+
 ## Isolation
 
 `scripts/verify.sh` greps the serving path for imports of `torch` or
