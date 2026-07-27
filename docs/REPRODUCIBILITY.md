@@ -42,6 +42,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | 3 | hindcast / forecast / static namespaces and provenance validation | 383 |
 | 4 | forecast-overlap disagreement diagnostic and qc-overlap CLI | 392 |
 | 5 | frozen train-only scaler artifact and required prediction-time use | 399 |
+| 6 | probabilistic scoring primitives: pinball loss, interval coverage, width | 408 |
 
 ## Regenerating published artifacts
 
