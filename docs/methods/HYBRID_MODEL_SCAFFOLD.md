@@ -120,8 +120,11 @@ MLET research question rests on. `use_basin_id_encoding` is the upstream
 mechanism to avoid; EA-LSTM, which gates the input on static attributes, is the
 one to prefer. The exporter also requires a sorted, unique index with exactly
 one-day spacing, safe single-component site ids and filenames, shared attribute
-keys, and exact series/attribute site coverage so an incomplete or escaping tree
-cannot be mistaken for a valid experiment.
+keys, no identifier-like time-series columns, case-insensitive site uniqueness,
+and exact series/attribute site coverage so an incomplete, colliding, or
+escaping tree cannot be mistaken for a valid experiment. Case-insensitive
+comparison is used for validation only; original site spelling is retained in
+emitted paths and CSV indices when unique.
 
 ## Isolation
 

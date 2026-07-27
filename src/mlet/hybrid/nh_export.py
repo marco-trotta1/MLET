@@ -107,14 +107,20 @@ def _reject_sentinels(values: object, context: str) -> None:
             )
 
 
+def _validate_unique_site_ids(site_ids: Sequence[str], context: str) -> None:
+    """Reject ids that collide under case-insensitive filesystem semantics."""
+    folded = [site_id.casefold() for site_id in site_ids]
+    if len(folded) != len(set(folded)):
+        raise ValueError(f"{context} requires unique site_id values")
+
+
 def _validate_attributes(attributes: Sequence[SiteAttributes]) -> list[SiteAttributes]:
     items = list(attributes)
     if not items:
         raise ValueError("attribute export requires at least one site")
 
     site_ids = [item.site_id for item in items]
-    if len(site_ids) != len(set(site_ids)):
-        raise ValueError("attribute export requires unique site_id values")
+    _validate_unique_site_ids(site_ids, "attribute export")
 
     key_sets = {frozenset(item.values) for item in items}
     if len(key_sets) != 1:
@@ -146,6 +152,14 @@ def write_time_series(root: Path, site_id: str, frame: pd.DataFrame) -> Path:
         raise ValueError(f"site {site_id} dates must have one-day spacing")
 
     for column in frame.columns:
+        if isinstance(column, str) and any(
+            fragment in column.lower() for fragment in IDENTIFIER_FRAGMENTS
+        ):
+            raise ValueError(
+                f"column {column!r} looks like an entity identifier; conditioning "
+                "on identity rather than physical observations invalidates "
+                "withheld-field evaluation"
+            )
         _reject_sentinels(frame[column].to_numpy(), f"site {site_id} column {column!r}")
 
     destination = root / "time_series"
@@ -187,12 +201,22 @@ def export_generic_dataset(
         raise ValueError("export requires at least one site series")
 
     items = _validate_attributes(attributes)
-    series_sites = set(series)
-    attribute_sites = {item.site_id for item in items}
-    missing = sorted(series_sites - attribute_sites)
+    series_site_ids = list(series)
+    _validate_unique_site_ids(series_site_ids, "series export")
+    series_by_folded_id = {site_id.casefold(): site_id for site_id in series_site_ids}
+    attribute_by_folded_id = {
+        item.site_id.casefold(): item.site_id for item in items
+    }
+    missing = [
+        series_by_folded_id[key]
+        for key in sorted(set(series_by_folded_id) - set(attribute_by_folded_id))
+    ]
     if missing:
         raise ValueError(f"every site needs attributes; missing for {missing}")
-    extra = sorted(attribute_sites - series_sites)
+    extra = [
+        attribute_by_folded_id[key]
+        for key in sorted(set(attribute_by_folded_id) - set(series_by_folded_id))
+    ]
     if extra:
         raise ValueError(f"site coverage must match exactly; attributes have {extra}")
 

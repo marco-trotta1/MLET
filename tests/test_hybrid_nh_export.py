@@ -84,6 +84,17 @@ def test_attributes_are_indexed_by_site_id(tmp_path) -> None:
     assert frame.loc["site-b", "taw_mm"] == pytest.approx(210.0)
 
 
+def test_attributes_reject_case_insensitive_site_collisions(tmp_path) -> None:
+    with pytest.raises(ValueError, match="unique site_id"):
+        write_attributes(
+            tmp_path,
+            [
+                SiteAttributes("site-a", {"taw_mm": 180.0}),
+                SiteAttributes("SITE-A", {"taw_mm": 180.0}),
+            ],
+        )
+
+
 def test_attributes_must_share_the_same_keys(tmp_path) -> None:
     with pytest.raises(ValueError, match="same attribute names"):
         write_attributes(
@@ -150,6 +161,12 @@ def test_site_identifier_is_never_written_as_an_attribute(tmp_path) -> None:
         write_attributes(tmp_path, [SiteAttributes("site-a", {"site_index": 3.0})])
 
 
+def test_time_series_identifier_columns_are_never_written_as_features(tmp_path) -> None:
+    frame = _frame().assign(site_index=np.arange(5, dtype=float))
+    with pytest.raises(ValueError, match="identifier"):
+        write_time_series(tmp_path, "site-a", frame)
+
+
 def test_export_writes_both_trees_and_every_site(tmp_path) -> None:
     root = export_generic_dataset(
         tmp_path,
@@ -162,6 +179,26 @@ def test_export_writes_both_trees_and_every_site(tmp_path) -> None:
     assert (root / "time_series" / "site-a.nc").is_file()
     assert (root / "time_series" / "site-b.nc").is_file()
     assert (root / "attributes" / "attributes.csv").is_file()
+
+
+def test_export_matches_site_ids_case_insensitively_but_preserves_spelling(tmp_path) -> None:
+    root = export_generic_dataset(
+        tmp_path,
+        {"site-a": _frame()},
+        [SiteAttributes("SITE-A", {"taw_mm": 180.0})],
+    )
+    assert (root / "time_series" / "site-a.nc").is_file()
+    attributes = pd.read_csv(root / "attributes" / "attributes.csv", index_col=0)
+    assert list(attributes.index) == ["SITE-A"]
+
+
+def test_export_rejects_case_insensitive_series_collisions(tmp_path) -> None:
+    with pytest.raises(ValueError, match="unique site_id"):
+        export_generic_dataset(
+            tmp_path,
+            {"site-a": _frame(), "SITE-A": _frame()},
+            [SiteAttributes("site-a", {"taw_mm": 180.0})],
+        )
 
 
 def test_export_rejects_a_site_without_attributes(tmp_path) -> None:
