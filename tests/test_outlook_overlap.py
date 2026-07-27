@@ -6,6 +6,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 from mlet.outlook.contracts import WeatherMember
+from mlet.outlook.dates import idaho_local_day_end_utc
 from mlet.outlook.overlap import (
     OVERLAP_MAD_MAX_MM,
     OVERLAP_MAD_MIN_MM,
@@ -77,6 +78,12 @@ def test_overlap_must_end_before_issue_time() -> None:
     )
     with pytest.raises(ValueError, match="before issue_time"):
         evaluate_overlap(after_issue)
+
+
+def test_overlap_day_end_equal_to_issue_time_is_rejected() -> None:
+    window = replace(_window(forecast_tmax=34.5), issue_time=idaho_local_day_end_utc(date(2026, 7, 14)))
+    with pytest.raises(ValueError, match="before issue_time"):
+        evaluate_overlap(window)
 
 
 def test_mismatched_dates_are_rejected() -> None:

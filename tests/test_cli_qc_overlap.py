@@ -50,3 +50,16 @@ def test_qc_overlap_exits_one_on_identical_drivers(tmp_path, capsys) -> None:
 
     assert exit_code == 1
     assert "verdict               : suspiciously_identical" in capsys.readouterr().out
+
+
+def test_qc_overlap_returns_2_for_missing_required_key(tmp_path, capsys) -> None:
+    path = tmp_path / "missing_key.json"
+    payload = _window(34.5)
+    del payload["observed"][0]["grid_id"]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    exit_code = main(["qc-overlap", "--window-json", str(path)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "error:" in captured.err

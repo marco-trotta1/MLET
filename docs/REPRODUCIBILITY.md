@@ -37,7 +37,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | 1 | independent FAO-56 radiation reference | 366 |
 | 2 | Priestley-Taylor PET and three-way ETo cross-check | 376 |
 | 3 | hindcast / forecast / static namespaces and provenance validation | 383 |
-| 4 | forecast-overlap disagreement diagnostic and qc-overlap CLI | 390 |
+| 4 | forecast-overlap disagreement diagnostic and qc-overlap CLI | 392 |
 
 ## Regenerating published artifacts
 

@@ -221,7 +221,7 @@ def _run_qc_overlap(window_json: str) -> int:
             forecast=tuple(_member(row) for row in payload["forecast"]),
         )
         diagnostic = evaluate_overlap(window)
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
         print(f"error: cannot run qc-overlap: {exc}", file=sys.stderr)
         return 2
     print(f"overlap days            : {diagnostic.n_days}")

@@ -86,7 +86,7 @@ def evaluate_overlap(window: OverlapWindow) -> OverlapDiagnostic:
         raise ValueError("overlap window must not repeat a valid date")
 
     for day in observed_days:
-        if idaho_local_day_end_utc(day) > window.issue_time:
+        if idaho_local_day_end_utc(day) >= window.issue_time:
             raise ValueError("every overlap day must end before issue_time")
 
     differences = _daily_eto(window.forecast) - _daily_eto(window.observed)

@@ -49,7 +49,8 @@ Verdicts are exactly:
 - prints the overlap summary and verdict
 - exits `0` only for `consistent`
 - exits `1` for the two non-consistent verdicts
-- exits `2` on malformed input / file / validation errors, matching the existing QC-command pattern
+- exits `2` on malformed input / file / validation errors, including wrong JSON
+  structure and missing required fields, matching the existing QC-command pattern
 
 ## Validation note
 
@@ -68,6 +69,10 @@ the fixtures are corrected instead. The non-scientific overlap fixtures now use
 day ends, while the after-issue rejection case still uses July 16 to prove that
 post-issue overlap days fail with the required `before issue_time` message.
 
+The completed-day boundary is now strict: equality is rejected as well as later
+issue times, because the requirement is that every overlap day ends strictly
+before `issue_time`.
+
 ## Focused verification
 
 - Red step:
@@ -77,10 +82,12 @@ post-issue overlap days fail with the required `before issue_time` message.
   - `python3 -m pytest tests/test_outlook_overlap.py -q`
   - result after implementation: `5 passed in 15.85s`
   - result after plan-fixture correction: `5 passed in 14.69s`
+  - result after review fixes: `6 passed in 14.74s`
 - CLI step:
   - `python3 -m pytest tests/test_cli_qc_overlap.py -q`
   - result after implementation: `2 passed in 17.09s`
   - result after plan-fixture correction: `2 passed in 16.01s`
+  - result after review fixes: `3 passed in 16.19s`
 
 ## Full gate
 
@@ -93,6 +100,27 @@ post-issue overlap days fail with the required `before issue_time` message.
   - `== VERIFY PASSED ==`
   - wall time on final rerun: `25.39s`
 
+## Review-fix verification
+
+- Focused overlap command:
+  - `python3 -m pytest tests/test_outlook_overlap.py -q`
+  - exact output: `6 passed in 14.74s`
+- Focused CLI command:
+  - `python3 -m pytest tests/test_cli_qc_overlap.py -q`
+  - exact output: `3 passed in 16.19s`
+- Full gate command:
+  - `PYTHONPATH=src:vendor/pyfao56/src ./scripts/verify.sh`
+- Full gate exact result:
+  - `392 passed, 1 warning in 25.67s`
+  - `== serving-path isolation ==`
+  - `ok`
+  - `== VERIFY PASSED ==`
+
+## Commit
+
+- Task 4 commit SHA: `2375155`
+- Commit subject: `feat: add forecast-overlap disagreement diagnostic`
+
 ## Here’s what I changed, here’s how I verified it
 
 I added the forecast-overlap disagreement diagnostic, exposed it through the
@@ -104,4 +132,5 @@ I verified it by:
 - confirming the new tests failed before implementation
 - running the new overlap unit tests to `5 passed`
 - running the new CLI tests to `2 passed`
-- planning a full `./scripts/verify.sh` gate before commit
+- running `PYTHONPATH=src:vendor/pyfao56/src ./scripts/verify.sh` to `390 passed, 1 warning`, with serving-path isolation `ok`
+- recording the committed Task 4 SHA `2375155`
