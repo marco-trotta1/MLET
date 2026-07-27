@@ -37,9 +37,9 @@ class ParameterRange:
                 f"parameter {self.name}: low must be strictly below high, "
                 f"got low={self.low} high={self.high}"
             )
-        if not self.units:
+        if not self.units.strip():
             raise ValueError(f"parameter {self.name} needs declared units")
-        if not self.citation:
+        if not self.citation.strip():
             raise ValueError(
                 f"parameter {self.name} needs a citation; an uncited bound is an "
                 "undocumented modelling assumption"
@@ -102,12 +102,14 @@ def bounded_parameter(raw, parameter_range: ParameterRange) -> np.ndarray:
 def bounded_parameters(raw, ranges: Sequence[ParameterRange]) -> dict[str, np.ndarray]:
     """Map an ``(n_steps, n_parameters)`` array to named bounded parameters."""
     raw = np.asarray(raw, dtype=float)
+    ranges = tuple(ranges)
     if raw.ndim != 2:
         raise ValueError("bounded_parameters expects a 2-D (n_steps, n_parameters) array")
     if raw.shape[1] != len(ranges):
         raise ValueError("bounded_parameters needs one column per parameter range")
-    return {
-        parameter_range.name: bounded_parameter(raw[:, index], parameter_range)
-        for index, parameter_range in enumerate(ranges)
-    }
-
+    result: dict[str, np.ndarray] = {}
+    for index, parameter_range in enumerate(ranges):
+        if parameter_range.name in result:
+            raise ValueError(f"duplicate parameter range name: {parameter_range.name}")
+        result[parameter_range.name] = bounded_parameter(raw[:, index], parameter_range)
+    return result

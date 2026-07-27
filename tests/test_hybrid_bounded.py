@@ -69,6 +69,19 @@ def test_degenerate_and_inverted_ranges_are_rejected() -> None:
         ParameterRange(name="bad", low=2.0, high=1.0, units="-", citation="test")
 
 
+def test_whitespace_only_units_or_citation_are_rejected() -> None:
+    with pytest.raises(ValueError, match="needs declared units"):
+        ParameterRange(name="bad", low=0.0, high=1.0, units="   ", citation="test")
+    with pytest.raises(ValueError, match="needs a citation"):
+        ParameterRange(name="bad", low=0.0, high=1.0, units="mm/day", citation="  ")
+
+
+def test_duplicate_parameter_range_names_are_rejected() -> None:
+    duplicate = ParameterRange(name="ks", low=0.0, high=1.0, units="-", citation="test")
+    with pytest.raises(ValueError, match="duplicate parameter range name: ks"):
+        bounded_parameters(np.zeros((3, 2)), (RANGE, duplicate))
+
+
 def test_every_shipped_range_cites_its_source() -> None:
     """A bound without a citation is an undocumented modelling assumption."""
     for parameter_range in (FAO56_STRESS_RANGE, FAO56_DEEP_PERCOLATION_RANGE):
