@@ -94,11 +94,11 @@ before `issue_time`.
 - Verification command:
   - `PYTHONPATH=src:vendor/pyfao56/src ./scripts/verify.sh`
 - Result:
-  - `390 passed, 1 warning`
+  - `392 passed, 1 warning`
   - `== serving-path isolation ==`
   - `ok`
   - `== VERIFY PASSED ==`
-  - wall time on final rerun: `25.39s`
+  - wall time on final rerun: `25.67s`
 
 ## Review-fix verification
 
@@ -118,8 +118,8 @@ before `issue_time`.
 
 ## Commit
 
-- Task 4 commit SHA: `2375155`
-- Commit subject: `feat: add forecast-overlap disagreement diagnostic`
+- Task 4 fix commit SHA: `c2c0626`
+- Commit subject: `Tighten overlap boundary and harden qc-overlap errors`
 
 ## Here’s what I changed, here’s how I verified it
 
@@ -132,5 +132,5 @@ I verified it by:
 - confirming the new tests failed before implementation
 - running the new overlap unit tests to `5 passed`
 - running the new CLI tests to `2 passed`
-- running `PYTHONPATH=src:vendor/pyfao56/src ./scripts/verify.sh` to `390 passed, 1 warning`, with serving-path isolation `ok`
-- recording the committed Task 4 SHA `2375155`
+- running `PYTHONPATH=src:vendor/pyfao56/src ./scripts/verify.sh` to `392 passed, 1 warning`, with serving-path isolation `ok`
+- recording the Task 4 fix commit SHA `c2c0626`
