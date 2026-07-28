@@ -48,6 +48,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | 9 | FAO-56 dual-coefficient scaffold with bounded learned seams | 432 |
 | 10 | differentiable torch adapter, optional extra, and AST isolation enforcement | 467 |
 | 11 | neuralhydrology GenericDataset export layout and validation | 567 |
+| 12 | external reference-source registry for Caravan, Caravan MultiMet, and neuralhydrology | 572 |
 
 Task 10 adds 35 passing structural/executable checks locally. The four torch
 tests are optional at the local level: they pass when `mlet[hybrid]` is
@@ -82,6 +83,25 @@ original spelling is retained in each emitted path or CSV index when unique.
 This is intentional defensive validation: GenericDataset treats a sentinel as an
 observed number rather than a missing value, and either an identifier feature or
 incomplete site coverage would change the meaning of a withheld-field evaluation.
+
+## External reference-source registry audit trail
+
+Task 12 adds the documentation-only registry
+`data/reference/external_sources.json`, following the existing
+`data/outlook/source_registry.json` schema. It records Caravan v1.5 as a
+reviewed external benchmark, including the warning not to use the unreliable
+ERA5-Land native `potential_evaporation` band; Caravan's FAO
+Penman-Monteith PET variable is the recorded replacement. It records Caravan
+MultiMet as the convention for pairing observed forcings with multiple
+nowcasts/forecasts at a fixed issue time, and neuralhydrology 1.13.0 as the
+software provenance source for the ported implementations and adopted patterns.
+
+None of these sources is ingested. Caravan and Caravan MultiMet are basin- and
+streamflow-keyed rather than grid-cell/station ET-keyed, while neuralhydrology
+is a software library. The focused registry suite has 5 passing structural
+checks; the canonical gate after Task 12 has 572 passing tests, one existing
+NumPy warning, and a passing serving-path isolation check. No network or
+download behavior was added.
 
 ## Hybrid scaffold audit trail
 

@@ -109,3 +109,12 @@ No pandas or scikit-learn model is used in the evaluation pipeline.
 Please attribute the OpenET and flux datasets to Volk et al. under CC-BY-4.0,
 and cite Abatzoglou (2013) for gridMET. Raw and interim files are reproducible
 but intentionally gitignored.
+
+## External reference sources
+
+Sources reviewed but not ingested are recorded in
+`data/reference/external_sources.json`, with rationale in
+[external reference data](EXTERNAL_REFERENCE_DATA.md). The one operationally
+relevant item: if ERA5-Land meteorology is ever used as a fallback, its native
+`potential_evaporation` band must not be used — Caravan v1.5 replaced it with an
+FAO Penman-Monteith variable for that reason.
