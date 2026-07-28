@@ -6,7 +6,10 @@ the commands on this page. Nothing here requires private data.
 ## Environment
 
 - Python: `>=3.9` (declared in `pyproject.toml`; CI verifies 3.9 and 3.12)
-- Install: `python -m pip install -e .`
+- Install for verification: `python -m pip install -e ".[test]"`
+- Runtime-only install: `python -m pip install -e .`
+- The optional `test` extra supplies the `pytest` runner used by
+  `scripts/verify.sh`; the hybrid CI job installs `.[hybrid,test]`.
 - Vendored FAO-56 implementation: `pyfao56` 1.4.3, upstream commit
   `1d242ee985be0edbc4946f06e7e94a487d4bc0c9`, provenance in
   `vendor/pyfao56/UPSTREAM.md`
@@ -23,10 +26,17 @@ the commands on this page. Nothing here requires private data.
 This runs the full test suite and the serving-path isolation check. It is the
 only gate that matters; CI runs exactly this.
 
-Running `pytest` directly also works because `pyproject.toml` puts both `src`
-and `vendor/pyfao56/src` on `pythonpath`. Before 2026-07-27 it did not, and a
-fresh clone failed to collect 7 test modules — if you are reading an older
-revision, that is why.
+Running `pytest` directly also works after installing the `test` extra because
+`pyproject.toml` puts both `src` and `vendor/pyfao56/src` on `pythonpath`.
+Before 2026-07-27 it did not, and a fresh clone failed to collect 7 test
+modules — if you are reading an older revision, that is why.
+
+GitHub-hosted runners attach ACL metadata to the checkout and temporary
+directories. CI provisions `/mlet-pytest` as an ACL-free parent and uses its
+`run` child as pytest's removable base temporary directory, so the output-root
+trust checks remain enabled. `TMPDIR` points to the same trusted parent so CLI
+tests and pytest agree on the permitted local temporary directory. Site-builder
+tests also pass that trusted directory through the explicit scratch option.
 
 ## Test-count ledger
 

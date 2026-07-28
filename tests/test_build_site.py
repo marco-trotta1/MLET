@@ -15,7 +15,7 @@ import build_site
 def test_build_site_assembles_landing_viewer_and_checksummed_manifest(
     tmp_path: Path,
 ) -> None:
-    destination = build_site.build_site(tmp_path / "_site")
+    destination = build_site.build_site(tmp_path / "_site", scratch_dir=tmp_path)
 
     assert (destination / "index.html").is_file()
     assert (destination / ".nojekyll").is_file()
@@ -40,7 +40,12 @@ def test_build_site_assembles_landing_viewer_and_checksummed_manifest(
 
 
 def test_build_site_cli_reports_destination(tmp_path: Path, capsys) -> None:
-    assert build_site.main(["--out", str(tmp_path / "_site")]) == 0
+    assert (
+        build_site.main(
+            ["--out", str(tmp_path / "_site"), "--scratch", str(tmp_path)]
+        )
+        == 0
+    )
     assert "site: " in capsys.readouterr().out
 
 
