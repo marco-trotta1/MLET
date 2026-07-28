@@ -36,8 +36,8 @@ def test_upstream_version_and_commit_are_recorded(text: str) -> None:
 @pytest.mark.parametrize("module,upstream", sorted(DERIVED_MODULES.items()))
 def test_every_derived_module_is_documented(module: str, upstream: str, text: str) -> None:
     assert Path(module).is_file(), f"{module} is listed as derived but does not exist"
-    assert module in text, f"{module} is not named in the provenance document"
-    assert upstream in text, f"upstream {upstream} is not named in the provenance document"
+    row = f"| `{module}` | `{upstream}` |"
+    assert row in text, f"provenance table row is missing or mismatched: {row}"
 
 
 def test_both_upstream_defects_are_recorded(text: str) -> None:
