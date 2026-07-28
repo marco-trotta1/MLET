@@ -159,7 +159,15 @@ Present contents:
   [generated Phase 2 results](docs/results/phase2_openet_value.md);
 - the [Idaho outlook product contract](docs/outlook/PRODUCT_CONTRACT.md),
   [outlook preregistration](docs/evaluation/OUTLOOK_PREREGISTRATION.md), and
-  [operational source registry](data/outlook/source_registry.json).
+  [operational source registry](data/outlook/source_registry.json);
+- independent FAO-56 radiation and Priestley-Taylor reference implementations
+  with the three-way cross-check;
+- hindcast/forecast/static feature namespaces with provenance validation;
+- the forecast-overlap consistency diagnostic;
+- frozen train-only normalisation as a hashed JSON artifact;
+- probabilistic scoring (mean pinball loss, interval coverage, interval width);
+- the non-serving hybrid FAO-56 scaffold, validated against vendored pyfao56;
+- the neuralhydrology GenericDataset exporter.
 
 Phase 2 finds that, on the 85-station weather-complete public subset, the
 OpenET-inclusive model reduced field-withheld daily-ET MAE by 43.4% relative to
@@ -246,6 +254,24 @@ The two ASCE paths must agree exactly; Priestley-Taylor is a different equation
 and is checked against a documented ratio band instead. Building this check
 found two defects in the upstream neuralhydrology implementation, both recorded
 in `src/mlet/reference/UPSTREAM.md`.
+
+## Relationship to neuralhydrology
+
+MLET adopts four design patterns from
+[neuralhydrology](https://github.com/neuralhydrology/neuralhydrology) 1.13.0
+(BSD-3-Clause) and ports its FAO-56 radiation equations as an independent
+cross-check on the vendored `pyfao56` reference-ET path. It is not a fork and
+does not depend on it at runtime.
+
+Building the cross-check found two defects in the upstream PET utilities: a
+double energy-to-depth conversion understating Priestley-Taylor PET by 2.451x,
+and an FAO-56 Eq. 37 elevation coefficient ten times the published value.
+Both are documented with regression tests in
+[neuralhydrology provenance](docs/methods/NEURALHYDROLOGY_PROVENANCE.md).
+
+The non-serving hybrid scaffold is described in
+[hybrid model scaffold](docs/methods/HYBRID_MODEL_SCAFFOLD.md). It trains
+nothing and no published result depends on it.
 
 ## Development Notes
 

@@ -49,6 +49,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | 10 | differentiable torch adapter, optional extra, and AST isolation enforcement | 467 |
 | 11 | neuralhydrology GenericDataset export layout and validation | 567 |
 | 12 | external reference-source registry for Caravan, Caravan MultiMet, and neuralhydrology | 573 |
+| 13 | complete neuralhydrology provenance documentation and corrected-defect record | 585 |
 
 Task 10 adds 35 passing structural/executable checks locally. The four torch
 tests are optional at the local level: they pass when `mlet[hybrid]` is
@@ -103,6 +104,13 @@ checks, including the exact three-source set and the pinned neuralhydrology
 1.13.0 review commit. The canonical gate after Task 12 has 573 passing tests,
 one existing NumPy warning, and a passing serving-path isolation check. No
 network or download behavior was added.
+
+## Provenance
+
+- Borrowed code and patterns: [neuralhydrology provenance](methods/NEURALHYDROLOGY_PROVENANCE.md)
+- Vendored FAO-56 implementation: `vendor/pyfao56/UPSTREAM.md`
+- Ported reference implementations and licence notice: `src/mlet/reference/UPSTREAM.md`
+- External sources reviewed but not ingested: `data/reference/external_sources.json`
 
 ## Hybrid scaffold audit trail
 
