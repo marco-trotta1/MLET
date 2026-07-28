@@ -48,7 +48,7 @@ not raise the count has added no executable evidence, which is a review finding.
 | 9 | FAO-56 dual-coefficient scaffold with bounded learned seams | 432 |
 | 10 | differentiable torch adapter, optional extra, and AST isolation enforcement | 467 |
 | 11 | neuralhydrology GenericDataset export layout and validation | 567 |
-| 12 | external reference-source registry for Caravan, Caravan MultiMet, and neuralhydrology | 572 |
+| 12 | external reference-source registry for Caravan, Caravan MultiMet, and neuralhydrology | 573 |
 
 Task 10 adds 35 passing structural/executable checks locally. The four torch
 tests are optional at the local level: they pass when `mlet[hybrid]` is
@@ -98,10 +98,11 @@ software provenance source for the ported implementations and adopted patterns.
 
 None of these sources is ingested. Caravan and Caravan MultiMet are basin- and
 streamflow-keyed rather than grid-cell/station ET-keyed, while neuralhydrology
-is a software library. The focused registry suite has 5 passing structural
-checks; the canonical gate after Task 12 has 572 passing tests, one existing
-NumPy warning, and a passing serving-path isolation check. No network or
-download behavior was added.
+is a software library. The focused registry suite has 6 passing structural
+checks, including the exact three-source set and the pinned neuralhydrology
+1.13.0 review commit. The canonical gate after Task 12 has 573 passing tests,
+one existing NumPy warning, and a passing serving-path isolation check. No
+network or download behavior was added.
 
 ## Hybrid scaffold audit trail
 

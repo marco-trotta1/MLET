@@ -7,6 +7,7 @@ import pytest
 
 REGISTRY = Path("data/reference/external_sources.json")
 REQUIRED_KEYS = {"citation", "doi", "license", "intended_use", "not_ingested_because"}
+EXPECTED_SOURCES = {"caravan", "caravan_multimet", "neuralhydrology"}
 
 
 @pytest.fixture(scope="module")
@@ -19,6 +20,17 @@ def test_registry_matches_the_existing_source_registry_shape(registry: dict) -> 
     assert registry["schema_version"] == outlook["schema_version"]
     assert isinstance(registry["sources"], dict)
     assert registry["sources"]
+
+
+def test_registry_has_the_planned_sources_and_pins_neuralhydrology(registry: dict) -> None:
+    """Keep the documentation registry tied to the plan's reviewed sources."""
+    assert set(registry["sources"]) == EXPECTED_SOURCES
+
+    neuralhydrology = registry["sources"]["neuralhydrology"]
+    assert neuralhydrology["version_reviewed"] == "1.13.0"
+    assert neuralhydrology["commit_reviewed"] == (
+        "d6d7aa5cc6d9e42308009139ccccf37be006445f"
+    )
 
 
 def test_every_source_declares_provenance_and_intent(registry: dict) -> None:
