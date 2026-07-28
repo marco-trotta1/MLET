@@ -10,7 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      PYTEST_ADDOPTS: --basetemp=/mlet-pytest
+      PYTEST_ADDOPTS: --basetemp=/mlet-pytest/run
     strategy:
       fail-fast: false
       matrix:
@@ -30,7 +30,7 @@ jobs:
   test-hybrid:
     runs-on: ubuntu-latest
     env:
-      PYTEST_ADDOPTS: --basetemp=/mlet-pytest
+      PYTEST_ADDOPTS: --basetemp=/mlet-pytest/run
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
