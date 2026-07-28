@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTEST_ADDOPTS: --basetemp=/mlet-pytest/run
+      TMPDIR: /mlet-pytest
     strategy:
       fail-fast: false
       matrix:
@@ -20,10 +21,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install package
-        run: python -m pip install -e ".[test]"
       - name: Provision trusted pytest scratch root
         run: sudo install -d -m 0755 -o "$(id -u)" -g "$(id -g)" /mlet-pytest
+      - name: Install package
+        run: python -m pip install -e ".[test]"
       - name: Verify
         run: ./scripts/verify.sh
 
@@ -31,15 +32,16 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTEST_ADDOPTS: --basetemp=/mlet-pytest/run
+      TMPDIR: /mlet-pytest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install package with the hybrid extra
-        run: python -m pip install -e ".[hybrid,test]"
       - name: Provision trusted pytest scratch root
         run: sudo install -d -m 0755 -o "$(id -u)" -g "$(id -g)" /mlet-pytest
+      - name: Install package with the hybrid extra
+        run: python -m pip install -e ".[hybrid,test]"
       - name: Run the hybrid tests
         run: |
           python -m pytest tests/test_hybrid_bounded.py \

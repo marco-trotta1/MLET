@@ -34,8 +34,9 @@ modules — if you are reading an older revision, that is why.
 GitHub-hosted runners attach ACL metadata to the checkout and temporary
 directories. CI provisions `/mlet-pytest` as an ACL-free parent and uses its
 `run` child as pytest's removable base temporary directory, so the output-root
-trust checks remain enabled. Site-builder tests also pass that trusted temporary
-directory through the explicit scratch option.
+trust checks remain enabled. `TMPDIR` points to the same trusted parent so CLI
+tests and pytest agree on the permitted local temporary directory. Site-builder
+tests also pass that trusted directory through the explicit scratch option.
 
 ## Test-count ledger
 
