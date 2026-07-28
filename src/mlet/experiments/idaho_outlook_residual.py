@@ -20,14 +20,21 @@ from urllib.parse import urlparse
 import numpy as np
 import sklearn
 
+from mlet.evaluate import interval_coverage, mean_interval_width, mean_pinball_loss
 from mlet.outlook.residual_model import (
     FEATURES,
     MODEL_HYPERPARAMETERS,
     MODEL_RANDOM_SEED,
+    QUANTILES,
     ResidualCase,
     ResidualModel,
     fit_residual_model,
     predict_interval,
+)
+from mlet.outlook.scaler_artifact import (
+    ScalerArtifact,
+    artifact_sha256,
+    scaler_artifact_from_model,
 )
 from mlet.outlook.hindcast import evaluate_hindcast_evidence
 
@@ -95,6 +102,8 @@ class ResidualMetric:
     residual_mae_mm: float | None
     coverage_p10_p90: float | None
     interval_width_mm: float | None
+    physical_pinball_mm: float | None
+    residual_pinball_mm: float | None
 
 
 @dataclass(frozen=True)
@@ -167,12 +176,12 @@ def write_residual_markdown(report: ResidualReport, destination: Path) -> Path:
         "",
         "## Held-out metrics",
         "",
-        "| group | key | n | physical p50 MAE (mm/day) | residual p50 MAE (mm/day) | p10-p90 coverage | mean interval width (mm/day) |",
-        "|---|---|---:|---:|---:|---:|---:|",
+        "| group | key | n | physical p50 MAE (mm/day) | residual p50 MAE (mm/day) | p10-p90 coverage | mean interval width (mm/day) | physical pinball (mm/day) | residual pinball (mm/day) |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
     ])
     for metric in report.metrics:
         lines.append(
-            "| {group} | {key} | {n} | {physical} | {residual} | {coverage} | {width} |".format(
+            "| {group} | {key} | {n} | {physical} | {residual} | {coverage} | {width} | {physical_pinball} | {residual_pinball} |".format(
                 group=metric.group,
                 key=metric.key,
                 n=metric.sample_count,
@@ -180,9 +189,17 @@ def write_residual_markdown(report: ResidualReport, destination: Path) -> Path:
                 residual=_number(metric.residual_mae_mm),
                 coverage=_number(metric.coverage_p10_p90),
                 width=_number(metric.interval_width_mm),
+                physical_pinball=_number(metric.physical_pinball_mm),
+                residual_pinball=_number(metric.residual_pinball_mm),
             )
         )
     lines.extend([
+        "",
+        "Pinball is the mean pinball loss over the p10/p50/p90 levels: a proper",
+        "scoring rule and a discrete approximation to CRPS, not CRPS itself. The",
+        "physical arm is scored with a degenerate interval (all three quantiles",
+        "equal to its point forecast) so the comparison does not credit the",
+        "residual arm merely for having an interval.",
         "",
         "The learned residual is evaluated beside, never substituted for, the physical ETo/ETc baseline. Fixtures are software checks only, not scientific evidence.",
         "",
@@ -263,8 +280,14 @@ def _evaluate(path: Path) -> tuple[ResidualReport, str]:
     calibration_details: dict[str, object] = {}
     if not blockers or blockers == [_FIXTURE_BLOCKER]:
         model = fit_residual_model(train, cutoff=split.train_cutoff)
+        scaler = scaler_artifact_from_model(
+            model,
+            n_training_cases=len(train),
+            training_cutoff=split.train_cutoff,
+        )
         calibration_widths = _calibration_interval_inflation(
             model,
+            scaler,
             calibration,
             cutoff=split.calibration_cutoff,
         )
@@ -282,7 +305,7 @@ def _evaluate(path: Path) -> tuple[ResidualReport, str]:
                 for lead in range(1, 21)
             },
         }
-        metrics = _score(model, test, calibration_widths, split)
+        metrics = _score(model, scaler, test, calibration_widths, split)
     # Even an unfittable archive must name every preregistered unsupported
     # stratum instead of hiding it behind an aggregate failure message.
     blockers.extend(_metric_blockers(metrics, calibration, test, split))
@@ -298,6 +321,9 @@ def _evaluate(path: Path) -> tuple[ResidualReport, str]:
             "hyperparameters": MODEL_HYPERPARAMETERS,
             "random_seed": MODEL_RANDOM_SEED,
             "features": list(FEATURES),
+            "scaler_artifact_sha256": (
+                artifact_sha256(scaler) if calibration_details else None
+            ),
             "python": platform.python_version(),
             "numpy": np.__version__,
             "scikit_learn": sklearn.__version__,
@@ -437,19 +463,23 @@ def _parse_case(value: object) -> ResidualCase:
         raise ValueError("residual case must be an object")
     expected = {
         "case_id", "role", "layer", "target_kind", "issue_time", "valid_date",
-        "spatial_block", "season", "feature_available_at", "features",
+        "spatial_block", "season", "feature_available_at", "feature_provenance", "features",
         "physical_p50", "target_mm", "target_available_at",
     }
     extensions = {"hindcast_case_sha256", "feature_receipts", "target_receipt"}
     if set(value) != expected and set(value) != expected | extensions:
         raise ValueError("residual case fields must match the schema exactly")
     availability = value["feature_available_at"]
+    provenance = value["feature_provenance"]
     features = value["features"]
     if not isinstance(availability, dict) or set(availability) != set(FEATURES):
         raise ValueError("feature_available_at must contain exactly FEATURES")
+    if not isinstance(provenance, dict) or set(provenance) != set(FEATURES):
+        raise ValueError("feature_provenance must contain exactly FEATURES")
     if not isinstance(features, dict) or set(features) != set(FEATURES):
         raise ValueError("features must contain exactly FEATURES")
     ordered_availability = tuple((name, _parse_timestamp(availability[name], f"feature {name} available_at")) for name in FEATURES)
+    ordered_provenance = tuple((name, cast(str, provenance[name])) for name in FEATURES)
     try:
         ordered_features = tuple(float(features[name]) for name in FEATURES)
         physical_p50 = float(value["physical_p50"])
@@ -466,6 +496,7 @@ def _parse_case(value: object) -> ResidualCase:
         spatial_block=cast(str, value["spatial_block"]),
         season=cast(str, value["season"]),
         feature_available_at=ordered_availability,
+        feature_provenance=ordered_provenance,
         features=ordered_features,
         physical_p50=physical_p50,
         target_mm=target_mm,
@@ -689,6 +720,7 @@ def _validate_split_roles(cases: Sequence[ResidualCase], split: FrozenSplit) -> 
 
 def _calibration_interval_inflation(
     model: ResidualModel,
+    scaler: ScalerArtifact,
     calibration: Sequence[ResidualCase],
     *,
     cutoff: datetime,
@@ -707,7 +739,7 @@ def _calibration_interval_inflation(
         raise ValueError("calibration target_available_at is after frozen calibration_cutoff")
     residuals_by_lead: dict[str, list[float]] = defaultdict(list)
     for case in calibration:
-        predicted = predict_interval(model, case)
+        predicted = predict_interval(model, case, scaler=scaler)
         lead = str(int(case.features[0]))
         residuals_by_lead[lead].append(
             max(predicted.p10 - case.target_mm, case.target_mm - predicted.p90, 0.0)
@@ -723,7 +755,11 @@ def _calibration_interval_inflation(
 
 
 def _score(
-    model: ResidualModel, test: Sequence[ResidualCase], inflations: dict[str, float], split: FrozenSplit,
+    model: ResidualModel,
+    scaler: ScalerArtifact,
+    test: Sequence[ResidualCase],
+    inflations: dict[str, float],
+    split: FrozenSplit,
 ) -> tuple[ResidualMetric, ...]:
     """Score named preregistered strata, including unsupported ones.
 
@@ -743,7 +779,7 @@ def _score(
             # its preregistered calibration support; the named zero-count
             # metric and explicit lead blocker remain visible below.
             continue
-        predicted = predict_interval(model, case)
+        predicted = predict_interval(model, case, scaler=scaler)
         p10 = max(0.0, predicted.p10 - inflation)
         p90 = predicted.p90 + inflation
         grouped[("lead_day", str(int(case.features[0])))].append((case, p10, predicted.p50, p90))
@@ -761,11 +797,13 @@ def _unsupported_metrics(split: FrozenSplit) -> tuple[ResidualMetric, ...]:
     """Render every preregistered diagnostic stratum when fitting is impossible."""
     return tuple(
         ResidualMetric(group="lead_day", key=str(lead), sample_count=0, physical_mae_mm=None,
-                       residual_mae_mm=None, coverage_p10_p90=None, interval_width_mm=None)
+                       residual_mae_mm=None, coverage_p10_p90=None, interval_width_mm=None,
+                       physical_pinball_mm=None, residual_pinball_mm=None)
         for lead in range(1, 21)
     ) + tuple(
         ResidualMetric(group="season", key=season, sample_count=0, physical_mae_mm=None,
-                       residual_mae_mm=None, coverage_p10_p90=None, interval_width_mm=None)
+                       residual_mae_mm=None, coverage_p10_p90=None, interval_width_mm=None,
+                       physical_pinball_mm=None, residual_pinball_mm=None)
         for season in split.held_out_seasons
     )
 
@@ -777,19 +815,25 @@ def _metric(
         return ResidualMetric(
             group=group, key=key, sample_count=len(values), physical_mae_mm=None,
             residual_mae_mm=None, coverage_p10_p90=None, interval_width_mm=None,
+            physical_pinball_mm=None, residual_pinball_mm=None,
         )
     physical = [abs(case.physical_p50 - case.target_mm) for case, _p10, _p50, _p90 in values]
     residual = [abs(p50 - case.target_mm) for case, _p10, p50, _p90 in values]
-    coverage = [p10 <= case.target_mm <= p90 for case, p10, _p50, p90 in values]
-    widths = [p90 - p10 for _case, p10, _p50, p90 in values]
+    observed = [case.target_mm for case, _p10, _p50, _p90 in values]
+    lower = [p10 for _case, p10, _p50, _p90 in values]
+    upper = [p90 for _case, _p10, _p50, p90 in values]
+    residual_rows = [[p10, p50, p90] for _case, p10, p50, p90 in values]
+    physical_rows = [[case.physical_p50] * len(QUANTILES) for case, *_ in values]
     return ResidualMetric(
         group=group,
         key=key,
         sample_count=len(values),
         physical_mae_mm=float(np.mean(physical)),
         residual_mae_mm=float(np.mean(residual)),
-        coverage_p10_p90=float(np.mean(coverage)),
-        interval_width_mm=float(np.mean(widths)),
+        coverage_p10_p90=float(interval_coverage(observed, lower, upper)),
+        interval_width_mm=float(mean_interval_width(lower, upper)),
+        physical_pinball_mm=float(mean_pinball_loss(observed, physical_rows, QUANTILES)),
+        residual_pinball_mm=float(mean_pinball_loss(observed, residual_rows, QUANTILES)),
     )
 
 
@@ -956,6 +1000,7 @@ def _case_digest(case: ResidualCase) -> str:
                 "feature_available_at": [
                     [name, _format_utc(available_at)] for name, available_at in case.feature_available_at
                 ],
+                "feature_provenance": [list(item) for item in case.feature_provenance],
                 "features": list(case.features),
                 "physical_p50": case.physical_p50,
                 "target_mm": case.target_mm,

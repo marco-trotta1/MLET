@@ -45,6 +45,10 @@ The full variable inventory, citations, and licenses are in the source registry.
 The product contract defines the difference between forecast ETo, potential ET,
 observed ETa analysis, and conditional ETa scenarios. No entry in this section
 establishes forecast accuracy; that requires the preregistered hindcast gate.
+Frozen namespace bounds by source: GEFS-derived features may occupy only the
+`forecast` namespace; gridMET and OpenET observation-derived features may
+occupy only `hindcast`; CDL- and soil-attribute-derived features may occupy
+only `static`.
 
 ## Sources and provenance
 
@@ -105,3 +109,12 @@ No pandas or scikit-learn model is used in the evaluation pipeline.
 Please attribute the OpenET and flux datasets to Volk et al. under CC-BY-4.0,
 and cite Abatzoglou (2013) for gridMET. Raw and interim files are reproducible
 but intentionally gitignored.
+
+## External reference sources
+
+Sources reviewed but not ingested are recorded in
+`data/reference/external_sources.json`, with rationale in
+[external reference data](EXTERNAL_REFERENCE_DATA.md). The one operationally
+relevant item: if ERA5-Land meteorology is ever used as a fallback, its native
+`potential_evaporation` band must not be used — Caravan v1.5 replaced it with an
+FAO Penman-Monteith variable for that reason.

@@ -17,13 +17,70 @@ A real archive must include a relative, checksummed Task 8 hindcast evidence bun
 
 Each case records only these issue-time features, with a strict-UTC availability timestamp for every feature: `lead_day`, `eto_p50`, `eto_spread`, `precip_p50`, `crop_fraction`, `kc`, `taw_mm`, `initial_depletion_mm`, and `eta_analysis_age_days`. `lead_day` is an integer 1–20; `valid_date` must equal `outlook_valid_date(issue_time, lead_day)`: the lead offset from the issue instant's `America/Boise` civil date, including MST/MDT transitions. The evaluator derives the meteorological season from that Idaho-local date rather than trusting a label. No feature may have become available after issue time. Training is at or before its cutoff; after a one-day temporal gap, calibration is between the cutoffs; after another gap, test begins. Training and calibration exclude both held-out geography and season, and each test row belongs to both. All declared blocks and seasons must occur in test data.
 
+## Feature namespaces and provenance
+
+Each residual feature belongs to exactly one namespace — `static`, `hindcast`,
+or `forecast` — and carries a declared provenance kind. `src/mlet/outlook/namespaces.py`
+holds the assignment and is the normative reference.
+
+Availability by issue time is necessary but not sufficient. A forecast product
+issued before issue time passes an availability check while carrying information
+about the future that the observation record does not have. The `hindcast`
+namespace therefore admits `observation` provenance only. `initial_depletion_mm`
+is the state the outlook integrates forward from; sourcing it from a forecast
+would invalidate the leakage-control argument, so `ResidualCase` rejects it.
+
+This separation is adapted from neuralhydrology's config-level
+`hindcast_inputs` / `forecast_inputs` split (v1.13.0, BSD-3-Clause). The
+provenance-kind layer is MLET's addition.
+
+`feature_provenance` has no default value. An archive that omits it fails
+construction rather than validating with unstated provenance.
+
+## Frozen normalisation
+
+Feature normalisation is fitted on training cases available by the frozen
+training cutoff, serialised to JSON, and passed explicitly to every prediction.
+`predict_interval` takes `scaler` as a required keyword argument; there is no
+path that normalises a calibration or test row with statistics derived from it.
+
+The artifact records `feature_names`, `mean`, `scale`, `n_training_cases`, and
+`training_cutoff`, and is content-hashed with SHA-256. The hash belongs in the
+run receipt alongside the package, seed, and data hashes.
+
+JSON rather than pickle: a scaler is two float vectors, and the serialised form
+must be reviewable, diffable, stable across scikit-learn versions, and safe to
+load. This is adapted from neuralhydrology's `train_data_scaler.yml` contract
+(v1.13.0, BSD-3-Clause), which requires the training scaler as an input when
+evaluating.
+
 The experiment records the complete case-file SHA-256, canonical report digest, split ID/cutoffs and fold IDs, feature schema, exact estimator hyperparameters, seed, fitted calibration method/rank/value/case hashes, Task 8/source-receipt revisions and hashes, target-receipt hashes and availability times, row hashes, and Python/NumPy/scikit-learn versions. The archived raw data itself is not committed here.
+
+### Overlap consistency
+
+`mlet qc-overlap` measures observation-driven against forecast-driven ETo over a
+window that ends before issue time, adapting neuralhydrology's `forecast_overlap`
+regularisation as a diagnostic. Thresholds are in `src/mlet/outlook/overlap.py`:
+mean absolute difference above 1.5 mm/day is `inconsistent`, below 0.01 mm/day is
+`suspiciously_identical`.
+
+The lower bound is the leakage check. A forecast that reproduces the observed
+series to within 0.01 mm/day is not an independent product, and the namespace
+rules above would be satisfied while the separation they exist to guarantee is
+absent. This diagnostic consumes no labels and no held-out data, so it can be run
+on every archive before any evaluation is performed.
 
 ## Model and calibration
 
 The fitted target is `target_mm - physical_p50`. A `StandardScaler` and three `GradientBoostingRegressor(loss="quantile")` estimators (0.1, 0.5, 0.9; `n_estimators=80`, `max_depth=2`, `min_samples_leaf=2`, `learning_rate=0.05`) are fit on training cases only with seed `20260717`. Their residual quantiles are added back to the unchanged physical p50. A symmetric **lead-stratified** split-conformal inflation is estimated on the separate calibration partition at 80% nominal coverage using the finite-sample order statistic `k = min(n, ceil((n + 1) * 0.80))` of sorted nonconformity scores for that exact lead day. It is applied only when scoring test cases at the same lead, preserving p10 ≤ p50 ≤ p90.
 
 The split-conformal interval is **lead-stratified, not season-conditioned**. Held-out output lists every preregistered lead day and held-out season. Lead-day metrics require at least 5 calibration and 5 test cases for that exact lead; season diagnostics require at least 20 held-out test cases for that exact calendar season. There is deliberately no seasonal calibration-support claim because held-out seasons are excluded from calibration. Underpowered strata remain named with `n` but no metric and create explicit blockers rather than silently contributing a claim. These are experiment diagnostics—not an operational forecast layer.
+
+Reported per group: physical p50 MAE, residual p50 MAE, p10-p90 coverage, mean
+interval width, and mean pinball loss for both arms. Coverage and width together
+describe calibration and sharpness but cannot rank two forecasts that are both
+calibrated; the pinball loss can, which is why it is reported alongside rather
+than instead of them.
 
 ## Pre-registered candidate gates
 

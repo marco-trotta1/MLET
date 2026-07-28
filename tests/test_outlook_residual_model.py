@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -21,10 +22,31 @@ from mlet.experiments.idaho_outlook_residual import (
     write_residual_authority_request,
 )
 from mlet.outlook.dates import outlook_valid_date
+from mlet.outlook.namespaces import ProvenanceKind
 from mlet.outlook.residual_model import FEATURES, ResidualCase, fit_residual_model
+from mlet.outlook.scaler_artifact import scaler_artifact_from_model
 
 
 ISSUE = "2024-01-01T00:00:00Z"
+
+
+def _feature_provenance_dict() -> dict[str, str]:
+    return {
+        "lead_day": ProvenanceKind.STRUCTURAL,
+        "eto_p50": ProvenanceKind.FORECAST_PRODUCT,
+        "eto_spread": ProvenanceKind.FORECAST_PRODUCT,
+        "precip_p50": ProvenanceKind.FORECAST_PRODUCT,
+        "crop_fraction": ProvenanceKind.STATIC_ATTRIBUTE,
+        "kc": ProvenanceKind.STATIC_ATTRIBUTE,
+        "taw_mm": ProvenanceKind.STATIC_ATTRIBUTE,
+        "initial_depletion_mm": ProvenanceKind.OBSERVATION,
+        "eta_analysis_age_days": ProvenanceKind.OBSERVATION,
+    }
+
+
+def _feature_provenance_tuple() -> tuple[tuple[str, str], ...]:
+    provenance = _feature_provenance_dict()
+    return tuple((name, provenance[name]) for name in FEATURES)
 
 
 def _case(case_id: str, role: str, *, issue: str | None = None, block: str = "43:-117", target: float = 4.0) -> dict[str, object]:
@@ -47,6 +69,7 @@ def _case(case_id: str, role: str, *, issue: str | None = None, block: str = "43
         "spatial_block": block,
         "season": season,
         "feature_available_at": {name: issue for name in FEATURES},
+        "feature_provenance": _feature_provenance_dict(),
         "features": {
             "lead_day": 1,
             "eto_p50": 4.0,
@@ -98,9 +121,38 @@ def _write(path: Path, value: dict[str, object]) -> Path:
     return path
 
 
+def _fixture_cases_path() -> Path:
+    return Path("examples/outlook/hindcast_cases.json")
+
+
+def _scored_evidence() -> dict[str, object]:
+    evidence = _evidence()
+    evidence["cases"] = [
+        _case("train-1", "train", target=3.5),
+        _case("train-2", "train", target=3.8),
+        *[
+            _case(f"calibration-{index}", "calibration", target=3.6 + index / 20)
+            for index in range(1, 6)
+        ],
+        *[
+            _case(f"test-{index}", "test", block="44:-116", target=3.7 + index / 20)
+            for index in range(1, 6)
+        ],
+    ]
+    return evidence
+
+
+def _training_cases() -> tuple[ResidualCase, ...]:
+    return tuple(
+        _parse_case(_case(f"train-{index}", "train", target=3.5 + index / 10))
+        for index in range(2)
+    )
+
+
 def test_residual_fit_receives_only_training_issue_times() -> None:
     issue = datetime(2024, 1, 1, tzinfo=timezone.utc)
     available = tuple((name, issue) for name in FEATURES)
+    provenance = _feature_provenance_tuple()
     cases = tuple(
         ResidualCase(
             case_id=f"train-{index}",
@@ -112,6 +164,7 @@ def test_residual_fit_receives_only_training_issue_times() -> None:
             spatial_block="43:-117",
                 season="DJF",
             feature_available_at=available,
+            feature_provenance=provenance,
             features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
             physical_p50=3.0,
             target_mm=3.5 + index / 10,
@@ -159,13 +212,15 @@ def test_target_availability_is_cutoff_gated(
 
 def test_calibration_inflation_rechecks_target_cutoff_before_predicting() -> None:
     """The calibration helper cannot be called with a future target receipt."""
-    train = tuple(
-        _parse_case(_case(f"train-{index}", "train", target=3.5 + index / 10))
-        for index in range(2)
-    )
+    train = _training_cases()
     model = fit_residual_model(
         train,
         cutoff=datetime(2023, 5, 1, tzinfo=timezone.utc),
+    )
+    scaler = scaler_artifact_from_model(
+        model,
+        n_training_cases=len(train),
+        training_cutoff=datetime(2023, 5, 1, tzinfo=timezone.utc),
     )
     late_calibration = _parse_case(_case("calibration-late", "calibration"))
     object.__setattr__(
@@ -177,6 +232,7 @@ def test_calibration_inflation_rechecks_target_cutoff_before_predicting() -> Non
     with pytest.raises(ValueError, match="calibration target_available_at"):
         _calibration_interval_inflation(
             model,
+            scaler,
             (late_calibration,),
             cutoff=datetime(2023, 6, 3, tzinfo=timezone.utc),
         )
@@ -259,6 +315,7 @@ def test_case_valid_date_and_caller_season_cannot_disagree_with_issue_and_lead()
             target_kind="declared_well_watered_scenario_target", issue_time=issue,
             valid_date="2024-01-03", spatial_block="43:-117", season="DJF",
             feature_available_at=tuple((name, issue) for name in FEATURES),
+            feature_provenance=_feature_provenance_tuple(),
             features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0), physical_p50=3.0, target_mm=3.5,
             target_available_at=issue + timedelta(days=3),
         )
@@ -268,6 +325,7 @@ def test_case_valid_date_and_caller_season_cannot_disagree_with_issue_and_lead()
             target_kind="declared_well_watered_scenario_target", issue_time=issue,
             valid_date=outlook_valid_date(issue, 1).isoformat(), spatial_block="43:-117", season="MAM",
             feature_available_at=tuple((name, issue) for name in FEATURES),
+            feature_provenance=_feature_provenance_tuple(),
             features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0), physical_p50=3.0, target_mm=3.5,
             target_available_at=issue + timedelta(days=3),
         )
@@ -295,11 +353,12 @@ def test_residual_case_uses_idaho_local_valid_date_at_utc_and_dst_boundaries(
         valid_date=valid_date.isoformat(),
         spatial_block="43:-117",
         season="JJA" if valid_date.month == 7 else "MAM",
-            feature_available_at=tuple((name, issue) for name in FEATURES),
-            features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
-            physical_p50=3.0,
-            target_mm=3.5,
-            target_available_at=issue + timedelta(days=3),
+        feature_available_at=tuple((name, issue) for name in FEATURES),
+        feature_provenance=_feature_provenance_tuple(),
+        features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
+        physical_p50=3.0,
+        target_mm=3.5,
+        target_available_at=issue + timedelta(days=3),
     )
 
     assert case.valid_date == expected_valid_date
@@ -353,6 +412,7 @@ def test_lead_calibration_support_is_feasible_without_a_held_season_claim() -> N
             target_kind="declared_well_watered_scenario_target", issue_time=issue,
             valid_date=valid.isoformat(), spatial_block="43:-117", season=season,
             feature_available_at=tuple((name, issue) for name in FEATURES),
+            feature_provenance=_feature_provenance_tuple(),
             features=(float(lead), 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
             physical_p50=3.0, target_mm=3.5,
             target_available_at=issue + timedelta(days=lead + 2),
@@ -367,9 +427,9 @@ def test_lead_calibration_support_is_feasible_without_a_held_season_claim() -> N
         for lead in range(1, 21) for replicate in range(5)
     )
     metrics = tuple(
-        ResidualMetric("lead_day", str(lead), 5, 1.0, 0.5, 0.8, 1.0)
+        ResidualMetric("lead_day", str(lead), 5, 1.0, 0.5, 0.8, 1.0, None, None)
         for lead in range(1, 21)
-    ) + (ResidualMetric("season", "DJF", 100, 1.0, 0.5, 0.8, 1.0),)
+    ) + (ResidualMetric("season", "DJF", 100, 1.0, 0.5, 0.8, 1.0, None, None),)
 
     blockers = _metric_blockers(metrics, calibration, test, split)
 
@@ -413,12 +473,43 @@ def test_documented_zero_case_fixture_command_writes_false_only_candidate(
     authority_path = report_path.with_name("idaho_outlook_residual.authority_request.json")
     request = json.loads(authority_path.read_text(encoding="utf-8"))
     assert report_path.exists()
-    assert "software fixture" in report_path.read_text(encoding="utf-8").lower()
+    report_text = report_path.read_text(encoding="utf-8")
+    assert "software fixture" in report_text.lower()
+    assert "physical pinball (mm/day)" in report_text
+    assert "residual pinball (mm/day)" in report_text
+    assert "Pinball is the mean pinball loss over the p10/p50/p90 levels" in report_text
     assert request["promotion"] is False
     assert request["external_release_eligible"] is False
     output = capsys.readouterr().out.lower()
     assert "promotion: false" in output
     assert "external_release_eligible: false" in output
+
+
+def test_report_scores_a_proper_rule_for_both_arms(tmp_path: Path) -> None:
+    """Coverage alone cannot separate a sharp forecast from a vague one."""
+    report, _receipt = evaluate_residual_evidence(_write(tmp_path / "scored.json", _scored_evidence()))
+    scored = [metric for metric in report.metrics if metric.residual_pinball_mm is not None]
+    assert scored, "at least one metric group must carry a pinball score"
+    for metric in scored:
+        assert metric.physical_pinball_mm is not None
+        assert metric.residual_pinball_mm >= 0.0
+        assert metric.physical_pinball_mm >= 0.0
+
+
+def test_physical_baseline_pinball_uses_a_degenerate_interval() -> None:
+    """The physics arm has no interval, so its three quantiles are all p50.
+
+    Scoring it any other way would compare a point forecast against an interval
+    forecast on a rule that rewards interval sharpness, which is not a fair
+    baseline comparison.
+    """
+    from mlet.evaluate import mean_pinball_loss
+    from mlet.outlook.residual_model import QUANTILES
+
+    observed = [5.0]
+    point = [[4.0, 4.0, 4.0]]
+    expected = mean_pinball_loss(observed, point, QUANTILES)
+    assert expected == pytest.approx((0.1 * 1.0 + 0.5 * 1.0 + 0.9 * 1.0) / 3)
 
 
 def test_cli_does_not_clobber_an_authority_request_destination(
@@ -432,3 +523,37 @@ def test_cli_does_not_clobber_an_authority_request_destination(
     assert authority_path.read_text(encoding="utf-8") == "outside-process request"
     assert not report_path.exists()
     assert "destination already exists" in capsys.readouterr().err
+
+
+def _valid_case() -> ResidualCase:
+    issue = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    return ResidualCase(
+        case_id="valid-case",
+        role="train",
+        layer="eta_well_watered_mm",
+        target_kind="declared_well_watered_scenario_target",
+        issue_time=issue,
+        valid_date=outlook_valid_date(issue, 1).isoformat(),
+        spatial_block="43:-117",
+        season="DJF",
+        feature_available_at=tuple((name, issue) for name in FEATURES),
+        feature_provenance=_feature_provenance_tuple(),
+        features=(1.0, 4.0, 0.5, 0.0, 0.8, 1.0, 120.0, 40.0, 5.0),
+        physical_p50=3.0,
+        target_mm=3.5,
+        target_available_at=issue + timedelta(days=3),
+    )
+
+
+def test_residual_case_rejects_forecast_sourced_initial_depletion() -> None:
+    """A forecast standing in for the observed initial state must not validate."""
+    valid = _valid_case()
+    bad_provenance = tuple(
+        (
+            name,
+            ProvenanceKind.FORECAST_PRODUCT if name == "initial_depletion_mm" else kind,
+        )
+        for name, kind in valid.feature_provenance
+    )
+    with pytest.raises(ValueError, match="initial_depletion_mm"):
+        replace(valid, feature_provenance=bad_provenance)

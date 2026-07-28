@@ -17,6 +17,12 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
 
 from mlet.outlook.dates import idaho_local_day_end_utc, outlook_valid_date
+from mlet.outlook.namespaces import validate_feature_provenance
+from mlet.outlook.scaler_artifact import (
+    ScalerArtifact,
+    apply_scaler,
+    scaler_artifact_from_model,
+)
 
 
 FEATURES = (
@@ -71,6 +77,11 @@ class OutlookQuantiles:
 class ResidualCase:
     """One archived case, including only issue-time available features.
 
+    ``feature_available_at`` proves each feature was available by ``issue_time``.
+    ``feature_provenance`` proves each feature came from a source its namespace
+    admits — availability alone does not rule out a forecast product standing in
+    for an observation.  See ``mlet.outlook.namespaces``.
+
     ``physical_p50`` is the unchanged physics baseline and ``target_mm`` is a
     later-observed evaluation target.  ``target_available_at`` is the immutable
     target-receipt time used by the train/calibration cutoff gates.  A model
@@ -86,6 +97,7 @@ class ResidualCase:
     spatial_block: str
     season: str
     feature_available_at: tuple[tuple[str, datetime], ...]
+    feature_provenance: tuple[tuple[str, str], ...]
     features: tuple[float, ...]
     physical_p50: float
     target_mm: float
@@ -116,6 +128,7 @@ class ResidualCase:
         for name, available_at in self.feature_available_at:
             if _strict_utc(available_at, f"feature {name} available_at") > issue:
                 raise ValueError(f"feature {name} was available after issue_time")
+        validate_feature_provenance(self.feature_provenance)
         if len(self.features) != len(FEATURES) or not all(math.isfinite(value) for value in self.features):
             raise ValueError("residual features must be finite and match FEATURES")
         lead = self.features[0]
@@ -187,13 +200,22 @@ def fit_residual_model(
     )
 
 
-def predict_interval(model: ResidualModel, row: ResidualCase) -> OutlookQuantiles:
-    """Predict a residual interval and add it to the physical p50 baseline."""
+def predict_interval(
+    model: ResidualModel, row: ResidualCase, *, scaler: ScalerArtifact,
+) -> OutlookQuantiles:
+    """Predict a residual interval using frozen training-split normalisation.
+
+    ``scaler`` is required, not optional. Passing the frozen artifact rather than
+    reaching for ``model.scaler`` is what makes it impossible to normalise a
+    calibration or test row with statistics that saw it.
+    """
     if not isinstance(model, ResidualModel):
         raise ValueError("predict_interval requires a ResidualModel")
     if model.feature_names != FEATURES or len(model.estimators) != len(QUANTILES):
         raise ValueError("residual model feature or quantile contract is invalid")
-    scaled = model.scaler.transform(np.asarray([row.features], dtype=float))
+    if tuple(scaler.feature_names) != model.feature_names:
+        raise ValueError("scaler artifact features do not match the fitted model")
+    scaled = apply_scaler(scaler, row.features).reshape(1, -1)
     residuals = sorted(float(estimator.predict(scaled)[0]) for estimator in model.estimators)
     return OutlookQuantiles(
         p10=max(0.0, row.physical_p50 + residuals[0]),

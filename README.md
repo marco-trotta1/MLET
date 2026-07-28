@@ -159,7 +159,15 @@ Present contents:
   [generated Phase 2 results](docs/results/phase2_openet_value.md);
 - the [Idaho outlook product contract](docs/outlook/PRODUCT_CONTRACT.md),
   [outlook preregistration](docs/evaluation/OUTLOOK_PREREGISTRATION.md), and
-  [operational source registry](data/outlook/source_registry.json).
+  [operational source registry](data/outlook/source_registry.json);
+- independent FAO-56 radiation and Priestley-Taylor reference implementations
+  with the three-way cross-check;
+- hindcast/forecast/static feature namespaces with provenance validation;
+- the forecast-overlap consistency diagnostic;
+- frozen train-only normalisation as a hashed JSON artifact;
+- probabilistic scoring (mean pinball loss, interval coverage, interval width);
+- the non-serving hybrid FAO-56 scaffold, validated against vendored pyfao56;
+- the neuralhydrology GenericDataset exporter.
 
 Phase 2 finds that, on the 85-station weather-complete public subset, the
 OpenET-inclusive model reduced field-withheld daily-ET MAE by 43.4% relative to
@@ -231,6 +239,40 @@ only the separately trusted external release authority described in the outlook
 preregistration may publish a promoted product; the MLET evaluator and map
 renderer have no local promotion or validation path.
 
+## Reference-ET cross-check
+
+MLET carries two independent implementations of reference evapotranspiration:
+the ASCE-PM short-reference path used by the outlook (via vendored `pyfao56`),
+and a Priestley-Taylor path in `src/mlet/reference/` ported from
+neuralhydrology. `qc-eto` compares them on a single weather member:
+
+```bash
+python3 -m mlet qc-eto --member-json examples/outlook/weather_member.json
+```
+
+The two ASCE paths must agree exactly; Priestley-Taylor is a different equation
+and is checked against a documented ratio band instead. Building this check
+found two defects in the upstream neuralhydrology implementation, both recorded
+in `src/mlet/reference/UPSTREAM.md`.
+
+## Relationship to neuralhydrology
+
+MLET adopts four design patterns from
+[neuralhydrology](https://github.com/neuralhydrology/neuralhydrology) 1.13.0
+(BSD-3-Clause) and ports its FAO-56 radiation equations as an independent
+cross-check on the vendored `pyfao56` reference-ET path. It is not a fork and
+does not depend on it at runtime.
+
+Building the cross-check found two defects in the upstream PET utilities: a
+double energy-to-depth conversion understating Priestley-Taylor PET by 2.451x,
+and an FAO-56 Eq. 37 elevation coefficient ten times the published value.
+Both are documented with regression tests in
+[neuralhydrology provenance](docs/methods/NEURALHYDROLOGY_PROVENANCE.md).
+
+The non-serving hybrid scaffold is described in
+[hybrid model scaffold](docs/methods/HYBRID_MODEL_SCAFFOLD.md). It trains
+nothing and no published result depends on it.
+
 ## Development Notes
 
 Keep new work reproducible and auditable:
@@ -240,6 +282,15 @@ Keep new work reproducible and auditable:
 - enforce temporal cutoffs before forecast generation;
 - keep negative results visible when thresholds are not met;
 - document assumptions before they enter the model.
+
+Run the full gate before every commit:
+
+```bash
+./scripts/verify.sh
+```
+
+See [reproducibility notes](docs/REPRODUCIBILITY.md) for the environment
+contract and the test-count ledger.
 
 ## Source Brief
 

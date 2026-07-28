@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "caravan": {
+      "citation": "Kratzert, F. et al. Caravan - A global community dataset for large-sample hydrology. Scientific Data (2023).",
+      "doi": "10.1038/s41597-023-01975-w",
+      "repository": "https://github.com/kratzert/Caravan",
+      "archive": "https://zenodo.org/records/15529786",
+      "version_reviewed": "1.5",
+      "license": "CC-BY-4.0; per-subdataset terms recorded upstream",
+      "intended_use": "external benchmark and a worked example of large-sample dataset packaging; not an MLET input",
+      "not_ingested_because": "Caravan is streamflow-keyed by gauged basin, and MLET is keyed by weather grid cell and flux-tower station, so no MLET evaluation target maps onto a Caravan entity",
+      "known_defects": [
+        {
+          "variable": "potential_evaporation_sum_ERA5_LAND",
+          "do_not_use": true,
+          "use_instead": "potential_evaporation_sum_FAO_PENMAN_MONTEITH",
+          "reason": "the ERA5-Land native potential-evaporation band is unreliable; Caravan v1.5 added an FAO Penman-Monteith PET variable specifically to replace it. Any MLET fallback to ERA5-Land meteorology must not use the native PET band."
+        }
+      ]
+    },
+    "caravan_multimet": {
+      "citation": "Caravan MultiMet: Extending Caravan with Multiple Weather Nowcasts and Forecasts.",
+      "doi": "arXiv:2411.09459",
+      "archive": "https://arxiv.org/abs/2411.09459",
+      "license": "follows the Caravan licence for derived products",
+      "intended_use": "reference convention for pairing observed forcings with multiple forecast products at a fixed issue time, which is the packaging problem MLET currently solves ad hoc for GEFS",
+      "not_ingested_because": "same entity-key mismatch as Caravan; adopted as a layout convention rather than as data"
+    },
+    "neuralhydrology": {
+      "citation": "Kratzert, F. et al. NeuralHydrology - A Python library for Deep Learning research in hydrology. Journal of Open Source Software (2022).",
+      "doi": "10.21105/joss.04050",
+      "repository": "https://github.com/neuralhydrology/neuralhydrology",
+      "version_reviewed": "1.13.0",
+      "commit_reviewed": "d6d7aa5cc6d9e42308009139ccccf37be006445f",
+      "license": "BSD-3-Clause",
+      "intended_use": "source of ported reference implementations and adopted design patterns; see docs/methods/NEURALHYDROLOGY_PROVENANCE.md",
+      "not_ingested_because": "a software library, not a dataset; the ported code is vendored under src/mlet/reference/ with its licence notice"
+    }
+  }
+}

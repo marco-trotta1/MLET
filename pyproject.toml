@@ -25,9 +25,14 @@ dependencies = [
 [project.scripts]
 mlet = "mlet.cli:main"
 
+[project.optional-dependencies]
+hybrid = [
+    "torch>=2.0",
+]
+
 [tool.setuptools.packages.find]
 where = ["src", "vendor/pyfao56/src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "vendor/pyfao56/src"]
