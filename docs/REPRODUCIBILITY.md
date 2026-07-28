@@ -31,6 +31,11 @@ Running `pytest` directly also works after installing the `test` extra because
 Before 2026-07-27 it did not, and a fresh clone failed to collect 7 test
 modules — if you are reading an older revision, that is why.
 
+GitHub-hosted runners attach ACL metadata to the checkout and temporary
+directories. CI provisions `/mlet-pytest` as an ACL-free pytest base temporary
+directory so the output-root trust checks remain enabled. Site-builder tests
+also pass that trusted temporary directory through the explicit scratch option.
+
 ## Test-count ledger
 
 Each row is recorded when the corresponding plan task lands. A task that does
