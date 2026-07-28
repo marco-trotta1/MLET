@@ -520,8 +520,10 @@ def _verify_case_bindings(
     allowed = hindcast_binding.get("case_sha256")
     if not isinstance(allowed, list) or not all(isinstance(item, str) for item in allowed):
         raise ValueError("hindcast binding does not contain Task 8 case hashes")
+    if len(raw_cases) != len(cases):
+        raise ValueError("raw cases and parsed cases must have the same length")
     bound: dict[str, dict[str, object]] = {}
-    for raw_case, case in zip(raw_cases, cases, strict=True):
+    for raw_case, case in zip(raw_cases, cases):
         if not isinstance(raw_case, dict):
             raise ValueError("real_archived residual case must be an object")
         reference = raw_case.get("hindcast_case_sha256")

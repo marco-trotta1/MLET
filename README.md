@@ -286,6 +286,7 @@ Keep new work reproducible and auditable:
 Run the full gate before every commit:
 
 ```bash
+python3 -m pip install -e ".[test]"
 ./scripts/verify.sh
 ```
 

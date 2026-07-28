@@ -19,6 +19,6 @@ def extract_eto(
             if not available.size:
                 continue
             values = series.sel(day=available).values
-            for day, value in zip(available, values, strict=True):
+            for day, value in zip(available, values):
                 result[np.datetime_as_string(day, unit="D")] = float(value)
     return result

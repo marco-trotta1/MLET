@@ -1,11 +1,9 @@
 """Transparent, fixed Phase 2 ET comparison models implemented with numpy."""
 from __future__ import annotations
 
-from typing import TypeAlias
-
 import numpy as np
 
-Sample: TypeAlias = dict[str, float]
+Sample = dict[str, float]
 RIDGE_LAMBDA = 1.0
 _WEATHER_FEATURES = ("eto", "doy_sin", "doy_cos", "t_avg", "vpd", "ws")
 

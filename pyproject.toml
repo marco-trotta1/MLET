@@ -26,6 +26,9 @@ dependencies = [
 mlet = "mlet.cli:main"
 
 [project.optional-dependencies]
+test = [
+    "pytest>=8.0,<9",
+]
 hybrid = [
     "torch>=2.0",
 ]
