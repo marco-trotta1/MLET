@@ -43,6 +43,24 @@ def test_build_outlook_writes_twenty_days_for_each_fixture_cell(tmp_path: Path) 
     assert payload["production_status"] == "non_production_fixture"
     assert payload["promotion_status"] == "not_promoted"
     assert payload["validation_status"] == "not_validated"
+    assert payload["validation_scope"] == {
+        "formal_hindcast_layers": ["eto_mm"],
+        "nonforecast_analysis_layers": ["eta_analysis_mm"],
+        "unvalidated_projection_layers": [
+            "potential_et_c_mm",
+            "eta_well_watered_mm",
+            "eta_no_irrigation_mm",
+        ],
+    }
+    assert payload["layers"]["eto_mm"]["validation_role"] == "formal_hindcast_target"
+    assert (
+        payload["layers"]["potential_et_c_mm"]["validation_role"]
+        == "conditional_projection_not_formally_validated"
+    )
+    assert (
+        payload["layers"]["eta_analysis_mm"]["validation_role"]
+        == "dated_analysis_not_forecast_target"
+    )
     assert {
         "eto_mm",
         "potential_et_c_mm",

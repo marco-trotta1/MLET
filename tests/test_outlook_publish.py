@@ -79,17 +79,25 @@ def test_publish_writes_a_standalone_non_scientific_research_candidate(
     assert contract["promotion_status"] == "not_promoted"
     assert contract["validation_status"] == "validation_pending"
     assert contract["fixture_non_scientific"] is True
+    assert contract["validation_scope"]["formal_hindcast_layers"] == ["eto_mm"]
+    assert (
+        contract["layers"]["eta_well_watered_mm"]["validation_role"]
+        == "conditional_projection_not_formally_validated"
+    )
     assert geojson["type"] == "FeatureCollection"
     assert geojson["promotion"] is False
     assert geojson["promotion_status"] == "not_promoted"
+    assert geojson["validation_scope"] == contract["validation_scope"]
     assert summary["promotion"] is False
     assert summary["promotion_status"] == "not_promoted"
+    assert summary["validation_scope"] == contract["validation_scope"]
     feature = geojson["features"][0]
     assert feature["type"] == "Feature"
     assert feature["geometry"]["type"] == "Point"
     assert feature["properties"]["spatial_resolution"] == "native_weather_grid"
     assert feature["properties"]["validation_status"] == "validation_pending"
     assert feature["properties"]["promotion_status"] == "not_promoted"
+    assert feature["properties"]["validation_scope"] == contract["validation_scope"]
     assert summary["not_field_scale"] is True
     assert summary["regional_aggregation"] == "equal_cell_descriptive_mean_not_area_weighted"
     assert "source-grid cell areas" in summary["regional_aggregation_note"].lower()

@@ -61,7 +61,12 @@ def _download(url: str, destination: str) -> None:
     try:
         with urllib.request.urlopen(request, context=context) as response:  # noqa: S310
             response_code = response.getcode() if hasattr(response, "getcode") else 206
-            if offset and response_code != 206:
+            response_headers = getattr(response, "headers", {})
+            content_range = response_headers.get("Content-Range", "")
+            expected_range = f"bytes {offset}-"
+            if offset and (
+                response_code != 206 or not content_range.startswith(expected_range)
+            ):
                 mode = "wb"
             with open(temporary, mode) as handle:
                 shutil.copyfileobj(response, handle)

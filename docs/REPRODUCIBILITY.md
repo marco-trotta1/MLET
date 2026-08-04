@@ -1,7 +1,8 @@
 # Reproducibility
 
-Every number in the MLET manuscript must be regenerable from a clean clone by
-the commands on this page. Nothing here requires private data.
+Every generated number in the MLET manuscript must be regenerable from a clean
+clone by the commands on this page. The committed Phase 2 record includes an
+independent reproduction receipt.
 
 ## Environment
 
@@ -19,12 +20,86 @@ the commands on this page. Nothing here requires private data.
 
 ## Single verification command
 
+Use `./scripts/verify.sh` for the code suite and serving-path isolation check.
+It also builds the committed real ETo candidate through the static-site path.
+
+The committed candidate files are
+`data/outlook/gefs_reforecast_20190703_outlook.json` and
+`data/outlook/gefs_reforecast_20190703_manifest.json`.
+Run `python3 scripts/verify_real_candidate_site.py` to check their clean-clone
+site build directly.
+
+To build a site from an external candidate directory, run:
+
 ```bash
-./scripts/verify.sh
+python3 scripts/build_eto_site.py \
+  --source-dir "/path/to/candidate" \
+  --out _site-eto
 ```
 
-This runs the full test suite and the serving-path isolation check. It is the
-only gate that matters; CI runs exactly this.
+The source directory must contain `outlook.json` and `manifest.json`.
+
+Use `./scripts/verify_build_ready.sh` for the non-gated software and manuscript
+draft gate. It checks the AgriMet station snapshot, deterministic Phase 2
+artifacts, and manuscript sources. It does not assume an institutional storage
+or compute allocation.
+
+Use `./scripts/verify_manuscript_ready.sh` for the manuscript gate. It also
+regenerates and byte-compares the committed Phase 2 and ETo Markdown, CSV, and
+SVG artifacts. It fails until `docs/results/idaho_eto_hindcast.json` exists.
+This failure is expected before the archived ETo evaluation is complete.
+
+The ETo software fixture is `examples/outlook/eto_hindcast_evidence.json`.
+The deferred residual-model fixture is
+`examples/outlook/residual_model_evidence.json`. Neither fixture is scientific
+evidence.
+
+To reproduce Phase 2 without the separate gridMET quality-control archive, run:
+
+```bash
+python3 scripts/fetch_data.py --phase2-only
+```
+
+The command checks the two pinned archive checksums before extraction.
+
+To acquire and decode the frozen GEFS reforecast archive without storing all
+raw files at once, use the sequential runner documented in
+`docs/data/GEFS_DAILY_ARTIFACT.md`. It writes immutable per-issue receipts and
+artifacts. It supports resume after completed issue receipts exist.
+
+Build history-bound AgriMet target artifacts after the GEFS index exists:
+
+```bash
+python3 scripts/build_eto_target_index.py \
+  --gefs-index data/outlook/eto_feasibility_gefs_index.json \
+  --rows "/external/agrimet/agrimet-historical-rows-v2.json" \
+  --exclusions "/external/agrimet/agrimet-historical-exclusions-v2.json" \
+  --mapping "/external/agrimet/agrimet-historical-gefs-mapping.json" \
+  --output-root "/external/eto-targets" \
+  --target-index "/external/eto-targets/agrimet-index.json"
+```
+
+The builder preserves one USBR source identity per target artifact. It uses
+prior-year station day-of-year climatology and records the baseline rule.
+
+Build the GEFS case index from completed candidate issues before building target
+artifacts:
+
+```bash
+python3 scripts/build_eto_gefs_index.py \
+  --stream-index "/external/gefs-stream/index.json" \
+  --candidate-root "/external/gefs-stream/candidates" \
+  --rows "/external/agrimet/agrimet-historical-rows-v2.json" \
+  --mapping "/external/agrimet/agrimet-historical-gefs-mapping.json" \
+  --gefs-index "/external/gefs-stream/gefs-index.json"
+```
+
+The case index emits only station-season cases with target and baseline support.
+It binds each case to the candidate issue time and recomputed spatial fold.
+
+After building the interim dataset, run `mlet evaluate` with `--result-json`,
+`--data-manifest`, and `--git-revision`. The command writes the strict Phase 2
+result JSON that the manuscript artifact generator accepts.
 
 Running `pytest` directly also works after installing the `test` extra because
 `pyproject.toml` puts both `src` and `vendor/pyfao56/src` on `pythonpath`.
@@ -207,10 +282,17 @@ equivalence gate.
 
 ## Regenerating published artifacts
 
-- Phase 2 daily-ET comparison: see `docs/results/phase2_openet_value.md` header
+- Phase 2 daily-ET comparison: run
+  `python3 scripts/build_manuscript_artifacts.py --phase2 docs/results/phase2_openet_value.json --out <empty-directory>`
+  and compare the output with `docs/results/`. The input record identifies a
+  historical report until independent reproduction is complete.
+- Idaho ETo hindcast: run
+  `python3 scripts/build_manuscript_artifacts.py --eto-hindcast docs/results/idaho_eto_hindcast.json --out <empty-directory>`.
+  The command rejects an incomplete hindcast result. It writes the ETo tables,
+  figures, and results page from the checksum-bound result record.
 - Idaho outlook candidate map: `python3 -m mlet publish-outlook --run OUTPUT_ROOT/RUN_ID`
   (always exits 1 by contract — the output is a research candidate)
-- Residual-model experiment: `python3 -m mlet evaluate-outlook-residual --cases examples/outlook/hindcast_cases.json --out <path>`
+- Residual-model experiment: `python3 -m mlet evaluate-outlook-residual --cases examples/outlook/residual_model_evidence.json --out <path>`
 - Reference-ET cross-check: `python3 -m mlet qc-eto --member-json <path>`
   (exits 0 when the ASCE paths agree exactly and PT/ASCE-PM is inside the
   documented 0.60-1.05 band)

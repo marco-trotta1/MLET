@@ -19,14 +19,17 @@ import os
 from pathlib import Path
 import stat
 import tempfile
+from typing import Optional
 import uuid
+from urllib.parse import urlparse
 
 from mlet.outlook.contracts import WeatherMember
 from mlet.outlook.dates import outlook_valid_dates
 
 
 _ARTIFACT_TYPE = "mlet.gefs.daily-artifact"
-_ARTIFACT_SCHEMA_VERSION = 1
+_ARTIFACT_SCHEMA_VERSION = 2
+_SUPPORTED_ARTIFACT_SCHEMA_VERSIONS = frozenset({1, _ARTIFACT_SCHEMA_VERSION})
 _TRANSFORM = {
     "name": "noaa-gefs-grib-to-daily-asce-input",
     "version": "1",
@@ -145,6 +148,75 @@ def normalize_gefs_rows(
     return sorted(members, key=lambda item: (item.grid_id, item.member_id, item.valid_date))
 
 
+def serialize_gefs_daily_artifact(
+    rows: Iterable[dict[str, object]],
+    *,
+    upstream_uri: str,
+    upstream_raw_sha256: Optional[str] = None,
+    source_issue_at: str,
+    idaho_bbox: tuple[float, float, float, float],
+    raw_object_receipt: Optional[Mapping[str, object]] = None,
+) -> bytes:
+    """Serialize decoded GEFS rows into the immutable daily-artifact contract.
+
+    This is the sole bridge from the local reforecast GRIB decoder to the
+    content-addressed importer. It validates and sorts all output rows before
+    it calculates the declared normalized checksum.
+    """
+    if not isinstance(upstream_uri, str) or not upstream_uri.startswith("https://"):
+        raise ValueError("GEFS upstream_uri must be an HTTPS URL")
+    if raw_object_receipt is None:
+        _require_sha256(upstream_raw_sha256, "GEFS upstream_raw_sha256")
+    else:
+        _validate_raw_object_receipt(raw_object_receipt)
+    issued_at = _parse_utc_timestamp(source_issue_at, "GEFS source_issue_at")
+    bbox = _validate_idaho_bbox(idaho_bbox)
+    members = normalize_gefs_rows(rows, issued_at=_format_utc_timestamp(issued_at))
+    for member in members:
+        west, south, east, north = bbox
+        if not (south <= member.latitude <= north and west <= member.longitude <= east):
+            raise ValueError("GEFS decoded row is outside the declared Idaho bbox")
+    canonical_rows = [
+        {
+            "grid_id": member.grid_id,
+            "latitude": member.latitude,
+            "longitude": member.longitude,
+            "elevation_m": member.elevation_m,
+            "member_id": member.member_id,
+            "valid_date": member.valid_date.isoformat(),
+            "tmax_c": member.tmax_c,
+            "tmin_c": member.tmin_c,
+            "vapor_pressure_kpa": member.vapor_pressure_kpa,
+            "wind_m_s": member.wind_m_s,
+            "solar_mj_m2_day": member.solar_mj_m2_day,
+            "precip_mm": member.precip_mm,
+        }
+        for member in members
+    ]
+    provenance: dict[str, object] = {
+        "upstream_uri": upstream_uri,
+        "source_issue_at": _format_utc_timestamp(issued_at),
+        "daily_aggregation_timezone": "America/Boise",
+        "idaho_bbox": list(bbox),
+        "variables": sorted(_WEATHER_FIELDS),
+        "transform": _TRANSFORM,
+    }
+    schema_version = _ARTIFACT_SCHEMA_VERSION
+    if raw_object_receipt is None:
+        schema_version = 1
+        provenance["upstream_raw_sha256"] = upstream_raw_sha256
+    else:
+        provenance["raw_object_receipt"] = dict(raw_object_receipt)
+    payload = {
+        "artifact_type": _ARTIFACT_TYPE,
+        "schema_version": schema_version,
+        "provenance": provenance,
+        "normalized_sha256": hashlib.sha256(_normalized_bytes(members)).hexdigest(),
+        "rows": canonical_rows,
+    }
+    return _canonical_json_bytes(payload)
+
+
 def fetch_gefs(
     issue_date: date,
     idaho_bbox: tuple[float, float, float, float],
@@ -208,7 +280,7 @@ def materialize_gefs_daily_artifact(
     )
     receipt = {
         "acquisition_mode": "imported_canonical_daily_artifact",
-        "artifact_schema_version": _ARTIFACT_SCHEMA_VERSION,
+        "artifact_schema_version": payload["schema_version"],
         "artifact_type": _ARTIFACT_TYPE,
         "daily_aggregation_timezone": provenance["daily_aggregation_timezone"],
         "generation_id": generation_id,
@@ -218,10 +290,13 @@ def materialize_gefs_daily_artifact(
         "raw_sha256": raw_sha256,
         "source_issue_at": _format_utc_timestamp(source_issue_at),
         "transform": provenance["transform"],
-        "upstream_raw_sha256": provenance["upstream_raw_sha256"],
         "uri": provenance["upstream_uri"],
         "variables": provenance["variables"],
     }
+    if "upstream_raw_sha256" in provenance:
+        receipt["upstream_raw_sha256"] = provenance["upstream_raw_sha256"]
+    else:
+        receipt["raw_object_receipt"] = provenance["raw_object_receipt"]
     _publish_generation(
         cache_directory,
         generation_id,
@@ -265,6 +340,29 @@ def resolve_gefs_daily_artifact(artifact_pointer: Path) -> GefsDailyArtifactSet:
     return artifact_set
 
 
+def load_gefs_daily_members(
+    artifact_set: GefsDailyArtifactSet,
+) -> tuple[WeatherMember, ...]:
+    """Reload verified canonical weather members from one immutable generation."""
+    if not isinstance(artifact_set, GefsDailyArtifactSet):
+        raise ValueError("GEFS members require a GefsDailyArtifactSet")
+    verified = resolve_gefs_daily_artifact(artifact_set.pointer_path)
+    if verified != artifact_set:
+        raise ValueError("GEFS artifact set no longer matches its public pointer")
+    raw_bytes = _read_regular_file(verified.raw_path, "GEFS raw artifact")
+    try:
+        payload = json.loads(raw_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("GEFS raw artifact must be UTF-8 JSON") from error
+    provenance, rows, _normalized_sha256 = _validate_daily_artifact(payload)
+    source_issue_at = _parse_utc_timestamp(
+        provenance["source_issue_at"], "GEFS provenance source_issue_at"
+    )
+    return tuple(
+        normalize_gefs_rows(rows, issued_at=_format_utc_timestamp(source_issue_at))
+    )
+
+
 def _validate_daily_artifact(
     payload: object,
 ) -> tuple[Mapping[str, object], list[dict[str, object]], str]:
@@ -272,9 +370,10 @@ def _validate_daily_artifact(
         raise ValueError("GEFS daily artifact must be a JSON object")
     if payload.get("artifact_type") != _ARTIFACT_TYPE:
         raise ValueError(f"GEFS daily artifact type must be {_ARTIFACT_TYPE!r}")
-    if payload.get("schema_version") != _ARTIFACT_SCHEMA_VERSION:
+    schema_version = payload.get("schema_version")
+    if schema_version not in _SUPPORTED_ARTIFACT_SCHEMA_VERSIONS:
         raise ValueError(
-            f"GEFS daily artifact schema_version must be {_ARTIFACT_SCHEMA_VERSION}"
+            "GEFS daily artifact schema_version is unsupported"
         )
     provenance = payload.get("provenance")
     if not isinstance(provenance, dict):
@@ -287,9 +386,12 @@ def _validate_daily_artifact(
         raise ValueError(
             "GEFS provenance daily_aggregation_timezone must be America/Boise"
         )
-    _require_sha256(
-        provenance.get("upstream_raw_sha256"), "GEFS provenance upstream_raw_sha256"
-    )
+    if schema_version == 1:
+        _require_sha256(
+            provenance.get("upstream_raw_sha256"), "GEFS provenance upstream_raw_sha256"
+        )
+    else:
+        _validate_raw_object_receipt(provenance.get("raw_object_receipt"))
     _validate_idaho_bbox(provenance.get("idaho_bbox"))
     variables = provenance.get("variables")
     if variables != sorted(_WEATHER_FIELDS):
@@ -304,6 +406,21 @@ def _validate_daily_artifact(
         payload.get("normalized_sha256"), "GEFS daily artifact normalized_sha256"
     )
     return provenance, rows, normalized_sha256
+
+
+def _validate_raw_object_receipt(value: object) -> None:
+    """Validate the identity of the receipt that binds all raw GRIB files."""
+    if not isinstance(value, Mapping) or set(value) != {"uri", "sha256", "object_count"}:
+        raise ValueError("GEFS raw_object_receipt fields must match the schema exactly")
+    uri = value["uri"]
+    parsed = urlparse(uri) if isinstance(uri, str) else None
+    if parsed is None or not parsed.scheme or (
+        parsed.scheme != "file" and not parsed.netloc
+    ):
+        raise ValueError("GEFS raw_object_receipt uri must be absolute")
+    _require_sha256(value["sha256"], "GEFS raw_object_receipt sha256")
+    if type(value["object_count"]) is not int or value["object_count"] < 1:
+        raise ValueError("GEFS raw_object_receipt object_count must be a positive integer")
 
 
 def _prepare_cache_directory(pointer_parent: Path) -> Path:
@@ -426,7 +543,7 @@ def _validate_resolved_generation(artifact_set: GefsDailyArtifactSet) -> None:
         raise ValueError("GEFS source receipt must be an object")
     if receipt.get("artifact_type") != _ARTIFACT_TYPE:
         raise ValueError("GEFS source receipt artifact_type is invalid")
-    if receipt.get("artifact_schema_version") != _ARTIFACT_SCHEMA_VERSION:
+    if receipt.get("artifact_schema_version") not in _SUPPORTED_ARTIFACT_SCHEMA_VERSIONS:
         raise ValueError("GEFS source receipt schema version is invalid")
     if receipt.get("generation_id") != artifact_set.generation_id:
         raise ValueError("GEFS source receipt generation_id does not match its pointer")

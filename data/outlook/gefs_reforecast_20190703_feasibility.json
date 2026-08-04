@@ -1,0 +1,70 @@
+{
+  "availability": {
+    "available_byte_count": 8289206079,
+    "available_object_count": 187,
+    "planned_object_count": 187,
+    "status": "187_of_187_available",
+    "survey_sha256": "9977c34b7cf4634fe77bd72fa7da1dde5687d5395d29de49bcb6a9cd70462197"
+  },
+  "candidate": {
+    "manifest_sha256": "4acc1e7e2a32f4ee897e96ae4d5f9753186dcac7fcc565dbb5af072677683030",
+    "outlook_sha256": "9476bab0be5cd879d1912a40c73ff5d694d9ae95502d67e8f6d82ee2426adb3b",
+    "run_id": "66c883b65a5b0f6e",
+    "status": "research_candidate_validation_pending"
+  },
+  "decode": {
+    "artifact_sha256": "154e88317fe9aa6bb7b31595e5cbdd149735ffc92acdfc7ed55d7b68e49d901c",
+    "benchmark_sha256": "e6b64410a46b549fab5ee636d555dd76c067145fd34d2d13c498b833b6f88a91",
+    "decoder_lock_file": "requirements-gefs.lock",
+    "decoder_lock_sha256": "c86b4ce74e20f36d6ef4f70173f63382b0c90a1ded916314da353e2e95f79e01",
+    "decoder_transform": "noaa-gefs-grib-to-daily-asce-input@1",
+    "elapsed_seconds": 80.323,
+    "grid_count": 195,
+    "member_count": 11,
+    "normalized_sha256": "c9771c147204f07efb2c5b66122b25e7231d724ff8e2ef7cc5ebcd4f4e416fa8",
+    "row_count": 42900,
+    "valid_date_count": 20
+  },
+  "external_evidence_root": "MLET Evidence/gefs-v12-20190703",
+  "full_plan": {
+    "estimate_basis": "365 issues multiplied by the 2019-07-03 availability survey byte count",
+    "estimated_raw_bytes": 3025560218835,
+    "issue_count": 365,
+    "object_count": 68255,
+    "path": "MLET Evidence/gefs-v12-full-plan/gefs-v12-acquisition-plan.json",
+    "sha256": "49c6ae854cc17d393f9283bdc299be6628ef152b4a5879b299e20ea4b290e250",
+    "status": "plan_complete_acquisition_pending"
+  },
+  "issue_plan": {
+    "object_count": 187,
+    "path": "MLET Evidence/gefs-v12-20190703-plan.json",
+    "sha256": "ded7ebb2d449b1d9163368c679961eccccc4c6b0c0c9deb8b8a8f37d79a2a914"
+  },
+  "issue_time": "2019-07-03T00:00:00Z",
+  "kind": "mlet.gefs.reforecast-issue-feasibility",
+  "negative_experiments_preserved": [
+    "MLET Evidence/gefs-v12-20190703/derived/gefs-20190703-decode-v2-output.log",
+    "MLET Evidence/gefs-v12-20190703/derived/gefs-20190703-decode-v3-output.log",
+    "MLET Evidence/gefs-v12-20190703/derived/gefs-20190703-decode-v4-output.log",
+    "MLET Evidence/gefs-v12-20190703/derived/gefs-20190703-decode-v5-output.log",
+    "MLET Evidence/gefs-v12-20190703/derived/gefs-20190703-decode-v6-output.log"
+  ],
+  "schema_version": 1,
+  "status": "source_feasibility_complete",
+  "storage_gate": {
+    "available_disk_at_transfer_minimum_bytes": 717383708672,
+    "estimated_full_raw_bytes": 3025560218835,
+    "full_raw_acquisition_status": "blocked_pending_temporary_project_storage",
+    "reason": "the estimated full archive exceeds the local free-disk budget"
+  },
+  "transfer": {
+    "average_throughput_mb_per_second": 3.068222,
+    "benchmark_sha256": "76825a84beab3e9d3a1bdee304f4ef94e59b8683326a73b2fa555d4f083cd8d5",
+    "elapsed_seconds": 2701.632,
+    "minimum_free_disk_bytes": 717383708672,
+    "peak_disk_use_bytes": 8547991552,
+    "raw_byte_count": 8289206079,
+    "raw_object_count": 187,
+    "receipt_sha256": "7561a07fc463add0c39b75b6b247070b647451ed7b795efa9c88d800c477592e"
+  }
+}

@@ -202,3 +202,94 @@ def run(interim_dir: str, landcover_path: str, seed: int = SEED) -> dict[str, ob
         "strata": strata,
         "decision": decision,
     }
+
+
+def build_phase2_result_record(
+    result: dict[str, object],
+    *,
+    data_manifest_sha256: str,
+    git_revision: str,
+    seed: int = SEED,
+) -> dict[str, object]:
+    """Convert one fresh Phase 2 run into the manuscript result contract."""
+    if not isinstance(result, dict):
+        raise ValueError("Phase 2 result must be an object")
+    if not _is_sha256(data_manifest_sha256):
+        raise ValueError("Phase 2 data manifest must use lowercase SHA-256 hex")
+    if not isinstance(git_revision, str) or not git_revision:
+        raise ValueError("Phase 2 git revision must be non-empty text")
+    if type(seed) is not int:
+        raise ValueError("Phase 2 seed must be an integer")
+    field_withheld = result.get("field_withheld")
+    if not isinstance(field_withheld, dict):
+        raise ValueError("Phase 2 result must contain field_withheld metrics")
+    raw_models = field_withheld.get("models")
+    if not isinstance(raw_models, dict) or not raw_models:
+        raise ValueError("Phase 2 field_withheld models must be non-empty")
+    models = []
+    for name, raw_metrics in sorted(raw_models.items()):
+        if not isinstance(name, str) or not isinstance(raw_metrics, dict):
+            raise ValueError("Phase 2 model metrics are invalid")
+        models.append(
+            {
+                "name": name,
+                "mae_mm": _result_number(raw_metrics.get("mae"), "model MAE"),
+                "rmse_mm": _result_number(raw_metrics.get("rmse"), "model RMSE"),
+                "bias_mm": _result_number(raw_metrics.get("bias"), "model bias"),
+                "sample_count": _result_count(raw_metrics.get("n")),
+            }
+        )
+    raw_h2 = field_withheld.get("h2")
+    if not isinstance(raw_h2, dict):
+        raise ValueError("Phase 2 result must contain the field-withheld H2 result")
+    ci95 = raw_h2.get("ci95")
+    if not isinstance(ci95, list) or len(ci95) != 2:
+        raise ValueError("Phase 2 H2 must contain a two-value confidence interval")
+    return {
+        "schema_version": 1,
+        "kind": "mlet.phase2-openet-value-result",
+        "evidence_status": "reproduced",
+        "provenance": {
+            "data_manifest_sha256": data_manifest_sha256,
+            "git_revision": git_revision,
+            "seed": seed,
+        },
+        "field_withheld": {"models": models},
+        "h2": {
+            "best_openet_free_model": _result_text(
+                raw_h2.get("best_free_model"), "best OpenET-free model"
+            ),
+            "mae_reduction_fraction": _result_number(
+                raw_h2.get("mae_reduction_frac"), "MAE reduction"
+            ),
+            "mae_delta_mm": _result_number(raw_h2.get("delta_mm"), "MAE delta"),
+            "ci95_mm": [
+                _result_number(ci95[0], "confidence interval lower bound"),
+                _result_number(ci95[1], "confidence interval upper bound"),
+            ],
+        },
+    }
+
+
+def _is_sha256(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(
+        character in "0123456789abcdef" for character in value
+    )
+
+
+def _result_number(value: object, label: str) -> float:
+    if type(value) not in (int, float) or not math.isfinite(float(value)):
+        raise ValueError(f"Phase 2 {label} must be finite")
+    return float(value)
+
+
+def _result_count(value: object) -> int:
+    if type(value) is not int or value < 1:
+        raise ValueError("Phase 2 sample count must be a positive integer")
+    return value
+
+
+def _result_text(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"Phase 2 {label} must be non-empty text")
+    return value

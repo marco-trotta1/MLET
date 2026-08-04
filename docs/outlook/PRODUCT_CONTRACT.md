@@ -1,10 +1,24 @@
 # Idaho regional ET outlook: product contract
 
-**Status:** frozen product definition; implementation and hindcast validation
-remain pending.
+**Status:** frozen product definition; the ETo candidate implementation is
+complete, and historical hindcast validation remains pending.
 **Domain:** Idaho only.
 **Audience:** public users who need a regional outlook and researchers who need
 a fully inspectable artifact contract.
+
+## Amendment (2026-07-29): layer-level evaluation scope
+
+Every current contract carries `validation_scope` and a `validation_role` for
+each layer. `eto_mm` is the only `formal_hindcast_target`.
+`potential_et_c_mm`, `eta_well_watered_mm`, and `eta_no_irrigation_mm` are
+`conditional_projection_not_formally_validated`.
+`eta_analysis_mm` is `dated_analysis_not_forecast_target`.
+
+Do not infer that conditional layers are validated when ETo has an evaluation
+receipt. An Irrigant adapter may use ETo only after it verifies a trusted,
+layer-specific receipt. It must preserve the conditional labels for ETc and
+ETa. It must never use a regional projection as a field irrigation
+recommendation.
 
 ## Purpose and resolution
 
@@ -73,12 +87,12 @@ repository does not write to proprietary systems or assume their availability.
 ### Promotion and fixture gate
 
 The root of `outlook.json` is the sole serving contract. It contains
-`fixture_non_scientific`, `production_status`, `promotion_status`, and
-`validation_status`. An adapter must reject a run whenever it is a fixture,
-not promoted, or not validated; it must not infer eligibility from a sibling
-`summary.json` or `validation.json`. The present direct-JSONL build path always
-publishes `true`, `non_production_fixture`, `not_promoted`, and
-`not_validated`, respectively.
+`fixture_non_scientific`, `production_status`, `promotion_status`,
+`validation_status`, and `validation_scope`. An adapter must reject a fixture.
+It must verify the required layer-specific receipt before it uses a layer as a
+validated input. It must not infer eligibility from a sibling `summary.json` or
+`validation.json`. The present direct-JSONL build path always publishes `true`,
+`non_production_fixture`, `not_promoted`, and `not_validated`, respectively.
 
 ### Immutable publication
 

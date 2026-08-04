@@ -16,6 +16,22 @@ from mlet.outlook.manifest import RunManifest
 
 _SCHEMA_VERSION = 1
 _SPATIAL_RESOLUTION = "native_weather_grid"
+_VALIDATION_SCOPE = {
+    "formal_hindcast_layers": ("eto_mm",),
+    "unvalidated_projection_layers": (
+        "potential_et_c_mm",
+        "eta_well_watered_mm",
+        "eta_no_irrigation_mm",
+    ),
+    "nonforecast_analysis_layers": ("eta_analysis_mm",),
+}
+_VALIDATION_ROLES = {
+    "eto_mm": "formal_hindcast_target",
+    "potential_et_c_mm": "conditional_projection_not_formally_validated",
+    "eta_analysis_mm": "dated_analysis_not_forecast_target",
+    "eta_well_watered_mm": "conditional_projection_not_formally_validated",
+    "eta_no_irrigation_mm": "conditional_projection_not_formally_validated",
+}
 
 
 def write_serve_contract(
@@ -135,6 +151,9 @@ def _contract_payload(
             "software fixture only; no real archived hindcast evidence",
             "outlook promotion requires the preregistered no-lookahead hindcast gate",
         ],
+        "validation_scope": {
+            name: list(layers) for name, layers in _VALIDATION_SCOPE.items()
+        },
         "spatial_resolution": _SPATIAL_RESOLUTION,
         "observation_latency_days": max(latencies) if latencies else None,
         "layers": _layer_definitions(),
@@ -232,28 +251,33 @@ def _layer_definitions() -> dict[str, dict[str, object]]:
             "units": "mm/day",
             "kind": "forecast_ensemble_quantiles",
             "definition": "ASCE short-reference ET from weather-ensemble members.",
+            "validation_role": _VALIDATION_ROLES["eto_mm"],
         },
         "potential_et_c_mm": {
             "units": "mm/day",
             "kind": "conditional_ensemble_quantiles",
             "definition": "Kc times ETo under ample-water conditions.",
+            "validation_role": _VALIDATION_ROLES["potential_et_c_mm"],
         },
         "eta_analysis_mm": {
             "units": "mm/day",
             "kind": "dated_observed_analysis",
             "definition": "Latest source-available historical ETa analysis; never a future forecast.",
+            "validation_role": _VALIDATION_ROLES["eta_analysis_mm"],
         },
         "eta_well_watered_mm": {
             "units": "mm/day",
             "kind": "conditional_ensemble_quantiles",
             "definition": "ETa scenario assuming crop water is not limiting.",
             "assumptions": ["crop_water_not_limiting"],
+            "validation_role": _VALIDATION_ROLES["eta_well_watered_mm"],
         },
         "eta_no_irrigation_mm": {
             "units": "mm/day",
             "kind": "conditional_ensemble_quantiles_or_null",
             "definition": "ETa scenario assuming no irrigation after the issue time; null when state is unavailable.",
             "assumptions": ["no_irrigation_after_issue_time"],
+            "validation_role": _VALIDATION_ROLES["eta_no_irrigation_mm"],
         },
     }
 

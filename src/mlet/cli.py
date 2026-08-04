@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import date
+import hashlib
 import json
 import os
 import sys
@@ -19,7 +20,14 @@ from mlet.experiments.idaho_outlook_residual import (
     write_residual_markdown,
 )
 from mlet.loader import load_site_series
+from mlet.outlook.archive import build_eto_hindcast_archive, bundle_eto_hindcast_evidence
 from mlet.outlook.build import build_outlook
+from mlet.outlook.eto_build import build_eto_outlook_from_gefs
+from mlet.outlook.eto_hindcast import (
+    evaluate_eto_hindcast_evidence,
+    write_eto_hindcast_json,
+    write_eto_hindcast_markdown,
+)
 from mlet.outlook.hindcast import (
     evaluate_hindcast_evidence,
     write_hindcast_markdown,
@@ -28,7 +36,7 @@ from mlet.outlook.hindcast import (
 )
 from mlet.outlook.publish import publish_outlook
 from mlet.sources.gridmet import extract_eto
-from mlet.sources.gefs import fetch_gefs
+from mlet.sources.gefs import fetch_gefs, resolve_gefs_daily_artifact
 from mlet.sources.stations import load_station_metadata
 from mlet.validator import validate_csv
 
@@ -64,6 +72,9 @@ def main(argv: list[str] | None = None) -> int:
     experiment.add_argument("--interim", required=True)
     experiment.add_argument("--landcover", required=True)
     experiment.add_argument("--out", required=True)
+    experiment.add_argument("--result-json")
+    experiment.add_argument("--data-manifest")
+    experiment.add_argument("--git-revision")
     fetch_outlook = subparsers.add_parser(
         "fetch-outlook-inputs",
         help="Acquire reproducible Idaho outlook inputs when source adapters are available.",
@@ -83,6 +94,54 @@ def main(argv: list[str] | None = None) -> int:
     )
     hindcast.add_argument("--cases", required=True)
     hindcast.add_argument("--out", required=True)
+    eto_hindcast = subparsers.add_parser(
+        "hindcast-eto",
+        help="Run the ETo-only, no-lookahead manuscript hindcast diagnostic.",
+    )
+    eto_hindcast.add_argument("--cases", required=True)
+    eto_hindcast.add_argument("--out", required=True)
+    build_eto = subparsers.add_parser(
+        "build-eto",
+        help="Build an ETo-only research candidate from a verified GEFS artifact.",
+    )
+    build_eto.add_argument("--artifact-pointer", required=True)
+    build_eto.add_argument("--git-revision", required=True)
+    build_eto.add_argument("--retrieved-at", required=True)
+    build_eto.add_argument("--out", required=True)
+    assemble_eto = subparsers.add_parser(
+        "assemble-eto-evidence",
+        help="Bundle verified ETo evidence directories below one archive root.",
+    )
+    assemble_eto.add_argument("--input", required=True, action="append")
+    assemble_eto.add_argument("--out", required=True)
+    build_eto_archive = subparsers.add_parser(
+        "build-eto-hindcast-archive",
+        help="Build a self-contained ETo hindcast archive from GEFS and AgriMet indexes.",
+    )
+    build_eto_archive.add_argument("--gefs-index")
+    build_eto_archive.add_argument("--agrimet-index")
+    build_eto_archive.add_argument("--input", action="append")
+    build_eto_archive.add_argument("--out", "--destination", dest="destination", required=True)
+    outlook = subparsers.add_parser(
+        "outlook",
+        help="Run the manuscript-scoped ETo outlook commands.",
+    )
+    outlook_subparsers = outlook.add_subparsers(
+        dest="outlook_command", required=True
+    )
+    outlook_archive = outlook_subparsers.add_parser(
+        "build-eto-hindcast-archive",
+        help="Build a self-contained ETo hindcast archive from source indexes.",
+    )
+    outlook_archive.add_argument("--gefs-index", required=True)
+    outlook_archive.add_argument("--agrimet-index", required=True)
+    outlook_archive.add_argument("--destination", required=True)
+    outlook_hindcast = outlook_subparsers.add_parser(
+        "hindcast",
+        help="Evaluate one schema-v4 ETo evidence archive.",
+    )
+    outlook_hindcast.add_argument("--evidence", required=True)
+    outlook_hindcast.add_argument("--output", required=True)
     residual = subparsers.add_parser(
         "evaluate-outlook-residual",
         help="Run the frozen, non-serving Idaho outlook residual-model experiment.",
@@ -116,12 +175,54 @@ def main(argv: list[str] | None = None) -> int:
         return _run_build_outlook(args.weather, args.state, args.crop, args.out)
     if args.command == "hindcast-outlook":
         return _run_hindcast_outlook(args.cases, args.out)
+    if args.command == "hindcast-eto":
+        return _run_hindcast_eto(args.cases, args.out)
+    if args.command == "build-eto":
+        return _run_build_eto(
+            args.artifact_pointer,
+            args.git_revision,
+            args.retrieved_at,
+            args.out,
+        )
+    if args.command == "assemble-eto-evidence":
+        return _run_assemble_eto_evidence(args.input, args.out)
+    if args.command == "build-eto-hindcast-archive":
+        if args.gefs_index is not None or args.agrimet_index is not None:
+            if args.gefs_index is None or args.agrimet_index is None:
+                parser.error("--gefs-index and --agrimet-index must be supplied together")
+            return _run_build_eto_hindcast_archive(
+                args.gefs_index, args.agrimet_index, args.destination
+            )
+        if not args.input:
+            parser.error("supply --gefs-index and --agrimet-index, or at least one --input")
+        return _run_assemble_eto_evidence(args.input, args.destination)
+    if args.command == "outlook":
+        if args.outlook_command == "build-eto-hindcast-archive":
+            return _run_build_eto_hindcast_archive(
+                args.gefs_index, args.agrimet_index, args.destination
+            )
+        if args.outlook_command == "hindcast":
+            return _run_hindcast_eto(args.evidence, args.output)
+        raise AssertionError("unhandled outlook command")
     if args.command == "evaluate-outlook-residual":
         return _run_outlook_residual(args.cases, args.out)
     if args.command == "publish-outlook":
         return _run_publish_outlook(args.run, args.out)
+    if args.result_json is not None and (
+        args.data_manifest is None or args.git_revision is None
+    ):
+        parser.error("--result-json requires --data-manifest and --git-revision")
     result = phase2_openet_value.run(args.interim, args.landcover)
     _write_report(args.out, result)
+    if args.result_json is not None:
+        assert args.data_manifest is not None and args.git_revision is not None
+        manifest_bytes = Path(args.data_manifest).read_bytes()
+        record = phase2_openet_value.build_phase2_result_record(
+            result,
+            data_manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
+            git_revision=args.git_revision,
+        )
+        _write_new_json(Path(args.result_json), record)
     print(f"decision: {result['decision']}")
     return 0
 
@@ -268,6 +369,79 @@ def _run_hindcast_outlook(cases_path: str, destination: str) -> int:
     return 1
 
 
+def _run_hindcast_eto(cases_path: str, destination: str) -> int:
+    """Write the ETo-only diagnostic and retain the external review boundary."""
+    try:
+        report_path = _trusted_hindcast_output(Path(destination))
+        report = evaluate_eto_hindcast_evidence(Path(cases_path))
+        write_eto_hindcast_markdown(report, report_path)
+        write_eto_hindcast_json(report, report_path.with_suffix(".json"))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot run ETo hindcast: {exc}", file=sys.stderr)
+        return 2
+    print(f"report: {report_path}")
+    print(f"result: {report_path.with_suffix('.json')}")
+    print("promotion: false")
+    print("validation scope: eto_mm only")
+    return 1
+
+
+def _run_build_eto(
+    artifact_pointer: str,
+    git_revision: str,
+    retrieved_at: str,
+    destination: str,
+) -> int:
+    """Build an ETo candidate from one verified canonical GEFS pointer."""
+    try:
+        artifact_set = resolve_gefs_daily_artifact(Path(artifact_pointer))
+        manifest = build_eto_outlook_from_gefs(
+            artifact_set=artifact_set,
+            git_revision=git_revision,
+            retrieved_at=retrieved_at,
+            destination=Path(destination),
+        )
+    except (OSError, ValueError, NotImplementedError) as exc:
+        print(f"error: cannot build ETo candidate: {exc}", file=sys.stderr)
+        return 2
+    print(f"run_id: {manifest.run_id}")
+    print("production_status: research_candidate")
+    print("validation_status: evaluation_pending")
+    return 0
+
+
+def _run_assemble_eto_evidence(inputs: list[str], destination: str) -> int:
+    """Bundle verified ETo cases without evaluating or promoting them."""
+    try:
+        evidence_path = bundle_eto_hindcast_evidence(
+            tuple(Path(value) for value in inputs), Path(destination)
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot assemble ETo evidence: {exc}", file=sys.stderr)
+        return 2
+    print(f"evidence: {evidence_path}")
+    print("validation_status: evaluation_pending")
+    print("promotion: false")
+    return 0
+
+
+def _run_build_eto_hindcast_archive(
+    gefs_index: str, agrimet_index: str, destination: str
+) -> int:
+    """Build and verify one ETo archive from two source indexes."""
+    try:
+        evidence_path = build_eto_hindcast_archive(
+            Path(gefs_index), Path(agrimet_index), Path(destination)
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot build ETo hindcast archive: {exc}", file=sys.stderr)
+        return 2
+    print(f"evidence: {evidence_path}")
+    print("validation_status: evaluation_pending")
+    print("promotion: false")
+    return 0
+
+
 def _run_outlook_residual(cases_path: str, destination: str) -> int:
     """Write a permanently non-promotable ML research candidate."""
     try:
@@ -410,3 +584,13 @@ def _write_report(path: str, result: dict[str, object]) -> None:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as handle:
         handle.write("\n".join(lines))
+
+
+def _write_new_json(path: Path, payload: dict[str, object]) -> None:
+    if path.exists() or path.is_symlink():
+        raise ValueError("Phase 2 result JSON output must not already exist")
+    if not path.parent.is_dir() or path.parent.is_symlink():
+        raise ValueError("Phase 2 result JSON parent must be a real directory")
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    with path.open("x", encoding="utf-8") as handle:
+        handle.write(f"{encoded}\n")

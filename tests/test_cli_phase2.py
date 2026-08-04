@@ -7,7 +7,8 @@ import xarray as xr
 from openpyxl import Workbook
 
 from mlet.cli import main
-from mlet.experiments.phase2_openet_value import run
+from mlet.experiments.phase2_openet_value import build_phase2_result_record, run
+from mlet.manuscript_artifacts import build_phase2_artifacts
 
 
 def _write_interim(directory) -> None:
@@ -33,7 +34,24 @@ def test_evaluate_writes_report_with_decision_and_strata(tmp_path, capsys):
     interim.mkdir()
     _write_interim(interim)
     report = tmp_path / "results.md"
-    result = main(["evaluate", "--interim", str(interim), "--landcover", str(interim / "_landcover.json"), "--out", str(report)])
+    result_json = tmp_path / "results.json"
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text("{}", encoding="utf-8")
+    result = main([
+        "evaluate",
+        "--interim",
+        str(interim),
+        "--landcover",
+        str(interim / "_landcover.json"),
+        "--out",
+        str(report),
+        "--result-json",
+        str(result_json),
+        "--data-manifest",
+        str(manifest),
+        "--git-revision",
+        "test-revision",
+    ])
     assert result == 0
     text = report.read_text()
     assert "OpenET-value decision" in text
@@ -41,6 +59,7 @@ def test_evaluate_writes_report_with_decision_and_strata(tmp_path, capsys):
     assert "Croplands" in text
     assert "B0_Persistence" in text
     assert "decision" in capsys.readouterr().out.lower()
+    assert json.loads(result_json.read_text())["evidence_status"] == "reproduced"
 
 
 def test_qc_gridmet_prints_mean_absolute_delta(tmp_path, capsys):
@@ -137,3 +156,25 @@ def test_evaluation_excludes_nonfinite_weather_covariates(tmp_path):
     assert isinstance(models, dict)
     assert math.isfinite(float(models["B2_WeatherRidge"]["mae"]))
     assert math.isfinite(float(models["M3_OpenETRidge"]["mae"]))
+
+
+def test_phase2_run_serializes_directly_to_the_manuscript_result_contract(tmp_path):
+    interim = tmp_path / "interim"
+    interim.mkdir()
+    _write_interim(interim)
+
+    record = build_phase2_result_record(
+        run(str(interim), str(interim / "_landcover.json")),
+        data_manifest_sha256="a" * 64,
+        git_revision="test-revision",
+    )
+    source = tmp_path / "phase2.json"
+    source.write_text(json.dumps(record), encoding="utf-8")
+    output = tmp_path / "artifacts"
+    output.mkdir()
+
+    build_phase2_artifacts(source, output)
+
+    assert record["evidence_status"] == "reproduced"
+    assert len(record["field_withheld"]["models"]) == 6
+    assert (output / "phase2_openet_value.md").is_file()

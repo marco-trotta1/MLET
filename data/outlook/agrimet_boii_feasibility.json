@@ -1,0 +1,86 @@
+{
+  "case_id": "agrimet-boii-gefs-20190703",
+  "checks": {
+    "all_target_rows_within_mapping_limit": true,
+    "no_target_exclusions": true,
+    "station_history_resolves_every_target_day": true,
+    "target_availability_after_local_day_end": true,
+    "target_dates_exactly_cover_issue_leads_1_to_20": true,
+    "target_rows_are_unique": true
+  },
+  "evidence_root": "MLET Evidence/agrimet-boii",
+  "forecast_source": {
+    "artifact_pointer": "MLET Evidence/gefs-v12-20190703/gefs-20190703.pointer",
+    "artifact_receipt_path": "data/outlook/gefs_reforecast_20190703_artifact_receipt.json",
+    "artifact_sha256": "154e88317fe9aa6bb7b31595e5cbdd149735ffc92acdfc7ed55d7b68e49d901c",
+    "grid_count": 195,
+    "member_count": 11,
+    "normalized_sha256": "c9771c147204f07efb2c5b66122b25e7231d724ff8e2ef7cc5ebcd4f4e416fa8",
+    "raw_object_receipt_sha256": "7561a07fc463add0c39b75b6b247070b647451ed7b795efa9c88d800c477592e",
+    "receipt_sha256": "1c7286615170c9c3441f014d431020525181a70be089399eb9e2ea941f86b879",
+    "row_count": 42900
+  },
+  "issue_time": "2019-07-03T00:00:00Z",
+  "kind": "mlet.agrimet.gefs-source-feasibility",
+  "schema_version": 1,
+  "scientific_gate": {
+    "baseline_status": "not_available_without_station_year_holdout_support",
+    "hindcast_status": "not_run",
+    "reason": "the 20-day source-feasibility target is not sufficient to construct the frozen leakage-safe baseline",
+    "schema_v2_target_artifact": "not_promoted"
+  },
+  "station": {
+    "location_segment_count": 1,
+    "registry_path": "data/outlook/agrimet_station_history_boii.json",
+    "registry_sha256": "049a88d1a13b16cf310e60afb89c19f339728bfbd61006c465b5bf1a5eb54fbf",
+    "resolved_location_count": 20,
+    "resolved_locations": [
+      [
+        43.60027,
+        -116.17694,
+        829.06
+      ]
+    ],
+    "station_id": "BOII"
+  },
+  "station_grid_mapping": {
+    "all_target_rows_same_match": true,
+    "distance_km": 18.10119132115406,
+    "grid_id": "43.50:-116.00",
+    "grid_latitude": 43.5,
+    "grid_longitude": -116.0,
+    "maximum_distance_km": 50.0,
+    "method": "nearest great-circle grid point",
+    "station_id": "BOII",
+    "station_latitude": 43.60027,
+    "station_longitude": -116.17694
+  },
+  "station_history": {
+    "evidence_status": "bracketed_archival_location_evidence_not_complete_relocation_ledger",
+    "registry_path": "data/outlook/agrimet_station_history_boii.json",
+    "registry_sha256": "049a88d1a13b16cf310e60afb89c19f339728bfbd61006c465b5bf1a5eb54fbf"
+  },
+  "status": "source_feasibility_complete_target_artifact_pending_baseline",
+  "target_horizon": {
+    "expected_day_count": 20,
+    "first_date": "2019-07-03",
+    "last_date": "2019-07-22"
+  },
+  "target_source": {
+    "artifact_path": "data/outlook/agrimet_boii_etos_artifact.json",
+    "artifact_schema_version": 1,
+    "artifact_sha256": "14055f6010a7884fe93fc8fb7c9024cd0666c867bb2a68e96cfa3c1c5aa9c2fe",
+    "byte_count": 1505,
+    "etag": null,
+    "exclusion_count": 0,
+    "exclusions_path": "data/outlook/agrimet_boii_exclusions.json",
+    "exclusions_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "last_modified": null,
+    "raw_path": "MLET Evidence/agrimet-boii/etos-raw/BOII/2019-07-03_2019-07-22.txt",
+    "raw_sha256": "beba47834b40689db58e46106c51592cf34cac56d5d0afa2bd42783d02f7f17c",
+    "retrieval_receipt_path": "data/outlook/agrimet_boii_retrieval_receipt.json",
+    "retrieved_at": "2026-08-04T18:16:16.733195Z",
+    "rows_sha256": "1d1d65afc094674265cb0f3e9b8c831fdd4a0a93eccd50ea78398d6c50949cd2",
+    "uri": "https://www.usbr.gov/pn-bin/webarccsv.pl?parameter=BOII%20ETOS&syer=2019&smnth=7&sdy=3&eyer=2019&emnth=7&edy=22"
+  }
+}

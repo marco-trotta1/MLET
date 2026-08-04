@@ -14,9 +14,11 @@ import pytest
 
 from mlet.sources.gefs import (
     fetch_gefs,
+    load_gefs_daily_members,
     materialize_gefs_daily_artifact,
     normalize_gefs_rows,
     resolve_gefs_daily_artifact,
+    serialize_gefs_daily_artifact,
 )
 from mlet.outlook.dates import idaho_local_day_end_utc, outlook_valid_dates
 
@@ -238,6 +240,74 @@ def test_imported_daily_artifact_caches_exact_parsed_bytes_and_publishes_hashes(
         assert stat.S_IMODE(member_path.stat().st_mode) & (
             stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
         ) == 0
+
+
+def test_resolved_gefs_daily_artifact_reloads_the_verified_weather_members(
+    tmp_path: Path,
+) -> None:
+    """Changing the normalized bytes must fail before an ETo build uses them."""
+    artifact_path = tmp_path / "fixture.daily-artifact.json"
+    _write_daily_artifact(artifact_path, _gefs_rows())
+    artifact_set = materialize_gefs_daily_artifact(
+        artifact_path, tmp_path / "weather_members.gefs"
+    )
+
+    members = load_gefs_daily_members(artifact_set)
+
+    assert len(members) == 60
+    assert members[0].issued_at == datetime(2026, 7, 16, 18, tzinfo=timezone.utc)
+    assert members[0].grid_id == "fixture-idaho-grid"
+
+
+def test_gefs_artifact_serializer_bridges_decoded_rows_to_the_immutable_importer(
+    tmp_path: Path,
+) -> None:
+    """A raw-GRIB decoder output must not require a hand-written artifact JSON."""
+    artifact = serialize_gefs_daily_artifact(
+        _gefs_rows(),
+        upstream_uri="https://example.test/gefs.grib2",
+        upstream_raw_sha256=hashlib.sha256(b"archived-grib").hexdigest(),
+        source_issue_at=ISSUED_AT,
+        idaho_bbox=IDAHO_BBOX,
+    )
+    artifact_path = tmp_path / "gefs.daily-artifact.json"
+    artifact_path.write_bytes(artifact)
+
+    artifact_set = materialize_gefs_daily_artifact(
+        artifact_path, tmp_path / "weather_members.gefs"
+    )
+
+    assert len(load_gefs_daily_members(artifact_set)) == 60
+
+
+def test_gefs_artifact_serializer_binds_a_multi_file_raw_retrieval_receipt(
+    tmp_path: Path,
+) -> None:
+    """A real GEFS issue must retain all raw-file identities, not a proxy hash."""
+    receipt_bytes = b"{\"objects\":[\"fixture\"]}\n"
+    artifact = serialize_gefs_daily_artifact(
+        _gefs_rows(),
+        upstream_uri="https://example.test/noaa-gefs-v12",
+        source_issue_at=ISSUED_AT,
+        idaho_bbox=IDAHO_BBOX,
+        raw_object_receipt={
+            "uri": "file:///archive/gefs-retrieval-receipt.json",
+            "sha256": hashlib.sha256(receipt_bytes).hexdigest(),
+            "object_count": 187,
+        },
+    )
+    artifact_path = tmp_path / "gefs.daily-artifact.json"
+    artifact_path.write_bytes(artifact)
+
+    artifact_set = materialize_gefs_daily_artifact(
+        artifact_path, tmp_path / "weather_members.gefs"
+    )
+
+    payload = json.loads(artifact)
+    receipt = json.loads(artifact_set.receipt_path.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 2
+    assert payload["provenance"]["raw_object_receipt"]["object_count"] == 187
+    assert receipt["raw_object_receipt"]["sha256"] == hashlib.sha256(receipt_bytes).hexdigest()
 
 
 def test_imported_daily_artifact_rejects_an_unlabeled_daily_boundary(

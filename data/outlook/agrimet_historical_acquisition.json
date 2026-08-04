@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "kind": "mlet.agrimet.historical-acquisition-summary",
+  "target_window": {
+    "first": "2015-06-17",
+    "last": "2019-12-31"
+  },
+  "station_count": 19,
+  "row_count": 31406,
+  "exclusion_count": 115,
+  "raw_file_count": 19,
+  "raw_byte_count": 807120,
+  "station_history_sha256": "902901cd9c29d2be47224ec8171acd8246cca0f43d696f5af8e490b75dfddd3b",
+  "rows_sha256": "62609eaa8a0c71f000994c2590520b9298b3755bb07744e5bc542832e14b7a41",
+  "exclusions_sha256": "50a50654c593bff409b61bb9972e06e941fc3f21e484bcc3bc14fbd4e1c67dbe",
+  "retrieval_receipt_sha256": "177277c8db8058d7225ed08e70d9d1afc66a954e1eb57e5e0c29d0e2c266f3ac",
+  "normalized_artifact_sha256": "64677be90fcd5d02515e51ecd98032e51457778b3f4277a505be8c9ff8c01ddf",
+  "normalized_sha256": "c4eb4eade58710db54206bbb8e7d573e02fd1c86aa3d88fce4eda949e71ada98",
+  "grid_mapping": {
+    "forecast_artifact_sha256": "154e88317fe9aa6bb7b31595e5cbdd149735ffc92acdfc7ed55d7b68e49d901c",
+    "maximum_distance_km": 50.0,
+    "station_count": 19,
+    "maximum_observed_distance_km": 25.474539163606043,
+    "mapping_sha256": "7f90ec46321e4a18e67c503115bf381af759a7c01535b3a05d81fb9ddfc75317"
+  },
+  "target_build": {
+    "feasibility_case_count": 1,
+    "target_index_sha256": "8551c56c26fee195adc72796c46ffcb5b1bf74d188cb4a170739f9cae56f8169",
+    "target_artifact_sha256": "7aabbf02699745d7051bc09d7c00bd59e969abbcf639d391728086fd817d9751",
+    "evidence_sha256": "890555ea6e0f912655fbdcbb7cd1291c019ce9545e21407f3a9432f1582bba38"
+  },
+  "status": "eligible_records_acquired_history_bound_mapping_complete_one_v4_feasibility_case_full_forecast_cases_pending"
+}

@@ -125,6 +125,8 @@ def _load_contract(source: PublishedRun) -> dict[str, object]:
         raise ValueError("verified outlook.json must retain native_weather_grid resolution")
     if not isinstance(payload.get("layers"), dict):
         raise ValueError("verified outlook.json must define named layers")
+    if not isinstance(payload.get("validation_scope"), dict):
+        raise ValueError("verified outlook.json must define validation_scope")
     if not isinstance(payload.get("feature_collections"), list):
         raise ValueError("verified outlook.json must contain feature collections")
     return payload
@@ -153,6 +155,7 @@ def _candidate_contract(source: PublishedRun, contract: Mapping[str, object]) ->
         # object: this evaluator process has no path to a validated status.
         "validation_status": "validation_pending",
         "promotion_blockers": blockers,
+        "validation_scope": contract["validation_scope"],
         "spatial_resolution": "native_weather_grid",
         "layers": contract["layers"],
         "grid_references": contract.get("grid_references", {}),
@@ -208,6 +211,7 @@ def _geojson_payload(candidate: Mapping[str, object]) -> dict[str, object]:
                         "promotion": False,
                         "promotion_status": "not_promoted",
                         "validation_status": "validation_pending",
+                        "validation_scope": candidate["validation_scope"],
                     },
                 }
             )
@@ -221,6 +225,7 @@ def _geojson_payload(candidate: Mapping[str, object]) -> dict[str, object]:
         "promotion": False,
         "promotion_status": "not_promoted",
         "validation_status": "validation_pending",
+        "validation_scope": candidate["validation_scope"],
         "spatial_resolution": "native_weather_grid",
         "regional_warning": _REGIONAL_WARNING,
         "features": features,
@@ -248,6 +253,7 @@ def _summary_payload(candidate: Mapping[str, object]) -> dict[str, object]:
         "promotion": False,
         "promotion_status": "not_promoted",
         "validation_status": "validation_pending",
+        "validation_scope": candidate["validation_scope"],
         "not_field_scale": True,
         "spatial_resolution": "native_weather_grid",
         "regional_aggregation": "equal_cell_descriptive_mean_not_area_weighted",
