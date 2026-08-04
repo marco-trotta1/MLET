@@ -25,8 +25,9 @@ jobs:
       - name: Install package
         run: python -m pip install -e .
       - name: Build the real ETo candidate site
-        run: python scripts/build_eto_site.py \
-          --source-dir data/outlook/gefs_reforecast_20190703_candidate \
+        run: >-
+          python scripts/build_eto_site.py
+          --source-dir data/outlook/gefs_reforecast_20190703_candidate
           --out _site
       - uses: actions/upload-pages-artifact@v3
         with:
