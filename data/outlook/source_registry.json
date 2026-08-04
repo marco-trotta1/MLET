@@ -4,7 +4,7 @@
     "gefs": {
       "citation": "NOAA NCEP Global Ensemble Forecast System via NOMADS",
       "acquisition_mode": "imported canonical daily artifact only; live GRIB fetch disabled",
-      "artifact_schema": "mlet.gefs.daily-artifact v1; docs/data/GEFS_DAILY_ARTIFACT.md",
+      "artifact_schema": "mlet.gefs.daily-artifact v2; docs/data/GEFS_DAILY_ARTIFACT.md",
       "license": "U.S. government public data",
       "latency": "forecast issue time",
       "required_variables": [
@@ -14,6 +14,27 @@
         "wind_m_s",
         "solar_mj_m2_day",
         "precip_mm"
+      ]
+    },
+    "usbr_agrimet_etos": {
+      "citation": "U.S. Bureau of Reclamation AgriMet Historical Archive, ETos",
+      "artifact_schema": "mlet.agrimet.etos-artifact v2; docs/data/AGRIMET_ETO_ARTIFACT.md",
+      "station_history_schema": "mlet.agrimet.station-history-registry v1; docs/data/AGRIMET_ETO_ARTIFACT.md",
+      "station_registry_snapshot": "data/outlook/agrimet_station_registry.json",
+      "station_registry_snapshot_sha256": "ae5f85f719a057276bf9549d2b4f69fd8a570f73ab700216d435e1c7639cb10b",
+      "station_registry_retrieved_at": "2026-08-01T04:38:15.972307Z",
+      "license": "U.S. government public data",
+      "latency": "source receipt records the archive availability time",
+      "required_variables": [
+        "station_id",
+        "latitude",
+        "longitude",
+        "elevation_m",
+        "valid_date",
+        "etos_in",
+        "available_at",
+        "uri",
+        "source_version"
       ]
     },
     "openet_eta": {
