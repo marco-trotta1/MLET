@@ -212,16 +212,20 @@ python3 scripts/acquire_decode_gefs_reforecast_stream.py \
   --git-revision "PINNED-CODE-REVISION" \
   --idaho-bbox=-117.25,42.00,-111.00,49.00 \
   --workers 8 \
-  --timeout-seconds 600
+  --timeout-seconds 600 \
+  --attempts 3
 ```
 
 Each issue has a raw-object receipt, an issue summary receipt, and a decoded
 artifact. The issue summary records byte count, elapsed time, throughput,
 filesystem free space, workspace size, response metadata counts, decoder time,
-and artifact checksums. When candidate options are supplied, it also writes a
-research-candidate manifest and ETo outlook with their checksums. Use
-`--resume` with the same output roots after an interrupted run. The runner
-keeps a failed issue directory for diagnosis.
+and artifact checksums. The runner retries transient network failures from
+byte zero up to `--attempts` times per object. The default is three attempts,
+bounded from 1 through 8. HTTP client errors are not retried. When candidate
+options are supplied, the runner also writes a research-candidate manifest and
+ETo outlook with their checksums. Use `--resume` with the same output roots
+after completed issues. The runner keeps a failed issue directory for
+diagnosis.
 
 After retrieval, decode one fully verified issue:
 

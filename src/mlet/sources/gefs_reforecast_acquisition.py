@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from http.client import IncompleteRead
 import certifi
 import hashlib
 import json
@@ -15,6 +16,7 @@ from pathlib import Path
 import ssl
 import tempfile
 from typing import Any, Optional
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from mlet.sources.gefs_reforecast_plan import build_gefs_reforecast_acquisition_plan
@@ -60,13 +62,15 @@ def retrieve_gefs_reforecast_plan(
     opener: Optional[Callable[[Request], Any]] = None,
     max_workers: int = 1,
     timeout_seconds: float = 600.0,
+    max_attempts: int = 3,
 ) -> Path:
-    """Retrieve every planned object once and write its checksum receipt.
+    """Retrieve every planned object and write its checksum receipt.
 
     The function accepts only a plan reconstructed by
     `build_gefs_reforecast_acquisition_plan()`. It does not replace raw files
-    or an existing receipt. A failed run leaves completed immutable files in
-    place, so a caller must prepare a new empty archive root for another run.
+    or an existing receipt. It retries transient network failures from byte
+    zero. A failed run leaves completed immutable files in place, so a caller
+    must prepare a new empty archive root for another run.
     """
     objects = _validated_plan_objects(plan)
     if type(max_workers) is not int or not 1 <= max_workers <= 16:
@@ -75,6 +79,8 @@ def retrieve_gefs_reforecast_plan(
         raise ValueError("GEFS timeout_seconds must be finite")
     if not 1.0 <= float(timeout_seconds) <= 3_600.0:
         raise ValueError("GEFS timeout_seconds must be from 1 through 3600")
+    if type(max_attempts) is not int or not 1 <= max_attempts <= 8:
+        raise ValueError("GEFS max_attempts must be an integer from 1 through 8")
     retrieval_time = _require_utc(retrieved_at, "retrieved_at")
     data_root_path = Path(data_root)
     if data_root_path.is_symlink():
@@ -95,6 +101,7 @@ def retrieve_gefs_reforecast_plan(
             destination,
             opener=opener,
             timeout_seconds=float(timeout_seconds),
+            max_attempts=max_attempts,
         )
 
     if max_workers == 1:
@@ -219,6 +226,28 @@ def _retrieve_one(
     *,
     opener: Optional[Callable[[Request], Any]],
     timeout_seconds: float,
+    max_attempts: int,
+) -> dict[str, object]:
+    for attempt in range(max_attempts):
+        try:
+            return _retrieve_once(
+                uri,
+                destination,
+                opener=opener,
+                timeout_seconds=timeout_seconds,
+            )
+        except (HTTPError, URLError, IncompleteRead, TimeoutError, ConnectionError) as error:
+            if attempt + 1 >= max_attempts or not _is_retryable(error):
+                raise
+    raise RuntimeError("GEFS retrieval retry loop did not terminate")
+
+
+def _retrieve_once(
+    uri: str,
+    destination: Path,
+    *,
+    opener: Optional[Callable[[Request], Any]],
+    timeout_seconds: float,
 ) -> dict[str, object]:
     destination.parent.mkdir(parents=True, exist_ok=True)
     request = Request(uri, headers={"User-Agent": "mlet-gefs-reforecast/1"})
@@ -260,6 +289,12 @@ def _retrieve_one(
         "etag": _optional_header(headers, "ETag"),
         "last_modified": _optional_header(headers, "Last-Modified"),
     }
+
+
+def _is_retryable(error: BaseException) -> bool:
+    if isinstance(error, HTTPError):
+        return 500 <= error.code <= 599
+    return isinstance(error, (URLError, IncompleteRead, TimeoutError, ConnectionError))
 
 
 def _new_destination(root: Path, local_path: str) -> Path:

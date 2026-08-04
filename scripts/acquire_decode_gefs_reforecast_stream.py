@@ -89,6 +89,7 @@ def main() -> int:
     parser.add_argument("--idaho-bbox", required=True, type=_bbox_arg)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--timeout-seconds", type=float, default=600.0)
+    parser.add_argument("--attempts", type=int, default=3)
     parser.add_argument("--start-index", type=int, default=0)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--resume", action="store_true")
@@ -98,6 +99,8 @@ def main() -> int:
         parser.error("--workers must be from 1 through 16")
     if args.timeout_seconds < 1.0 or args.timeout_seconds > 3_600.0:
         parser.error("--timeout-seconds must be from 1 through 3600")
+    if args.attempts < 1 or args.attempts > 8:
+        parser.error("--attempts must be from 1 through 8")
     if (args.candidates_root is None) != (args.git_revision is None):
         parser.error("--candidates-root and --git-revision must be supplied together")
     if args.start_index < 0:
@@ -158,6 +161,7 @@ def main() -> int:
             idaho_bbox=args.idaho_bbox,
             workers=args.workers,
             timeout_seconds=args.timeout_seconds,
+            max_attempts=args.attempts,
             candidate_path=candidate_path,
             git_revision=args.git_revision,
             keep_raw=args.keep_raw,
@@ -182,6 +186,7 @@ def _acquire_one_issue(
     idaho_bbox: tuple[float, float, float, float],
     workers: int,
     timeout_seconds: float,
+    max_attempts: int,
     candidate_path: Path | None,
     git_revision: str | None,
     keep_raw: bool,
@@ -197,6 +202,7 @@ def _acquire_one_issue(
         retrieved_at=transfer_started,
         max_workers=workers,
         timeout_seconds=timeout_seconds,
+        max_attempts=max_attempts,
     )
     transfer_elapsed = time.monotonic() - transfer_clock
     raw_objects = load_verified_gefs_reforecast_receipt(
@@ -260,6 +266,7 @@ def _acquire_one_issue(
         "transfer_throughput_mb_per_second": round(
             raw_byte_count / transfer_elapsed / _BYTES_PER_MB, 6
         ),
+        "transfer_max_attempts_per_object": max_attempts,
         "filesystem_free_bytes_before": before_free,
         "filesystem_free_bytes_after_download": after_download_free,
         "raw_workspace_bytes_after_download": workspace_bytes,

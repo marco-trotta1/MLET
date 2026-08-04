@@ -36,6 +36,20 @@ class _Response:
         return result
 
 
+class _ReadTimeoutResponse(_Response):
+    """Response that stalls on its first body read."""
+
+    def __init__(self, contents: bytes) -> None:
+        super().__init__(contents)
+        self._stalled = False
+
+    def read(self, count: int) -> bytes:
+        if not self._stalled:
+            self._stalled = True
+            raise TimeoutError("fixture read timeout")
+        return super().read(count)
+
+
 def test_retrieval_writes_checksum_bound_receipt_for_the_entire_fixed_plan(
     tmp_path: Path,
 ) -> None:
@@ -119,3 +133,30 @@ def test_retrieval_rejects_an_unbounded_socket_timeout(tmp_path: Path) -> None:
             timeout_seconds=3_601,
             opener=lambda _: _Response(b"raw-grib-fixture"),
         )
+
+
+def test_retrieval_retries_a_transient_read_timeout(tmp_path: Path) -> None:
+    plan = build_gefs_reforecast_acquisition_plan(
+        (datetime(2019, 7, 3, tzinfo=timezone.utc),)
+    )
+    opener_calls = 0
+
+    def opener(_: object) -> _Response:
+        nonlocal opener_calls
+        opener_calls += 1
+        if opener_calls == 1:
+            return _ReadTimeoutResponse(b"raw-grib-fixture")
+        return _Response(b"raw-grib-fixture")
+
+    receipt_path = retrieve_gefs_reforecast_plan(
+        plan,
+        data_root=tmp_path / "archive",
+        receipt_path=tmp_path / "receipt.json",
+        retrieved_at=datetime(2026, 7, 29, tzinfo=timezone.utc),
+        opener=opener,
+        max_attempts=2,
+    )
+
+    assert opener_calls == 188
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    assert len(receipt["objects"]) == 187
