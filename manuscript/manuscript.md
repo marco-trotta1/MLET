@@ -2,9 +2,9 @@
 
 **Manuscript status:** Draft for internal review.
 
-**Evidence status:** The Phase 2 result is a historical report pending
-independent reproduction. The ETo outlook software and source contracts are
-implemented. The full ETo hindcast is not yet complete.
+**Evidence status:** The Phase 2 result is independently reproduced. The ETo
+outlook software and source contracts are implemented. The full ETo hindcast
+is not yet complete.
 
 ## Abstract
 
@@ -19,17 +19,16 @@ subset of 85 stations and 7,923 station-days. The best OpenET-inclusive model
 has a reported MAE of 0.856 mm/day. The best OpenET-free weather model has a
 reported MAE of 1.514 mm/day. The reported reduction is 43.4 percent. The
 paired 95 percent confidence interval for the MAE difference is 0.399 to
-0.911 mm/day. These values remain a historical report until an independent
-reproduction is complete.
+0.911 mm/day. The independent reproduction receipt matches the committed
+result to three decimal places and binds the source archives by checksum.
 
 The outlook evaluates only weather-driven ASCE short-reference ETo. It uses
 archived GEFS reforecast inputs and published USBR AgriMet ETos targets. The
 software records source times, checksums, station identity, grid identity, and
 layer-level claim status. Conditional crop ET and ETa scenarios remain outside
-the formal validation target. The public station registry snapshot is
-complete for current metadata, but a complete historical station-movement
-record and the full outcome archive are still required before ETo skill is
-reported.
+the formal validation target. Historical station evidence now supports 19
+stations through the acquired target window, with BOII as the full feasibility
+case. The full outcome archive is still required before ETo skill is reported.
 
 ## Introduction
 
@@ -81,7 +80,9 @@ members through lead day 35. The ETo outlook uses leads 1 through 20. The lead
 dates use the Idaho local calendar day in the `America/Boise` time zone.
 
 The primary baseline is station-specific day-of-year climatology. The baseline
-excludes the evaluated year and held-out spatial fold. The evaluator reports
+excludes the evaluated year. The frozen spatial fold controls forecast
+evaluation, while prior target-station history remains available to its
+station-specific baseline. The evaluator reports
 MAE, RMSE, signed bias, p10 to p90 coverage, interval width, and mean pinball
 loss. It reports support by lead, season, and spatial fold. It requires at
 least 30 paired station-date targets in each reported cell. Paired confidence
@@ -95,9 +96,9 @@ availability, and checksum. A forecast candidate has the status
 `research_candidate`, `not_promoted`, and `evaluation_pending`.
 
 The current USBR station snapshot records 265 stations and 52 Idaho stations.
-It is current metadata only. It does not prove that a coordinate applies to a
-historical target date. The target adapter requires a separate historical
-station-location registry before it accepts a target.
+It does not prove that a coordinate applies to a historical target date. The
+historical audit accepts 19 station pages and dated map evidence. The target
+adapter rejects stations without this history.
 
 The formal hindcast target is `eto_mm`. `potential_et_c_mm` is a conditional
 crop-ET projection. `eta_analysis_mm` is a delayed historical analysis.
@@ -123,16 +124,16 @@ The generated table is in
 The reported best OpenET-inclusive model is M2 OpenETRecal. The reported MAE
 reduction against B2 WeatherRidge is 43.4 percent. The paired 95 percent
 confidence interval for the MAE difference is 0.399 to 0.911 mm/day. The
-result is marked as a historical report because independent reproduction is
-pending.
+The independent reproduction receipt confirms the result and its source
+archive hashes.
 
 ### ETo outlook result
 
-No full ETo hindcast result is reported in this draft. The source and software
-contracts are ready. The public station snapshot still needs historical
-location evidence. The full GEFS and AgriMet outcome archive also remains
-unassembled. These are data and provenance gates. They are not evidence of
-forecast failure.
+No full ETo hindcast result is reported in this draft. The 2019-07-03
+feasibility case passes the GEFS transfer, version-2 decode, AgriMet target,
+station-history, grid-match, checksum, and issue-time checks. The full GEFS
+and AgriMet outcome archive remains unassembled. This is a data gate, not
+evidence of forecast failure.
 
 The ETo result section will be generated from the immutable result record. It
 will report the outcome even if the forecast does not improve on climatology.
@@ -150,10 +151,10 @@ the forecast target, source cutoff, station identity, mapped grid identity, and
 claim status remain visible in machine-readable files. This structure permits a
 later hindcast without changing the target definition after seeing outcomes.
 
-The current station snapshot shows why historical metadata matters. A current
-coordinate can differ from an earlier station position. The ETo target path
-therefore fails closed when a historical location segment is missing. This
-protects the manuscript from a silent station move.
+The station audit shows why historical metadata matters. A current coordinate
+can differ from an earlier station position. The ETo target path therefore
+fails closed when a historical location segment is missing. This protects the
+manuscript from a silent station move.
 
 The project does not require an OpenET key for the ETo manuscript path. It also
 does not require Irrigant access to complete the research artifact or write the
@@ -161,9 +162,9 @@ methods and limitations sections. Those integrations are future work.
 
 ## Limitations
 
-- The Phase 2 result is a historical report until independent reproduction.
+- The Phase 2 result is independently reproduced from checksum-bound archives.
 - The ETo hindcast has no full outcome result in this draft.
-- The public station snapshot is current metadata, not a movement ledger.
+- Historical location evidence covers 19 stations, not every current station.
 - The outlook is a regional weather-grid artifact. It is not field-scale
   validation.
 - Conditional ETc and ETa layers are not formal forecast targets.
@@ -175,11 +176,10 @@ MLET now has a reproducible artifact boundary for two distinct ET questions.
 The Phase 2 record provides a claim-limited historical result. The outlook
 software provides an ETo-only candidate path with strict provenance checks.
 
-The next scientific action is to obtain the missing historical station-location
-records and complete the public archive feasibility case. The manuscript can
-be written now around the methods, Phase 2 evidence, artifact design, and
-explicit ETo status. The ETo skill result must be inserted only from the
-generated immutable result record.
+The manuscript can be written now around the methods, reproduced Phase 2
+evidence, artifact design, and explicit ETo status. The ETo skill result must
+be inserted only from the generated immutable result record after the full
+archive gate passes.
 
 ## References
 

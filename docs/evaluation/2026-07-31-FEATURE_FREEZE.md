@@ -10,8 +10,8 @@ The manuscript reports two separate evidence paths:
 2. the ETo-only, 20-day regional outlook protocol.
 
 The current AgriMet station registry snapshot is complete for public current
-metadata. Historical station movement records and the full GEFS outcome archive
-remain data gates. They are not replaced with assumptions.
+metadata. Historical evidence now supports 19 acquired stations. The full GEFS
+outcome archive remains a data gate. It is not replaced with an assumption.
 
 ## Outside the manuscript gate
 
@@ -39,9 +39,10 @@ project storage from the PI before keeping the full raw archive. Do not request
 a general HPC allocation for this transfer. Add batch compute only if repeated
 large runs later require it.
 
-The next feasibility action is one weekly GEFS issue. Measure its object count,
-raw size, transfer time, decode time, throughput, and peak disk use. Decide the
-storage request from those measurements.
+The feasibility action is complete for the 2019-07-03 weekly issue. The full
+archive remains outside the code finish because it needs external storage and
+long transfer time. Do not report a full hindcast result until that archive is
+complete.
 
 The source layout is now resolved. The weekly GEFS issues are Wednesdays from
 2013-01-02 through 2019-12-25. Each issue has 11 members and the two segments

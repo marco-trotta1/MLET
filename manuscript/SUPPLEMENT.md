@@ -9,14 +9,17 @@ The Phase 2 result is in `docs/results/phase2_openet_value.json`. Generated
 tables and figures are in `docs/results/`.
 
 The current AgriMet station snapshot is in
-`data/outlook/agrimet_station_registry.json`. Its source receipt and historical
-coverage boundary are in `docs/data/AGRIMET_STATION_REGISTRY.md`.
+`data/outlook/agrimet_station_registry.json`. Historical evidence for the
+acquired 19 stations is in
+`data/outlook/agrimet_station_history_historical_pages.json`. The map audit is
+in `docs/data/AGRIMET_HISTORICAL_MAP_AUDIT.md`.
 
 ## S2. Phase 2 details
 
 The Phase 2 comparison uses a common complete subset of 85 stations and 7,923
 station-days. The result record stores the data manifest digest and seed.
-The result remains a historical report until independent reproduction.
+The independent reproduction receipt confirms the committed result to three
+decimal places and records the source archive checksums.
 
 The deterministic generator rebuilds the Phase 2 Markdown, CSV table, and SVG
 figure from the result JSON. It does not use network state or notebook state.

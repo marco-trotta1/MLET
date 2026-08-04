@@ -176,9 +176,10 @@ validated forecasts and they are not irrigation recommendations.
 
 The current public AgriMet station registry is recorded in
 [`data/outlook/agrimet_station_registry.json`](data/outlook/agrimet_station_registry.json).
-It is a checksum-bound current snapshot. It is not a historical station
-movement ledger. The ETo target adapter remains fail-closed until historical
-station-location segments are verified.
+Historical evidence for 19 acquired stations is recorded in
+[`data/outlook/agrimet_station_history_historical_pages.json`](data/outlook/agrimet_station_history_historical_pages.json).
+The ETo target adapter remains fail-closed for stations without historical
+location evidence.
 
 The internal manuscript draft is in [`manuscript/manuscript.md`](manuscript/manuscript.md).
 It separates the historical Phase 2 result from the pending ETo hindcast.
