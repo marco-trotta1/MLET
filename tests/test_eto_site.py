@@ -74,7 +74,11 @@ def test_build_eto_site_preserves_provenance_and_accessible_controls(
     assert 'role="img"' in page
     assert "p10" in page and "p50" in page and "p90" in page
     assert "No grid data for this selection." in page
-    assert "@media (max-width:680px)" in page
+    assert 'id="grid"' in page
+    assert "Selected-cell" in page
+    assert "aria-pressed" in page
+    assert "Run locally" in page
+    assert "@media (max-width:720px)" in page
     assert "https://" not in page
     assert "fixture" not in page.lower()
 
