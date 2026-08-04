@@ -15,6 +15,9 @@ This record binds one real GEFS issue to one independent AgriMet ETos target.
 - Transfer benchmark: `data/outlook/gefs_reforecast_20190703_transfer_benchmark.json`
 - Per-object metadata: `data/outlook/gefs_reforecast_20190703_transfer_receipt.json`
 
+Transfer runtime and throughput are single-run measurements. No repeat-run
+uncertainty is estimated.
+
 The raw GRIB files remain in the external evidence root
 `MLET Evidence/gefs-v12-20190703`.
 
@@ -30,6 +33,9 @@ The raw GRIB files remain in the external evidence root
 - Normalized SHA-256: `c9771c147204f07efb2c5b66122b25e7231d724ff8e2ef7cc5ebcd4f4e416fa8`
 - Artifact receipt: `data/outlook/gefs_reforecast_20190703_artifact_receipt.json`
 - Decoder lock: `requirements-gefs.lock`
+
+Decode runtime is a single-run measurement. No repeat-run uncertainty is
+estimated.
 
 The real ETo candidate is `research_candidate`, with evaluation pending and
 promotion disabled. The candidate SHA-256 is
