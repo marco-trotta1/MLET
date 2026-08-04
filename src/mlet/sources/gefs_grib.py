@@ -76,6 +76,7 @@ def read_gefs_reforecast_grib_component(
     therefore excludes the interleaved six-hour products when a component
     requires three-hour values, and the converse.
     """
+    _require_grib_file_header(path)
     try:
         import eccodes
     except ImportError as error:
@@ -160,6 +161,7 @@ def read_gefs_reforecast_grid_elevation(
     idaho_bbox: tuple[float, float, float, float],
 ) -> dict[str, float]:
     """Read one fixed GEFS surface-height field for the selected grid cells."""
+    _require_grib_file_header(path)
     try:
         import eccodes
     except ImportError as error:
@@ -183,6 +185,17 @@ def read_gefs_reforecast_grid_elevation(
     if not elevations:
         raise ValueError("GEFS elevation GRIB file contains no Idaho surface heights")
     return elevations
+
+
+def _require_grib_file_header(path: Path) -> None:
+    """Reject a file that cannot contain a complete GRIB message."""
+    try:
+        with Path(path).open("rb") as handle:
+            header = handle.read(16)
+    except OSError as error:
+        raise ValueError("GEFS GRIB file is truncated or unreadable") from error
+    if len(header) < 16 or header[:4] != b"GRIB":
+        raise ValueError("GEFS GRIB file is truncated or unreadable")
 
 
 def decode_gefs_reforecast_grib_member(

@@ -17,6 +17,7 @@ data/outlook/*
 !data/outlook/agrimet_station_history_boii.json
 !data/outlook/gefs_reforecast_20190703_transfer_receipt.json
 !data/outlook/gefs_reforecast_20190703_feasibility.json
+!data/outlook/gefs_reforecast_decoder_feasibility.json
 !data/outlook/gefs_reforecast_20190703_transfer_benchmark.json
 !data/outlook/gefs_reforecast_20190703_decode_benchmark.json
 !data/outlook/gefs_reforecast_20190703_artifact_receipt.json

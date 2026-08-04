@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "kind": "mlet.gefs.reforecast-decoder-feasibility",
+  "classification": "software_source_feasibility_not_hindcast_evidence",
+  "issue_time": "2019-07-01T00:00:00Z",
+  "member_id": "c00",
+  "idaho_bbox": [
+    -117.25,
+    42.0,
+    -111.0,
+    49.0
+  ],
+  "objects": [
+    {
+      "component": "tmax_k",
+      "uri": "https://noaa-gefs-retrospective.s3.amazonaws.com/GEFSv12/reforecast/2019/2019070100/c00/Days:1-10/tmax_2m_2019070100_c00.grib2",
+      "sha256": "35dd890b1d3713474c931c7938c583544ac9a8bb758364f323a1872fa6d0bb39",
+      "byte_count": 34486861,
+      "grib_short_name": "tmax",
+      "step_type": "max",
+      "interval_hours": 6
+    },
+    {
+      "component": "tmin_k",
+      "uri": "https://noaa-gefs-retrospective.s3.amazonaws.com/GEFSv12/reforecast/2019/2019070100/c00/Days:1-10/tmin_2m_2019070100_c00.grib2",
+      "sha256": "bb226dea1c72691a3fe623233de36647246b0677e4b146cf94cacc4753388646",
+      "byte_count": 39648363,
+      "grib_short_name": "tmin",
+      "step_type": "min",
+      "interval_hours": 6
+    },
+    {
+      "component": "specific_humidity_kg_kg",
+      "uri": "https://noaa-gefs-retrospective.s3.amazonaws.com/GEFSv12/reforecast/2019/2019070100/c00/Days:1-10/spfh_2m_2019070100_c00.grib2",
+      "sha256": "cd1f9544581bb6d114496d61fe133b1caf9c9ab24e1eae8a1c14cfeb32918949",
+      "byte_count": 51201564,
+      "grib_short_name": "2sh",
+      "step_type": "instant",
+      "interval_hours": 3
+    },
+    {
+      "component": "surface_pressure_pa",
+      "uri": "https://noaa-gefs-retrospective.s3.amazonaws.com/GEFSv12/reforecast/2019/2019070100/c00/Days:1-10/pres_sfc_2019070100_c00.grib2",
+      "sha256": "bdbd6bb7d260b9e8307920b9392ecdb4fd46a60b11c860d6e48613e68307be60",
+      "byte_count": 59263789,
+      "grib_short_name": "sp",
+      "step_type": "instant",
+      "interval_hours": 3
+    }
+  ]
+}
