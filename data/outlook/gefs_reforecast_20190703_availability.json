@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "kind": "mlet.gefs.reforecast-availability-survey-summary",
+  "issue_time": "2019-07-03T00:00:00Z",
+  "surveyed_at": "2026-08-04T18:26:10.550979Z",
+  "planned_object_count": 187,
+  "available_object_count": 187,
+  "available_byte_count": 8289206079,
+  "available_gib": 7.719925,
+  "status_counts": {
+    "200": 187
+  },
+  "members": [
+    "c00",
+    "p01",
+    "p02",
+    "p03",
+    "p04",
+    "p05",
+    "p06",
+    "p07",
+    "p08",
+    "p09",
+    "p10"
+  ],
+  "horizon_segments": [
+    "Days:1-10",
+    "Days:10-35"
+  ],
+  "full_survey_sha256": "9977c34b7cf4634fe77bd72fa7da1dde5687d5395d29de49bcb6a9cd70462197",
+  "transfer_status": "complete",
+  "decoder_status": "complete",
+  "transfer_receipt_sha256": "7561a07fc463add0c39b75b6b247070b647451ed7b795efa9c88d800c477592e",
+  "decode_benchmark_sha256": "e6b64410a46b549fab5ee636d555dd76c067145fd34d2d13c498b833b6f88a91"
+}

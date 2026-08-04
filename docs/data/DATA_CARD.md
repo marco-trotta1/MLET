@@ -28,7 +28,8 @@ root-zone-deficit, or irrigation-timing system.
 The frozen hypotheses, models, splits, and decision rule are in
 [the Phase 2 pre-registration](../evaluation/PREREGISTRATION.md). Generated
 performance and the decision are in
-[the Phase 2 results](../results/phase2_openet_value.md).
+[the Phase 2 results](../results/phase2_openet_value.md). The result has an
+independent reproduction receipt.
 
 ## Idaho outlook operational sources
 
@@ -38,6 +39,7 @@ sources are intentionally not mixed with the Phase 2 benchmark:
 | Source key | Prospective role | Latency/provenance requirement |
 |---|---|---|
 | `gefs` | ensemble meteorological drivers for `eto_mm` | retain forecast issue and valid times in each run receipt |
+| `usbr_agrimet_etos` | independent station target for the ETo-only hindcast | retain station metadata, published `ETos`, source URI, source version, checksum, and availability time |
 | `openet_eta` | delayed `eta_analysis_mm` only | retain observation date, model, and observed-date lag; do not use it as a future input |
 | `usda_cdl` | crop class and coefficient provenance for potential ET and scenarios | retain annual source year and confidence; do not substitute a later annual release into a historical issue |
 
@@ -45,7 +47,11 @@ The full variable inventory, citations, and licenses are in the source registry.
 The product contract defines the difference between forecast ETo, potential ET,
 observed ETa analysis, and conditional ETa scenarios. No entry in this section
 establishes forecast accuracy; that requires the preregistered hindcast gate.
-Frozen namespace bounds by source: GEFS-derived features may occupy only the
+AgriMet `ETos` is the formal ETo hindcast target. The dated public station
+snapshot is documented in [the AgriMet station registry record](AGRIMET_STATION_REGISTRY.md).
+The snapshot is current metadata only. It does not replace the historical
+station-location registry required by the target adapter. OpenET, CDL, and soil
+data are not ETo target sources. Frozen namespace bounds by source: GEFS-derived features may occupy only the
 `forecast` namespace; gridMET and OpenET observation-derived features may
 occupy only `hindcast`; CDL- and soil-attribute-derived features may occupy
 only `static`.
@@ -60,7 +66,8 @@ only `static`.
 
 All source archives and NetCDF files are downloaded through
 `scripts/fetch_data.py`, checksum-verified against `data/manifest.json`, and
-kept out of Git.
+kept out of Git. Use `--phase2-only` when the evaluation needs only the OpenET
+and flux archives. The separate gridMET NetCDF files are not Phase 2 inputs.
 
 ## Join and labels
 

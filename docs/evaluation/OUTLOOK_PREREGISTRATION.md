@@ -5,6 +5,52 @@
 **Status:** a prospective evaluation protocol; no hindcast result is reported
 in this document.
 
+## Amendment (2026-07-29): ETo-only manuscript evaluation
+
+This amendment applies before the first real archived ETo evaluation. It
+supersedes earlier text in this document that makes ETa scenarios release-gate
+targets.
+
+MLET formally evaluates only `eto_mm`, the 20-day weather-driven reference ETo
+forecast. `potential_et_c_mm`, `eta_well_watered_mm`, and
+`eta_no_irrigation_mm` are conditional projections. They are not independently
+validated forecasts. `eta_analysis_mm` is a delayed historical analysis. It is
+not a forecast target.
+
+The ETo target is published daily AgriMet `ETos`, the ASCE-EWRI grass-reference
+value. The source value is in inches per day. MLET converts it to millimeters
+with the exact factor 25.4. MLET does not recompute this target from forecast
+weather inputs.
+
+The primary baseline is station-specific, day-of-year ETo climatology. Build
+each baseline without the evaluated year or held-out fold. Report p50 MAE,
+RMSE, and bias; p10-p90 coverage and width; and mean pinball loss over p10,
+p50, and p90. Report paired comparison with the baseline. Use a paired
+bootstrap that clusters by issue date and station.
+The implementation uses seed `20260731` and 1,000 replicates. It reports the
+2.5th and 97.5th percentiles of the paired MAE-improvement distribution. A
+cell with fewer than two issue-date and station clusters reports no interval.
+
+Require at least 30 paired station-date targets for each reported lead, season,
+and spatial-fold cell. If support is lower, report the cell and mark the
+evaluation incomplete. Do not fill missing target values.
+
+`Validation complete` means that MLET completed this preregistered evaluation.
+It does not require a fixed skill threshold. State that the forecast is
+`skillful` only where the preregistered paired confidence interval for baseline
+improvement excludes zero.
+
+Use evidence-bundle schema version 4 and ETo-target schema version 2. A v4 case
+requires forecast, target, source, and holdout receipts. It does not require
+water, crop, precipitation, or soil scenario receipts. A forecast candidate
+must state `research_candidate`, `not_promoted`, and `evaluation_pending`. It
+must not claim validation before the evaluator runs.
+
+Build each historical issue as one self-contained v4 evidence bundle. Before
+scoring, copy every case into one archive root and rewrite every receipt path
+below that root. Do not score a bundle that depends on files in a staging
+directory.
+
 ## Product quantities and claim boundary
 
 Evaluation keeps four layers separate: forecast `eto_mm`; ample-water
@@ -102,7 +148,12 @@ scientific validation. A public validated-performance statement is permitted
 only after a complete preregistered hindcast passes these gates and publishes
 its manifests, metrics, and limitations.
 
-## Executable release-gate receipt
+## Legacy full-product release-gate receipt
+
+The following section documents the retained version-3 full-product release
+path. It is not the manuscript ETo evaluation path. Use schema-v4 ETo evidence,
+`mlet outlook hindcast`, and the contract above for the manuscript. The flat
+`mlet hindcast-eto` command remains a compatibility alias.
 
 The frozen evaluator is invoked with:
 

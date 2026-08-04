@@ -215,6 +215,47 @@ def build_manifest(
     )
 
 
+def build_manifest_from_source_records(
+    issued_at: str,
+    sources: tuple[SourceRecord, ...],
+    git_revision: str,
+    retrieved_at: str,
+) -> RunManifest:
+    """Build a manifest from immutable upstream source receipts.
+
+    Use this function when a source URI identifies an upstream archive rather
+    than a local staging file. The source checksum remains part of the run ID.
+    """
+    issued_datetime = _parse_utc_timestamp(issued_at)
+    retrieved_datetime = _parse_utc_timestamp(retrieved_at)
+    if not isinstance(git_revision, str) or not git_revision:
+        raise ValueError("git_revision must be a non-empty string")
+    if not isinstance(sources, tuple) or any(
+        not isinstance(source, SourceRecord) for source in sources
+    ):
+        raise ValueError("sources must be a tuple of SourceRecord values")
+    normalized_sources = tuple(
+        _source_from_payload(_source_payload(source)) for source in sources
+    )
+    _require_strictly_sorted_sources(normalized_sources)
+    provisional = RunManifest(
+        schema_version=_SCHEMA_VERSION,
+        run_id="",
+        issued_at=issued_datetime,
+        retrieved_at=retrieved_datetime,
+        git_revision=git_revision,
+        sources=normalized_sources,
+    )
+    return RunManifest(
+        schema_version=provisional.schema_version,
+        run_id=_run_id(provisional._payload_without_run_id()),
+        issued_at=provisional.issued_at,
+        retrieved_at=provisional.retrieved_at,
+        git_revision=provisional.git_revision,
+        sources=provisional.sources,
+    )
+
+
 def _validate_source_observed_through(
     source_paths: Mapping[str, Path],
     values: Mapping[str, date | None] | None,

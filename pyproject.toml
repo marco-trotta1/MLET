@@ -32,6 +32,11 @@ test = [
 hybrid = [
     "torch>=2.0",
 ]
+gefs = [
+    "cfgrib==0.9.15.1",
+    "eccodes==2.47.0",
+    "eccodeslib==2.48.0.26",
+]
 
 [tool.setuptools.packages.find]
 where = ["src", "vendor/pyfao56/src"]

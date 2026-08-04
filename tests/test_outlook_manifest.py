@@ -16,6 +16,7 @@ from mlet.outlook.manifest import (
     RunManifest,
     _normalize_zulu_timestamp,
     build_manifest,
+    build_manifest_from_source_records,
 )
 
 
@@ -115,6 +116,27 @@ def test_build_manifest_retains_source_observed_through_dates(tmp_path: Path) ->
         "state": date(2026, 7, 14),
         "weather": None,
     }
+
+
+def test_manifest_can_preserve_an_upstream_source_uri_without_a_local_file() -> None:
+    """Replacing an upstream URI with a local path must fail this provenance contract."""
+    source = SourceRecord(
+        name="gefs",
+        uri="https://noaa.example.org/gefs/reforecast.grib2",
+        retrieved_at=datetime(2026, 7, 16, 0, 5, tzinfo=timezone.utc),
+        sha256="a" * 64,
+        observed_through=None,
+    )
+
+    manifest = build_manifest_from_source_records(
+        "2026-07-16T00:00:00Z",
+        (source,),
+        "abc123",
+        "2026-07-16T00:05:00Z",
+    )
+
+    assert manifest.sources == (source,)
+    assert RunManifest.from_json(manifest.to_json()) == manifest
 
 
 def test_manifest_round_trip_preserves_explicit_utc_timestamps(tmp_path: Path) -> None:

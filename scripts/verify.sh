@@ -23,3 +23,6 @@ fi
 echo "ok"
 
 echo "== VERIFY PASSED =="
+
+echo "== real ETo candidate site =="
+python3 scripts/verify_real_candidate_site.py

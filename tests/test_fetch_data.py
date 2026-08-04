@@ -73,6 +73,8 @@ def test_download_resumes_partial_file_with_http_range(tmp_path, monkeypatch):
     partial.write_bytes(b"prefix")
 
     class Response(io.BytesIO):
+        headers = {"Content-Range": "bytes 6-11/12"}
+
         def __enter__(self):
             return self
 
@@ -95,6 +97,27 @@ def test_download_restarts_when_server_ignores_http_range(tmp_path, monkeypatch)
     class Response(io.BytesIO):
         def getcode(self):
             return 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+    monkeypatch.setattr(fetch_data.urllib.request, "urlopen", lambda request, context: Response(b"complete"))
+    fetch_data._download("https://example.test/archive", str(destination))
+    assert destination.read_bytes() == b"complete"
+
+
+def test_download_restarts_when_a_range_response_starts_at_zero(tmp_path, monkeypatch):
+    destination = tmp_path / "archive.zip"
+    (tmp_path / "archive.zip.part").write_bytes(b"prefix")
+
+    class Response(io.BytesIO):
+        headers = {"Content-Range": "bytes 0-7/8"}
+
+        def getcode(self):
+            return 206
 
         def __enter__(self):
             return self

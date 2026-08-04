@@ -16,10 +16,14 @@ import json
 import math
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from mlet.outlook.manifest import RunManifest
 from mlet.outlook.dates import idaho_local_date, idaho_local_day_end_utc, outlook_valid_date
+
+if TYPE_CHECKING:
+    from mlet.outlook.eto_hindcast import EtoHindcastReport
 
 
 PUBLISHED_LAYERS = (
@@ -27,6 +31,7 @@ PUBLISHED_LAYERS = (
     "eta_well_watered_mm",
     "eta_no_irrigation_mm",
 )
+VALIDATION_LAYERS = ("eto_mm",)
 _TARGET_KIND_BY_LAYER = {
     "eto_mm": "independent_asce_short_reference_eto",
     "eta_analysis_mm": "independent_observed_eta_analysis",
@@ -410,6 +415,18 @@ def evaluate_hindcast_evidence(path: Path) -> tuple[HindcastReport, EvaluationRe
         evaluation_digest=digest,
         case_sha256=case_hashes,
     )
+
+
+def evaluate_eto_hindcast_evidence(path: Path) -> EtoHindcastReport:
+    """Evaluate schema-v4 ETo evidence through the manuscript branch.
+
+    The legacy evaluator above remains bound to schema-v3 full-scenario
+    evidence. This explicit branch prevents a v4 ETo archive from entering
+    the old three-layer release contract.
+    """
+    from mlet.outlook.eto_hindcast import evaluate_eto_hindcast_evidence as evaluate
+
+    return evaluate(Path(path))
 
 
 def build_release_authority_request(path: Path) -> dict[str, object]:

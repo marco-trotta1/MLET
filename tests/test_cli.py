@@ -67,3 +67,55 @@ def test_module_entrypoint_matches_main(tmp_path):
     )
     assert proc.returncode == 0
     assert "has_measured_labels: false" in proc.stdout
+
+
+def test_build_eto_requires_a_verified_gefs_pointer(tmp_path, capsys):
+    """The ETo candidate command must fail before it can read unverified data."""
+    code = main(
+        [
+            "build-eto",
+            "--artifact-pointer",
+            str(tmp_path / "missing-pointer"),
+            "--git-revision",
+            "test-revision",
+            "--retrieved-at",
+            "2026-07-31T18:00:00Z",
+            "--out",
+            str(tmp_path / "candidate"),
+        ]
+    )
+    assert code == 2
+    assert "cannot build ETo candidate" in capsys.readouterr().err
+
+
+def test_build_eto_hindcast_archive_alias_requires_an_input(tmp_path, capsys):
+    code = main(
+        [
+            "build-eto-hindcast-archive",
+            "--input",
+            str(tmp_path / "missing-evidence.json"),
+            "--out",
+            str(tmp_path / "archive"),
+        ]
+    )
+
+    assert code == 2
+    assert "cannot assemble ETo evidence" in capsys.readouterr().err
+
+
+def test_nested_outlook_archive_alias_uses_source_index_arguments(tmp_path, capsys):
+    code = main(
+        [
+            "outlook",
+            "build-eto-hindcast-archive",
+            "--gefs-index",
+            str(tmp_path / "missing-gefs.json"),
+            "--agrimet-index",
+            str(tmp_path / "missing-agrimet.json"),
+            "--destination",
+            str(tmp_path / "archive"),
+        ]
+    )
+
+    assert code == 2
+    assert "cannot build ETo hindcast archive" in capsys.readouterr().err

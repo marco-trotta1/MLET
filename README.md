@@ -169,11 +169,40 @@ Present contents:
 - the non-serving hybrid FAO-56 scaffold, validated against vendored pyfao56;
 - the neuralhydrology GenericDataset exporter.
 
-Phase 2 finds that, on the 85-station weather-complete public subset, the
-OpenET-inclusive model reduced field-withheld daily-ET MAE by 43.4% relative to
-the best OpenET-free baseline (95% CI 0.399–0.911 mm); this is daily-ET evidence
-only, not validation of the Idaho outlook, soil-moisture forecasts, or
-irrigation decisions.
+The manuscript outlook claim is limited to the 20-day weather-driven ETo
+hindcast. Potential ETc and the ETa scenarios remain conditional projections.
+The historical ETa layer remains an analysis. They are not independently
+validated forecasts and they are not irrigation recommendations.
+
+The current public AgriMet station registry is recorded in
+[`data/outlook/agrimet_station_registry.json`](data/outlook/agrimet_station_registry.json).
+It is a checksum-bound current snapshot. It is not a historical station
+movement ledger. The ETo target adapter remains fail-closed until historical
+station-location segments are verified.
+
+The internal manuscript draft is in [`manuscript/manuscript.md`](manuscript/manuscript.md).
+It separates the historical Phase 2 result from the pending ETo hindcast.
+
+After an external process creates a verified GEFS daily artifact, build the
+ETo-only research candidate with `mlet build-eto`. The command never marks the
+candidate validated or promoted.
+
+Build an ETo archive from verified source indexes with
+`mlet outlook build-eto-hindcast-archive --gefs-index GEFS_INDEX.json
+--agrimet-index AGRIMET_INDEX.json --destination ARCHIVE_ROOT`. The command
+copies only checksum-bound files below the archive root and leaves the
+scientific completion gate to the ETo evaluator.
+
+Evaluate it with `mlet outlook hindcast --evidence ARCHIVE_ROOT/evidence.json
+--output docs/results/idaho_eto_hindcast.md`.
+
+The Phase 2 historical report states that, on the 85-station weather-complete
+public subset, the OpenET-inclusive model reduced field-withheld daily-ET MAE
+by 43.4% relative to the best OpenET-free baseline (95% CI 0.399–0.911 mm).
+The independent reproduction receipt is
+[`docs/results/phase2_openet_independent_reproduction_receipt.json`](docs/results/phase2_openet_independent_reproduction_receipt.json).
+This is daily-ET evidence only. It is not validation of the Idaho outlook,
+soil-moisture forecasts, or irrigation decisions.
 
 Not yet present:
 
@@ -195,7 +224,7 @@ always writes `promotion: false` for separately trusted external review.
 
 ```bash
 python3 -m mlet evaluate-outlook-residual \
-  --cases examples/outlook/hindcast_cases.json \
+  --cases examples/outlook/residual_model_evidence.json \
   --out /private/tmp/idaho_outlook_residual.md
 ```
 
@@ -210,6 +239,19 @@ review; this repository always emits `promotion: false` and
 `external_release_eligible: false`.
 
 ## Static research-candidate map
+
+The real GEFS issue candidate has a separate static ETo viewer. GitHub Pages
+builds it from the committed candidate directory:
+
+```bash
+python3 scripts/build_eto_site.py \
+  --source-dir data/outlook/gefs_reforecast_20190703_candidate \
+  --out _site
+```
+
+The viewer displays the 20 lead dates, ETo p10/p50/p90 controls, cell values,
+missing-data states, and checksum-bound provenance. It remains a research
+candidate with evaluation pending and promotion disabled.
 
 `mlet publish-outlook` renders a standalone `index.html`, `outlook.geojson`,
 `summary.json`, and `serve-contract.json` from a verified immutable
