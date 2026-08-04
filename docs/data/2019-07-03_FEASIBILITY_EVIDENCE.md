@@ -87,3 +87,8 @@ The feasibility evidence passes byte, source, target, issue-time, fold, and
 season checks for one real station case. The scientific evaluation remains
 incomplete because it lacks the other folds and seasons. No full ETo
 performance result is committed.
+
+The GEFS source receipt uses the reforecast issue timestamp as `available_at`.
+The local 2026 retrieval timestamp remains in the forecast manifest and raw
+receipt. The AgriMet target receipt uses its later archive retrieval timestamp.
+The target is an evaluation outcome, not an issue-time forecast input.
