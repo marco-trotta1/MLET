@@ -34,8 +34,9 @@ Give each input row these fields:
 replace a missing value with zero. Do not interpolate a missing station day.
 
 The official archive response uses `BEGIN DATA` and `END DATA` records. Its
-header is `DATE, STATION ETOS`. `m` and `998877` are missing markers. The
-parser records each such date as an exclusion. It does not make a target row.
+header is `DATE, STATION ETOS`. `m`, `998877`, and `NO RECORD` are missing
+markers. The parser records each such date as an exclusion. It does not make a
+target row.
 Use the explicit archive retrieval time as `available_at` for the archived
 target receipt.
 

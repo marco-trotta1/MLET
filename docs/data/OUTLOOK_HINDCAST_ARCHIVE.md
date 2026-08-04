@@ -47,6 +47,16 @@ Each input issue must already contain:
 - source availability receipts; and
 - a spatial and seasonal holdout receipt.
 
+The repository target builder uses case IDs in the form
+`issue-YYYYMMDD-station-STATION-season-SEASON-fold-F`. It creates one target
+artifact per station case so each artifact retains one USBR URI and version.
+The builder uses prior-year same-station day-of-year climatology for the
+recorded baseline.
+
+Use `scripts/build_eto_gefs_index.py` to expand completed candidate issues into
+these station-season cases. The script omits cases without target or baseline
+support.
+
 The assembler copies all referenced files below the destination root. It
 rebuilds the evidence digest and evaluates the result before it returns.
 

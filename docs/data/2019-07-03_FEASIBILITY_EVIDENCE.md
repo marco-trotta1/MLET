@@ -51,11 +51,19 @@ promotion disabled. The candidate SHA-256 is
 - Distance: 18.10119132115406 km
 - Maximum allowed distance: 50.0 km
 - Station history: `data/outlook/agrimet_station_history_boii.json`
+- Station history evidence manifest: `data/outlook/agrimet_station_history_boii_evidence.json`
 - Feasibility receipt: `data/outlook/agrimet_boii_feasibility.json`
+- Schema-v2 target: `data/outlook/eto_feasibility_targets/targets/issue-20190703-station-BOII-season-JJA-fold-4.json`
+- Schema-v4 evidence: `data/outlook/eto_feasibility_archive/evidence.json`
+- Target SHA-256: `7aabbf02699745d7051bc09d7c00bd59e969abbcf639d391728086fd817d9751`
+- Evidence SHA-256: `890555ea6e0f912655fbdcbb7cd1291c019ce9545e21407f3a9432f1582bba38`
 
-The station history is bracketed archival location evidence. It is not a
-complete USBR relocation ledger. The normalized target artifact is source
-schema version 1. It is not a promoted schema-v2 hindcast target.
+The station history uses five dated map snapshots with identical BOII
+coordinates and one archived station page with elevation. It is bracketed
+archival location evidence. It is not a complete USBR relocation ledger. The
+source-normalized target artifact remains schema version 1. The derived target
+artifact is schema version 2 and binds the forecast run and source receipt.
+The evidence bundle is schema version 4 and remains evaluation pending.
 
 ## Full-plan gate
 
@@ -75,6 +83,7 @@ The checksum-verified independent reproduction is recorded in
 `docs/results/phase2_openet_independent_reproduction_receipt.json`.
 All comparison checks against the committed result are true.
 
-The frozen ETo hindcast remains incomplete until the full station-history
-registry, eligible target archive, baseline support, and schema-v4 evidence
-bundles exist. No ETo performance result is committed.
+The feasibility evidence passes byte, source, target, issue-time, fold, and
+season checks for one real station case. The scientific evaluation remains
+incomplete because it lacks the other folds and seasons. No full ETo
+performance result is committed.

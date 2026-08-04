@@ -2,11 +2,11 @@
 
 ## Status and boundary
 
-MLET does **not** fetch or decode live NOAA GEFS GRIB files. The public
-`fetch_gefs()` function intentionally raises before any network request. The
-reforecast adapter reads local, checksum-pinned GEFSv12 GRIB files with
-eccodes. It filters each message by variable and required interval duration.
-It does not enable a live or operational path.
+MLET does **not** fetch operational NOAA GEFS data through the public
+`fetch_gefs()` path. That function intentionally raises before any network
+request. The separate reforecast acquisition runner downloads only the fixed
+public GEFSv12 archive. The reforecast decoder reads local, checksum-pinned
+GRIB files with eccodes. This does not enable an operational forecast path.
 
 Until then, `materialize_gefs_daily_artifact()` imports this versioned
 canonical artifact only. This keeps the weather/ETo core independent of a GRIB
@@ -182,7 +182,8 @@ python3 scripts/survey_gefs_reforecast.py \
 Do not retrieve a plan when any required object is unavailable. Preserve the
 survey with the acquisition receipt. Run the acquisition command with an empty
 `--data-root` and a new `--receipt`. Retrieval writes each raw file once and
-creates an immutable receipt. It does not retry into a partially used archive.
+creates an immutable receipt. The socket timeout defaults to 600 seconds and
+is bounded from 1 through 3,600 seconds.
 The default is one transfer worker. Use a bounded value such as `--workers 8`
 for a storage benchmark. The worker count changes transfer concurrency only.
 It does not require HPC compute.
@@ -196,6 +197,32 @@ about 3.03 TB of raw bytes. Treat that value as an estimate until the complete
 issue transfer runs. Keep only the survey, checksums, metadata, and derived
 results unless raw files are needed for decoding.
 
+For the complete archive, use the sequential runner. It retrieves one issue,
+verifies every object, decodes the version-2 artifact, records transfer and
+response metadata, and then removes raw files unless `--keep-raw` is set:
+
+```bash
+python3 scripts/acquire_decode_gefs_reforecast_stream.py \
+  --plan archive/gefs-v12-acquisition-plan.json \
+  --raw-root "/external/gefs-stream/raw" \
+  --receipts-root "/external/gefs-stream/receipts" \
+  --artifacts-root "/external/gefs-stream/artifacts" \
+  --index "/external/gefs-stream/index.json" \
+  --candidates-root "/external/gefs-stream/candidates" \
+  --git-revision "PINNED-CODE-REVISION" \
+  --idaho-bbox=-117.25,42.00,-111.00,49.00 \
+  --workers 8 \
+  --timeout-seconds 600
+```
+
+Each issue has a raw-object receipt, an issue summary receipt, and a decoded
+artifact. The issue summary records byte count, elapsed time, throughput,
+filesystem free space, workspace size, response metadata counts, decoder time,
+and artifact checksums. When candidate options are supplied, it also writes a
+research-candidate manifest and ETo outlook with their checksums. Use
+`--resume` with the same output roots after an interrupted run. The runner
+keeps a failed issue directory for diagnosis.
+
 After retrieval, decode one fully verified issue:
 
 ```bash
@@ -203,7 +230,7 @@ python3 scripts/decode_gefs_reforecast.py \
   --receipt archive/gefs-v12-retrieval-receipt.json \
   --data-root archive \
   --issue-time 2019-07-03T00:00:00Z \
-  --idaho-bbox -117.25,42.00,-111.00,49.00 \
+  --idaho-bbox=-117.25,42.00,-111.00,49.00 \
   --artifact archive/gefs-2019070300.daily-artifact.json
 ```
 

@@ -179,7 +179,7 @@ def _parse_agrimet_archive_values(
         if len(parts) != 2:
             raise ValueError("AgriMet archive response row must contain date and ETOS")
         valid_date = _parse_agrimet_archive_date(parts[0])
-        if parts[1].lower() in {"", "m", "998877"}:
+        if parts[1].lower() in {"", "m", "998877", "no record"}:
             exclusions.append(valid_date)
             continue
         try:

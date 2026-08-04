@@ -29,6 +29,15 @@ data/outlook/*
 !data/outlook/gefs_reforecast_20190703_manifest.json
 !data/outlook/gefs_reforecast_20190703_candidate/
 !data/outlook/gefs_reforecast_20190703_candidate/*
+!data/outlook/agrimet_station_history_boii_evidence.json
+!data/outlook/agrimet_station_history_historical_pages.json
+!data/outlook/agrimet_historical_acquisition.json
+!data/outlook/eto_feasibility_gefs_index.json
+!data/outlook/eto_feasibility_agrimet_index.json
+!data/outlook/eto_feasibility_targets/
+!data/outlook/eto_feasibility_targets/**
+!data/outlook/eto_feasibility_archive/
+!data/outlook/eto_feasibility_archive/**
 data/cache/
 data/interim/
 .gstack/

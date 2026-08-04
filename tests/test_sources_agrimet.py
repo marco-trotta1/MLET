@@ -203,6 +203,29 @@ END DATA
     assert parsed.excluded_dates == (date(2019, 7, 1),)
 
 
+def test_agrimet_archive_parser_keeps_no_record_as_an_explicit_exclusion() -> None:
+    """The official archive uses NO RECORD for a station without a value."""
+    response = """BEGIN DATA
+DATE,BOII ETOS
+07/01/2019,NO RECORD
+END DATA
+"""
+
+    parsed = parse_agrimet_etos_archive_response(
+        response,
+        station_id="BOII",
+        latitude=43.6,
+        longitude=-116.2,
+        elevation_m=824.0,
+        retrieved_at="2019-07-03T12:00:00Z",
+        uri="https://www.usbr.gov/pn-bin/webarccsv.pl?parameter=BOII%20ETOS",
+        source_version="agrimet-archive-v1",
+    )
+
+    assert parsed.rows == ()
+    assert parsed.excluded_dates == (date(2019, 7, 1),)
+
+
 def test_agrimet_archive_parser_resolves_each_target_day_through_station_history() -> None:
     """A station relocation must change target coordinates on its effective date."""
     registry = AgriMetStationHistoryRegistry(

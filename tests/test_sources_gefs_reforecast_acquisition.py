@@ -103,3 +103,19 @@ def test_retrieval_rejects_an_unbounded_worker_count(tmp_path: Path) -> None:
             max_workers=17,
             opener=lambda _: _Response(b"raw-grib-fixture"),
         )
+
+
+def test_retrieval_rejects_an_unbounded_socket_timeout(tmp_path: Path) -> None:
+    plan = build_gefs_reforecast_acquisition_plan(
+        (datetime(2019, 7, 3, tzinfo=timezone.utc),)
+    )
+
+    with pytest.raises(ValueError, match="timeout_seconds"):
+        retrieve_gefs_reforecast_plan(
+            plan,
+            data_root=tmp_path / "archive",
+            receipt_path=tmp_path / "receipt.json",
+            retrieved_at=datetime(2026, 7, 29, tzinfo=timezone.utc),
+            timeout_seconds=3_601,
+            opener=lambda _: _Response(b"raw-grib-fixture"),
+        )

@@ -15,9 +15,9 @@
           "longitude": -116.17694,
           "metadata_sha256": "e51d4543709d9ddb20e63e4163113ac0412adaec83a09584df77b31afaea9b36",
           "metadata_uri": "https://web.archive.org/web/20130226181228id_/http://www.usbr.gov/pn/agrimet/agrimetmap/boiida.html",
-          "source_version": "wayback-boii-20130226181228; wayback-usbr-map-20181228221543",
-          "valid_from": "2018-12-28",
-          "valid_to": null
+          "source_version": "wayback-boii-20130226181228; wayback-usbr-map-20150617041511; wayback-usbr-map-20160928201132; wayback-usbr-map-20170322204744; wayback-usbr-map-20181228221543; wayback-usbr-map-20201105032910",
+          "valid_from": "2015-06-17",
+          "valid_to": "2020-11-04"
         }
       ],
       "station_id": "BOII"

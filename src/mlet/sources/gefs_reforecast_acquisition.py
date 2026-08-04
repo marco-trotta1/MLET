@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import certifi
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import ssl
@@ -58,6 +59,7 @@ def retrieve_gefs_reforecast_plan(
     retrieved_at: datetime,
     opener: Optional[Callable[[Request], Any]] = None,
     max_workers: int = 1,
+    timeout_seconds: float = 600.0,
 ) -> Path:
     """Retrieve every planned object once and write its checksum receipt.
 
@@ -69,6 +71,10 @@ def retrieve_gefs_reforecast_plan(
     objects = _validated_plan_objects(plan)
     if type(max_workers) is not int or not 1 <= max_workers <= 16:
         raise ValueError("GEFS max_workers must be an integer from 1 through 16")
+    if type(timeout_seconds) not in (int, float) or not math.isfinite(timeout_seconds):
+        raise ValueError("GEFS timeout_seconds must be finite")
+    if not 1.0 <= float(timeout_seconds) <= 3_600.0:
+        raise ValueError("GEFS timeout_seconds must be from 1 through 3600")
     retrieval_time = _require_utc(retrieved_at, "retrieved_at")
     data_root_path = Path(data_root)
     if data_root_path.is_symlink():
@@ -88,6 +94,7 @@ def retrieve_gefs_reforecast_plan(
             _require_text(object_plan["uri"], "GEFS URI"),
             destination,
             opener=opener,
+            timeout_seconds=float(timeout_seconds),
         )
 
     if max_workers == 1:
@@ -211,11 +218,12 @@ def _retrieve_one(
     destination: Path,
     *,
     opener: Optional[Callable[[Request], Any]],
+    timeout_seconds: float,
 ) -> dict[str, object]:
     destination.parent.mkdir(parents=True, exist_ok=True)
     request = Request(uri, headers={"User-Agent": "mlet-gefs-reforecast/1"})
     response = (
-        urlopen(request, timeout=60, context=_TLS_CONTEXT)
+        urlopen(request, timeout=timeout_seconds, context=_TLS_CONTEXT)
         if opener is None
         else opener(request)
     )

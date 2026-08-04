@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "kind": "mlet.eto.gefs-index",
+  "issues": [
+    {
+      "case_id": "issue-20190703-station-BOII-season-JJA-fold-4",
+      "issue_time": "2019-07-03T00:00:00Z",
+      "forecast_directory": "gefs_reforecast_20190703_candidate",
+      "source_available_at": {
+        "gefs": "2019-07-03T00:00:00Z"
+      },
+      "held_out_fold": 4,
+      "held_out_season": "JJA"
+    }
+  ]
+}

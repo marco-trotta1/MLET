@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "kind": "mlet.agrimet.station-history-evidence",
+  "station_id": "BOII",
+  "target_window": {
+    "first": "2015-06-17",
+    "last": "2020-11-04"
+  },
+  "observed_location": {
+    "latitude": 43.60027,
+    "longitude": -116.17694,
+    "elevation_m": 829.06,
+    "installation_date": "1995-07-26",
+    "map_snapshots_with_same_coordinates": 5
+  },
+  "sources": [
+    {
+      "captured_at": "2013-02-26T18:12:28Z",
+      "role": "station_page_with_coordinates_and_elevation",
+      "uri": "https://web.archive.org/web/20130226181228id_/http://www.usbr.gov/pn/agrimet/agrimetmap/boiida.html",
+      "sha256": "e51d4543709d9ddb20e63e4163113ac0412adaec83a09584df77b31afaea9b36"
+    },
+    {
+      "captured_at": "2015-06-17T04:15:11Z",
+      "role": "dated_station_map_snapshot",
+      "uri": "https://web.archive.org/web/20150617041511id_/http://www.usbr.gov/pn/agrimet/agrimetmap/usbr_map.json",
+      "sha256": "35e2fa31145f13bd60bdcbd117127fc0a8767f832c6798db7cd2a0c3cc2a6018"
+    },
+    {
+      "captured_at": "2016-09-28T20:11:32Z",
+      "role": "dated_station_map_snapshot",
+      "uri": "https://web.archive.org/web/20160928201132id_/http://www.usbr.gov/pn/agrimet/agrimetmap/usbr_map.json",
+      "sha256": "9f9ec38bed405cb6588a4b79c25ac3c02816f4e147818a63d3dade0eba855833"
+    },
+    {
+      "captured_at": "2017-03-22T20:47:44Z",
+      "role": "dated_station_map_snapshot",
+      "uri": "https://web.archive.org/web/20170322204744id_/https://www.usbr.gov/pn/agrimet/agrimetmap/usbr_map.json",
+      "sha256": "391af50e23f59c3c00a0b33381b02a4cdf10c1aaa0df2986bd3ac89ca030e0e"
+    },
+    {
+      "captured_at": "2018-12-28T22:15:43Z",
+      "role": "dated_station_map_snapshot",
+      "uri": "https://web.archive.org/web/20181228221543id_/https://www.usbr.gov/pn/agrimet/agrimetmap/usbr_map.json",
+      "sha256": "016b565d70e5280158b6ca9bf161bd83d13850f9d4ba7e4d47d3565a6b074cf6"
+    },
+    {
+      "captured_at": "2020-11-05T03:29:10Z",
+      "role": "dated_station_map_snapshot",
+      "uri": "https://web.archive.org/web/20201105032910id_/https://www.usbr.gov/pn/agrimet/agrimetmap/usbr_map.json",
+      "sha256": "867971f40aef8f15868f1b8fe5f8effdcf251a2fc1f2205db3f9be006894c6dd"
+    }
+  ],
+  "interpretation": "The map snapshots show the same BOII coordinates before and after the target window. They do not replace a complete USBR relocation ledger."
+}

@@ -62,6 +62,41 @@ python3 scripts/fetch_data.py --phase2-only
 
 The command checks the two pinned archive checksums before extraction.
 
+To acquire and decode the frozen GEFS reforecast archive without storing all
+raw files at once, use the sequential runner documented in
+`docs/data/GEFS_DAILY_ARTIFACT.md`. It writes immutable per-issue receipts and
+artifacts. It supports resume after completed issue receipts exist.
+
+Build history-bound AgriMet target artifacts after the GEFS index exists:
+
+```bash
+python3 scripts/build_eto_target_index.py \
+  --gefs-index data/outlook/eto_feasibility_gefs_index.json \
+  --rows "/external/agrimet/agrimet-historical-rows-v2.json" \
+  --exclusions "/external/agrimet/agrimet-historical-exclusions-v2.json" \
+  --mapping "/external/agrimet/agrimet-historical-gefs-mapping.json" \
+  --output-root "/external/eto-targets" \
+  --target-index "/external/eto-targets/agrimet-index.json"
+```
+
+The builder preserves one USBR source identity per target artifact. It uses
+prior-year station day-of-year climatology and records the baseline rule.
+
+Build the GEFS case index from completed candidate issues before building target
+artifacts:
+
+```bash
+python3 scripts/build_eto_gefs_index.py \
+  --stream-index "/external/gefs-stream/index.json" \
+  --candidate-root "/external/gefs-stream/candidates" \
+  --rows "/external/agrimet/agrimet-historical-rows-v2.json" \
+  --mapping "/external/agrimet/agrimet-historical-gefs-mapping.json" \
+  --gefs-index "/external/gefs-stream/gefs-index.json"
+```
+
+The case index emits only station-season cases with target and baseline support.
+It binds each case to the candidate issue time and recomputed spatial fold.
+
 After building the interim dataset, run `mlet evaluate` with `--result-json`,
 `--data-manifest`, and `--git-revision`. The command writes the strict Phase 2
 result JSON that the manuscript artifact generator accepts.
