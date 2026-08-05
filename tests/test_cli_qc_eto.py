@@ -29,9 +29,9 @@ def test_qc_eto_reports_agreement_and_exits_zero(tmp_path, capsys) -> None:
 
     captured = capsys.readouterr().out
     assert exit_code == 0
-    assert "ASCE-PM (mlet)        : 7.2813 mm/day" in captured
+    assert "ASCE-PM (mlet)        : 6.7158 mm/day" in captured
     assert "Priestley-Taylor      : 6.2683 mm/day" in captured
-    assert "PT / ASCE-PM ratio    : 0.8609" in captured
+    assert "PT / ASCE-PM ratio    : 0.9334" in captured
     assert "ok: both paths agree" in captured
 
 

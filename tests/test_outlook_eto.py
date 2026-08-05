@@ -47,10 +47,12 @@ def test_eto_matches_vendored_asce_short_reference(
         weather_member.tmin_c,
         vapr=weather_member.vapor_pressure_kpa,
         wndsp=weather_member.wind_m_s,
-        wndht=2.0,
+        wndht=10.0,
     )
 
-    assert eto_for_member(weather_member) == pytest.approx(expected)
+    result = eto_for_member(weather_member)
+    assert result == pytest.approx(expected)
+    assert result == pytest.approx(6.715821947631285)
 
 
 def test_member_summary_is_order_independent() -> None:

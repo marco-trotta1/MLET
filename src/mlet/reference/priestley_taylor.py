@@ -89,7 +89,11 @@ def priestley_taylor_pet(
 
 
 def compare_eto_implementations(member: WeatherMember) -> EtoComparison:
-    """Compare the three reference-ET paths available to MLET on one member."""
+    """Compare the three reference-ET paths available to MLET on one member.
+
+    GEFS wind speed is supplied at 10 m. pyfao56 performs the standard internal
+    adjustment to the 2 m reference height for the ASCE calculation.
+    """
     from pyfao56 import refet
 
     from mlet.outlook.eto import eto_for_member
@@ -108,7 +112,7 @@ def compare_eto_implementations(member: WeatherMember) -> EtoComparison:
             member.tmin_c,
             vapr=member.vapor_pressure_kpa,
             wndsp=member.wind_m_s,
-            wndht=2.0,
+            wndht=10.0,
         )
     )
     pt = float(

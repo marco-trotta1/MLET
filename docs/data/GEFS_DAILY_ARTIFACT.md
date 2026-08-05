@@ -112,6 +112,12 @@ Select 2 m messages for maximum temperature, minimum temperature, and specific
 humidity. Select 10 m messages for both wind components. The wind GRIB files
 also contain 100 m messages. Do not use them.
 
+The decoder stores `wind_m_s` as the daily vector magnitude from the 10 m
+`u10_m_s` and `v10_m_s` components. The ETo routine passes this speed to
+pyfao56 with `wndht=10.0`. pyfao56 performs the standard internal adjustment
+from 10 m to its 2 m reference height. Do not pre-adjust the speed in the
+artifact.
+
 The acquisition plan is fixed by
 `gefs_reforecast_object_uri()`. For each scheduled issue, request the two
 segments `Days:1-10` and `Days:10-35` for the eight time-varying components.

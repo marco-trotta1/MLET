@@ -118,7 +118,7 @@ def test_comparison_ratio_sits_in_the_documented_band(
     enough to catch a factor-of-2.45 unit error or a 10x radiation coefficient.
     """
     comparison = compare_eto_implementations(weather_member)
-    assert comparison.asce_mlet_mm == pytest.approx(7.2813, abs=1e-3)
+    assert comparison.asce_mlet_mm == pytest.approx(6.715821947631285)
     assert comparison.priestley_taylor_mm == pytest.approx(6.2683, abs=1e-3)
     assert 0.60 <= comparison.pt_over_asce_ratio <= 1.05
-    assert comparison.pt_over_asce_ratio == pytest.approx(0.861, abs=1e-2)
+    assert comparison.pt_over_asce_ratio == pytest.approx(0.933, abs=1e-2)
