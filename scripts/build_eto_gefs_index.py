@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import date, datetime, timezone
 import hashlib
 import json
@@ -40,6 +40,7 @@ def build_gefs_case_index(
     rows_path: Path,
     mapping_path: Path,
     destination: Path,
+    station_ids: Sequence[str] | None = None,
 ) -> Path:
     """Build one GEFS index entry for every eligible station-season case."""
     stream_bytes = Path(stream_index).read_bytes()
@@ -60,6 +61,7 @@ def build_gefs_case_index(
     }
     baselines = _prior_year_baselines(observations)
     mappings = _load_mappings(mapping_bytes)
+    selected_station_ids = _select_station_ids(mappings, station_ids)
     output = Path(destination)
     output_root = output.parent.resolve(strict=True)
     candidate_directory = Path(candidate_root).resolve(strict=True)
@@ -98,7 +100,7 @@ def build_gefs_case_index(
             raise ValueError("candidate archive availability must not precede source issue")
         archive_available_text = _format_utc(archive_available_at)
         cases = []
-        for station_id in sorted(mappings):
+        for station_id in selected_station_ids:
             mapping = mappings[station_id]
             fold = spatial_fold_for_grid_id(mapping["grid_id"])
             for season in ("DJF", "MAM", "JJA", "SON"):
@@ -141,7 +143,7 @@ def build_gefs_case_index(
         "kind": "mlet.eto.gefs-case-index-receipt",
         "issue_count": len(issue_seen),
         "case_count": case_count,
-        "station_count": len(mappings),
+        "station_count": len(selected_station_ids),
         "stream_index_sha256": _sha256(stream_bytes),
         "rows_sha256": _sha256(rows_bytes),
         "mapping_sha256": _sha256(mapping_bytes),
@@ -150,6 +152,23 @@ def build_gefs_case_index(
     receipt_path = output.with_name(f"{output.stem}-receipt.json")
     _write_new(receipt_path, _canonical_json_bytes(receipt))
     return output
+
+
+def _select_station_ids(
+    mappings: Mapping[str, object], station_ids: Sequence[str] | None
+) -> tuple[str, ...]:
+    """Validate and sort the optional station selector."""
+    if station_ids is None:
+        return tuple(sorted(mappings))
+    requested = tuple(station_ids)
+    if not requested:
+        raise ValueError("station selector must name at least one station")
+    if any(not isinstance(station_id, str) or not station_id.strip() for station_id in requested):
+        raise ValueError("station selector IDs must be non-empty text")
+    unknown = sorted(set(requested) - set(mappings))
+    if unknown:
+        raise ValueError(f"unknown station ID(s): {', '.join(unknown)}")
+    return tuple(sorted(set(requested)))
 
 
 def _has_target_support(
@@ -294,6 +313,13 @@ def main() -> int:
     parser.add_argument("--rows", required=True, type=Path)
     parser.add_argument("--mapping", required=True, type=Path)
     parser.add_argument("--gefs-index", required=True, type=Path)
+    parser.add_argument(
+        "--station-id",
+        dest="station_ids",
+        action="append",
+        metavar="STATION_ID",
+        help="Restrict generation to one mapped station. Repeat the option to select more.",
+    )
     args = parser.parse_args()
     build_gefs_case_index(
         stream_index=args.stream_index,
@@ -301,6 +327,7 @@ def main() -> int:
         rows_path=args.rows,
         mapping_path=args.mapping,
         destination=args.gefs_index,
+        station_ids=args.station_ids,
     )
     return 0
 

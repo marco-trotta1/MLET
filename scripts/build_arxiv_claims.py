@@ -25,6 +25,23 @@ AGRIMET_ACQUISITION = REPO_ROOT / "data" / "outlook" / "agrimet_historical_acqui
 AGRIMET_REGISTRY = REPO_ROOT / "data" / "outlook" / "agrimet_station_registry.json"
 ETO_EVIDENCE = REPO_ROOT / "data" / "outlook" / "eto_feasibility_archive" / "evidence.json"
 
+COMMON_SAMPLE_COUNT = 7_923
+COMMON_MODEL_NAMES = (
+    "B1_CropCoefficient",
+    "B2_WeatherRidge",
+    "M1_OpenETDirect",
+    "M2_OpenETRecal",
+    "M3_OpenETRidge",
+)
+B0_MODEL_NAME = "B0_Persistence"
+B0_SAMPLE_COUNT = 1_555
+B0_SCOPE_LABEL = "B0: 1,555 consecutive-day pairs"
+H2_SCOPE_LABEL = "H2: preregistered comparison"
+PHASE2_SCOPE_LABEL = "station-held-out 10-fold evaluation"
+GRID_SCOPE_LABEL = "common 0.5-degree GEFS grid-point subset"
+QUANTILE_BAND_LABEL = "uncalibrated ensemble p10 to p90 quantile band"
+NOMINAL_COVERAGE_LABEL = "nominal coverage"
+
 
 def _object(path: Path) -> dict[str, object]:
     """Load one JSON object."""
@@ -38,7 +55,7 @@ def _model_by_name(payload: dict[str, object]) -> dict[str, dict[str, object]]:
     """Return the Phase 2 model records by name."""
     field_withheld = payload.get("field_withheld")
     if not isinstance(field_withheld, dict):
-        raise ValueError("The Phase 2 record lacks field-withheld results")
+        raise ValueError("The Phase 2 record lacks station-held-out model results")
     models = field_withheld.get("models")
     if not isinstance(models, list):
         raise ValueError("The Phase 2 record lacks model results")
@@ -46,8 +63,41 @@ def _model_by_name(payload: dict[str, object]) -> dict[str, dict[str, object]]:
     for model in models:
         if not isinstance(model, dict):
             raise ValueError("Every Phase 2 model result must be an object")
-        records[str(model["name"])] = model
+        name = model.get("name")
+        if not isinstance(name, str) or not name:
+            raise ValueError("Every Phase 2 model result must have a name")
+        if name in records:
+            raise ValueError(f"The Phase 2 model result repeats {name}")
+        records[name] = model
     return records
+
+
+def _validate_phase2_models(models: dict[str, dict[str, object]]) -> None:
+    """Validate model scope before making descriptive claims."""
+    missing = [name for name in (*COMMON_MODEL_NAMES, B0_MODEL_NAME) if name not in models]
+    if missing:
+        raise ValueError(f"The Phase 2 result lacks model records: {', '.join(missing)}")
+    b0_count = int(models[B0_MODEL_NAME]["sample_count"])
+    if b0_count != B0_SAMPLE_COUNT:
+        raise ValueError(
+            f"B0 must use {B0_SAMPLE_COUNT:,} consecutive-day pairs, got {b0_count:,}"
+        )
+    for name in COMMON_MODEL_NAMES:
+        sample_count = int(models[name]["sample_count"])
+        if sample_count != COMMON_SAMPLE_COUNT:
+            raise ValueError(
+                f"The common-sample model {name} must use "
+                f"{COMMON_SAMPLE_COUNT:,} rows, got {sample_count:,}"
+            )
+    m2_mae = float(models["M2_OpenETRecal"]["mae_mm"])
+    common_mae = {
+        name: float(models[name]["mae_mm"])
+        for name in COMMON_MODEL_NAMES
+    }
+    if any(m2_mae >= value for name, value in common_mae.items() if name != "M2_OpenETRecal"):
+        raise ValueError(
+            "M2 must be the strict lowest-MAE model among the common-sample models"
+        )
 
 
 def _macro(name: str, value: str) -> str:
@@ -64,6 +114,7 @@ def _build_claims() -> list[str]:
     agrimet = _object(AGRIMET_ACQUISITION)
     registry = _object(AGRIMET_REGISTRY)
     models = _model_by_name(phase2)
+    _validate_phase2_models(models)
     h2 = phase2.get("h2")
     if not isinstance(h2, dict):
         raise ValueError("The Phase 2 record lacks the H2 result")
@@ -152,6 +203,12 @@ def _build_claims() -> list[str]:
         _macro("HtwoCIHigh", f"{float(ci95[1]):.3f}"),
         _macro("BootstrapPhaseTwo", "2,000"),
         _macro("BootstrapETo", "1,000"),
+        _macro("PhaseTwoScope", PHASE2_SCOPE_LABEL),
+        _macro("BZeroScope", B0_SCOPE_LABEL),
+        _macro("HtwoScope", H2_SCOPE_LABEL),
+        _macro("GridSubsetLabel", GRID_SCOPE_LABEL),
+        _macro("FeasibilityBandLabel", QUANTILE_BAND_LABEL),
+        _macro("FeasibilityCoverageLabel", NOMINAL_COVERAGE_LABEL),
         _macro("GEFSObjects", f"{int(availability['available_object_count']):,}"),
         _macro("GEFSBytes", f"{int(availability['available_byte_count']):,}"),
         _macro("GEFSRows", f"{int(decode['row_count']):,}"),

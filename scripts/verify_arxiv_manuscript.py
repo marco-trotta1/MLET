@@ -11,6 +11,13 @@ import re
 import subprocess
 from pathlib import Path
 
+try:
+    from scripts.build_arxiv_claims import _model_by_name, _validate_phase2_models
+except ModuleNotFoundError as error:
+    if error.name != "scripts":
+        raise
+    from build_arxiv_claims import _model_by_name, _validate_phase2_models
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PHASE2_RESULT = REPO_ROOT / "docs" / "results" / "phase2_openet_value.json"
@@ -18,6 +25,15 @@ FIGURE_DATA = REPO_ROOT / "manuscript" / "arxiv" / "figures" / "figure_data.json
 CLAIMS_TEX = REPO_ROOT / "manuscript" / "arxiv" / "generated_claims.tex"
 MANUSCRIPT_TEX = REPO_ROOT / "manuscript" / "arxiv" / "mlet_preprint.tex"
 COMPILE_LOG = REPO_ROOT / "output" / "pdf" / "mlet_preprint.log"
+
+RETIRED_PHRASES = (
+    "field-withheld",
+    "H2 model",
+    "calibrated interval",
+    "nominal width of 0.80",
+    "native grid",
+    "weather-derived demand index",
+)
 
 
 def _object(path: Path) -> dict[str, object]:
@@ -43,6 +59,14 @@ def _macros() -> dict[str, str]:
     return macros
 
 
+def validate_retired_phrases(text: str) -> None:
+    """Reject claim language retired by the technical correction."""
+    normalized = " ".join(text.casefold().split())
+    for phrase in RETIRED_PHRASES:
+        if phrase.casefold() in normalized:
+            raise ValueError(f"The text contains a retired phrase: {phrase}")
+
+
 def _verify_phase2(macros: dict[str, str]) -> None:
     """Verify the Phase 2 arm, arithmetic, and publication values."""
     payload = _object(PHASE2_RESULT)
@@ -53,11 +77,8 @@ def _verify_phase2(macros: dict[str, str]) -> None:
     models = field_withheld.get("models")
     if not isinstance(models, list):
         raise ValueError("The Phase 2 record lacks model rows")
-    by_name = {
-        str(row["name"]): row
-        for row in models
-        if isinstance(row, dict) and "name" in row
-    }
+    by_name = _model_by_name(payload)
+    _validate_phase2_models(by_name)
     b2 = by_name["B2_WeatherRidge"]
     m2 = by_name["M2_OpenETRecal"]
     m3 = by_name["M3_OpenETRidge"]
@@ -75,8 +96,6 @@ def _verify_phase2(macros: dict[str, str]) -> None:
         raise ValueError("The H2 delta no longer compares B2 with M3")
     if not math.isclose(delta / b2_mae, reduction, rel_tol=0.0, abs_tol=1e-12):
         raise ValueError("The H2 reduction is inconsistent")
-    if not m2_mae < m3_mae:
-        raise ValueError("M2 is no longer the descriptive minimum")
     expected = {
         "BTwoMAE": f"{b2_mae:.3f}",
         "MTwoMAE": f"{m2_mae:.3f}",
@@ -167,6 +186,7 @@ def _verify_source_text() -> None:
     ]
     for path in paths:
         text = path.read_text(encoding="utf-8")
+        validate_retired_phrases(text)
         for prohibited in ("—", "–"):
             if prohibited in text:
                 raise ValueError(f"The file contains a prohibited dash: {path}")

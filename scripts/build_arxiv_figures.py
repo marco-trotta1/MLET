@@ -19,6 +19,26 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Patch
 import numpy as np
 
 from mlet.outlook.eto_hindcast import evaluate_eto_hindcast_evidence
+try:
+    from scripts.build_arxiv_claims import (
+        GRID_SCOPE_LABEL,
+        NOMINAL_COVERAGE_LABEL,
+        PHASE2_SCOPE_LABEL,
+        QUANTILE_BAND_LABEL,
+        _model_by_name,
+        _validate_phase2_models,
+    )
+except ModuleNotFoundError as error:
+    if error.name != "scripts":
+        raise
+    from build_arxiv_claims import (
+        GRID_SCOPE_LABEL,
+        NOMINAL_COVERAGE_LABEL,
+        PHASE2_SCOPE_LABEL,
+        QUANTILE_BAND_LABEL,
+        _model_by_name,
+        _validate_phase2_models,
+    )
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -44,6 +64,9 @@ PALE_BLUE = "#eef3f6"
 PALE_TEAL = "#edf5f3"
 PALE_RED = "#f7efed"
 PALE_GOLD = "#faf5e8"
+
+PHASE2_LABEL = PHASE2_SCOPE_LABEL
+GRID_LABEL = GRID_SCOPE_LABEL
 
 
 def _load_json(path: Path) -> dict[str, object]:
@@ -162,6 +185,15 @@ def _arrow(
 
 def _figure_evidence_paths(output_dir: Path) -> None:
     """Build the target and evidence architecture."""
+    models, h2 = _phase2_data()
+    model_by_name = {str(model["name"]): model for model in models}
+    b2_mae = float(model_by_name["B2_WeatherRidge"]["mae_mm"])
+    m3_mae = float(model_by_name["M3_OpenETRidge"]["mae_mm"])
+    delta = float(h2["mae_delta_mm"])
+    reduction = float(h2["mae_reduction_fraction"])
+    ci95 = h2["ci95_mm"]
+    if not isinstance(ci95, list) or len(ci95) != 2:
+        raise ValueError("Phase 2 H2 record must contain a paired interval")
     figure, axis = plt.subplots(figsize=(7.0, 3.05))
     axis.set_xlim(0, 1)
     axis.set_ylim(0, 1)
@@ -188,7 +220,7 @@ def _figure_evidence_paths(output_dir: Path) -> None:
 
     left_boxes = [
         (0.08, 0.71, "OpenET and flux", "152 joined stations"),
-        (0.08, 0.48, "Field-withheld evaluation", "85 stations; 7,923 common rows"),
+        (0.08, 0.48, "Station-held-out 10-fold evaluation", "85 stations; 7,923 common rows"),
         (0.08, 0.25, "Preregistered M3 comparison", "station-blocked bootstrap"),
     ]
     right_boxes = [
@@ -227,7 +259,11 @@ def _figure_evidence_paths(output_dir: Path) -> None:
     axis.text(
         0.25,
         0.12,
-        "M3: 0.856; B2: 1.514 mm/day\n43.4% reduction; paired 95% CI\n[0.399, 0.911] mm/day",
+        (
+            f"M3: {m3_mae:.3f}; B2: {b2_mae:.3f} mm/day\n"
+            f"{100.0 * reduction:.1f}% reduction; paired 95% CI\n"
+            f"[{float(ci95[0]):.3f}, {float(ci95[1]):.3f}] mm/day"
+        ),
         ha="center",
         va="center",
         color=RED,
@@ -262,7 +298,8 @@ def _phase2_data() -> tuple[list[dict[str, object]], dict[str, object]]:
     if any(not isinstance(model, dict) for model in models):
         raise ValueError("Phase 2 model metrics must be objects")
     typed_models = [model for model in models if isinstance(model, dict)]
-    by_name = {str(model["name"]): model for model in typed_models}
+    by_name = _model_by_name(payload)
+    _validate_phase2_models(by_name)
     b2 = float(by_name["B2_WeatherRidge"]["mae_mm"])
     m3 = float(by_name["M3_OpenETRidge"]["mae_mm"])
     m2 = float(by_name["M2_OpenETRecal"]["mae_mm"])
@@ -298,8 +335,8 @@ def _figure_phase2_models(output_dir: Path) -> None:
     bars = axis.barh(y, values, color=colors, height=0.62, edgecolor="none")
     axis.set_yticks(y, [labels[name] for name in names])
     axis.invert_yaxis()
-    axis.set_xlabel("Field-withheld mean absolute error (mm/day)")
-    axis.set_title("Phase 2 actual-ET model comparison", pad=22)
+    axis.set_xlabel("Station-held-out 10-fold mean absolute error (mm/day)")
+    axis.set_title(f"Phase 2 {PHASE2_LABEL}", pad=22)
     axis.set_xlim(0, 1.82)
     axis.xaxis.grid(True, color="#dddddd", linewidth=0.45)
     axis.set_axisbelow(True)
@@ -322,7 +359,11 @@ def _figure_phase2_models(output_dir: Path) -> None:
     m3_y = name_to_y["M3_OpenETRidge"]
     m2_y = name_to_y["M2_OpenETRecal"]
     axis.annotate(
-        "Preregistered H2: 43.4% lower MAE\npaired delta 0.658 mm/day\n95% CI [0.399, 0.911] mm/day",
+        (
+            f"Preregistered H2 comparison: {100.0 * reduction:.1f}% lower MAE\n"
+            f"paired delta {delta:.3f} mm/day\n"
+            f"95% CI [{float(ci95[0]):.3f}, {float(ci95[1]):.3f}] mm/day"
+        ),
         xy=(float(models[m3_y]["mae_mm"]), m3_y),
         xytext=(1.19, 4.58),
         arrowprops={
@@ -340,7 +381,7 @@ def _figure_phase2_models(output_dir: Path) -> None:
         color=RED,
     )
     axis.annotate(
-        "Lowest descriptive MAE; not the H2 model",
+        "Lowest descriptive MAE among common fitted models; H2 is a preregistered comparison",
         xy=(float(models[m2_y]["mae_mm"]), m2_y),
         xytext=(1.08, 3.65),
         arrowprops={
@@ -360,10 +401,16 @@ def _figure_phase2_models(output_dir: Path) -> None:
     ci95 = h2.get("ci95_mm")
     if not isinstance(ci95, list) or len(ci95) != 2:
         raise ValueError("Phase 2 H2 record must contain a paired interval")
+    by_name = {str(model["name"]): model for model in models}
+    b0_count = int(by_name["B0_Persistence"]["sample_count"])
+    common_count = int(by_name["B1_CropCoefficient"]["sample_count"])
     axis.text(
         0.0,
         1.01,
-        "B0 uses 1,555 consecutive-day pairs and is an oracle-like diagnostic. All fitted models use 7,923 common rows from 85 stations.",
+        (
+            f"B0 uses {b0_count:,} consecutive-day pairs and is an oracle-like diagnostic. "
+            f"All fitted models use {common_count:,} common rows from 85 stations."
+        ),
         transform=axis.transAxes,
         ha="left",
         va="bottom",
@@ -449,7 +496,15 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
     baseline = np.array([float(row["baseline_mm"]) for row in rows])
 
     figure, axis = plt.subplots(figsize=(7.0, 3.45))
-    axis.fill_between(leads, p10, p90, color=PALE_BLUE, edgecolor=BLUE, linewidth=0.7, label="GEFS ETo p10-p90")
+    axis.fill_between(
+        leads,
+        p10,
+        p90,
+        color=PALE_BLUE,
+        edgecolor=BLUE,
+        linewidth=0.7,
+        label=f"GEFS ETo {QUANTILE_BAND_LABEL}",
+    )
     axis.plot(leads, p50, color=BLUE, linewidth=1.5, marker="o", markersize=2.8, label="GEFS ETo p50")
     axis.plot(leads, target, color=RED, linewidth=1.35, marker="s", markersize=2.6, label="AgriMet ETos target")
     axis.plot(leads, baseline, color=TEAL, linewidth=1.1, linestyle="--", marker=".", markersize=3.0, label="Prior-year day-of-year mean")
@@ -465,9 +520,11 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
         0.075,
         0.025,
         (
-            f"Diagnostic only: 1 issue, 1 station, n={metric.sample_count} targets. "
+            f"Diagnostic only: {report.case_count} issue, {report.station_count} station, "
+            f"n={metric.sample_count} targets. "
             f"Forecast MAE {metric.mae_mm:.3f}; climatology MAE {metric.baseline_mae_mm:.3f} mm/day.\n"
-            f"p10-p90 coverage {metric.p10_p90_coverage:.2f}; mean width {metric.mean_interval_width_mm:.3f} mm/day. "
+            f"{NOMINAL_COVERAGE_LABEL} {metric.p10_p90_coverage:.2f}; "
+            f"p10 to p90 mean width {metric.mean_interval_width_mm:.3f} mm/day. "
             "Support 20 < 30 and one bootstrap cluster, so no skill interval is identified."
         ),
         ha="left",
@@ -478,6 +535,33 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
     )
     figure.subplots_adjust(left=0.08, right=0.99, top=0.88, bottom=0.25)
     _save_figure(figure, output_dir, "figure_3_boii_feasibility")
+
+
+def _common_grid_ids() -> tuple[str, ...]:
+    """Return the deterministic common grid-point subset across all leads."""
+    outlook = _load_json(FEASIBILITY_OUTLOOK)
+    collections = outlook.get("feature_collections")
+    if not isinstance(collections, list) or not collections:
+        raise ValueError("Forecast candidate lacks feature collections")
+    common: set[str] | None = None
+    for raw_collection in collections:
+        if not isinstance(raw_collection, dict):
+            raise ValueError("Forecast collections must be objects")
+        features = raw_collection.get("features")
+        if not isinstance(features, list):
+            raise ValueError("Forecast collections must contain features")
+        grid_ids: set[str] = set()
+        for feature in features:
+            if not isinstance(feature, dict):
+                raise ValueError("Forecast features must be objects")
+            properties = feature.get("properties")
+            if not isinstance(properties, dict) or not isinstance(properties.get("grid_id"), str):
+                raise ValueError("Forecast features must contain grid IDs")
+            grid_ids.add(properties["grid_id"])
+        common = grid_ids if common is None else common & grid_ids
+    if common is None or len(common) != 195:
+        raise ValueError("The candidate must contain 195 common GEFS grid points")
+    return tuple(sorted(common))
 
 
 def _spatial_collection(lead_day: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -496,6 +580,7 @@ def _spatial_collection(lead_day: int) -> tuple[np.ndarray, np.ndarray, np.ndarr
     )
     if not isinstance(collection, dict) or not isinstance(collection.get("features"), list):
         raise ValueError(f"Forecast candidate lacks lead {lead_day}")
+    common_grid_ids = set(_common_grid_ids())
     longitudes: list[float] = []
     latitudes: list[float] = []
     medians: list[float] = []
@@ -506,6 +591,8 @@ def _spatial_collection(lead_day: int) -> tuple[np.ndarray, np.ndarray, np.ndarr
         geometry = feature["geometry"]
         properties = feature["properties"]
         assert isinstance(geometry, dict) and isinstance(properties, dict)
+        if properties.get("grid_id") not in common_grid_ids:
+            continue
         coordinates = geometry["coordinates"]
         assert isinstance(coordinates, list) and len(coordinates) == 2
         layers = properties["layers"]
@@ -520,7 +607,7 @@ def _spatial_collection(lead_day: int) -> tuple[np.ndarray, np.ndarray, np.ndarr
         medians.append(p50)
         widths.append(p90 - p10)
     if len(medians) != 195:
-        raise ValueError("The real candidate must contain 195 native grid points")
+        raise ValueError("The real candidate must contain 195 common GEFS grid points")
     return (
         np.asarray(longitudes),
         np.asarray(latitudes),
@@ -614,7 +701,7 @@ def _figure_native_grid(output_dir: Path) -> None:
     width_bar.set_label("p90-p10 width (mm/day)", fontsize=6.8, labelpad=1.5)
     width_bar.ax.tick_params(labelsize=6.3, length=1.8)
     figure.suptitle(
-        "Native GEFS grid in the real 2019-07-03 research candidate",
+        f"{GRID_LABEL} in the real 2019-07-03 research candidate",
         y=0.99,
         fontsize=10,
         weight="bold",
@@ -622,7 +709,7 @@ def _figure_native_grid(output_dir: Path) -> None:
     figure.text(
         0.5,
         0.02,
-        "Each panel contains 195 weather-grid points. The gold marker is BOII. The points are not field boundaries or area-weighted state estimates.",
+        "Each panel contains 195 points from the common 0.5-degree GEFS grid-point subset. The gold marker is BOII. The points are not field boundaries or area-weighted state estimates.",
         ha="center",
         va="bottom",
         family="sans-serif",
@@ -718,6 +805,12 @@ def _write_figure_data(output_dir: Path) -> None:
             },
         },
         "phase2": {"models": models, "h2": h2},
+        "scope_labels": {
+            "phase2": PHASE2_LABEL,
+            "grid": GRID_LABEL,
+            "quantile_band": QUANTILE_BAND_LABEL,
+            "coverage": NOMINAL_COVERAGE_LABEL,
+        },
         "boii_feasibility": {
             "rows": rows,
             "case_count": report.case_count,
