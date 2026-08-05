@@ -28,6 +28,7 @@ mlet = "mlet.cli:main"
 [project.optional-dependencies]
 test = [
     "pytest>=8.0,<9",
+    "pypdf>=6.0,<7",
 ]
 hybrid = [
     "torch>=2.0",

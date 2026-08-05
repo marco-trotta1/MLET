@@ -17,7 +17,7 @@ _TARGET_KIND = "independent_asce_short_reference_eto"
 _RETROSPECTIVE_REFORECAST = "retrospective_reforecast"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class SourceTiming:
     """Record source issue time and later archive availability explicitly."""
 

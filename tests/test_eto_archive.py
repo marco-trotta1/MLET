@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
 from datetime import date, datetime, timezone
 import json
 from pathlib import Path
+
+import pytest
 
 from mlet.outlook.contracts import WeatherMember
 from mlet.outlook.eto_archive import (
@@ -16,6 +19,18 @@ from mlet.outlook.eto_build import write_eto_outlook
 from mlet.outlook.eto_hindcast import evaluate_eto_hindcast_evidence
 from mlet.outlook.manifest import build_manifest
 from mlet.sources.agrimet import AgriMetEtosObservation, AgriMetGridMatch
+
+
+def test_source_timing_remains_immutable_on_supported_python_versions() -> None:
+    """The Python 3.9 compatibility path must keep source timing immutable."""
+    timing = SourceTiming(
+        temporal_role="retrospective_reforecast",
+        source_issue_at=datetime(2019, 7, 1, 18, tzinfo=timezone.utc),
+        archive_available_at=datetime(2026, 8, 4, 18, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(FrozenInstanceError):
+        setattr(timing, "temporal_role", "changed")
 
 
 def test_eto_target_artifact_keeps_station_identity_and_baseline_separate_from_grid_id(
