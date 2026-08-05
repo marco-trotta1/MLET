@@ -73,3 +73,22 @@ def test_figure_labels_state_exact_scope() -> None:
         == "uncalibrated ensemble p10 to p90 quantile band"
     )
     assert build_arxiv_figures.NOMINAL_COVERAGE_LABEL == "nominal coverage"
+
+
+def test_phase2_render_uses_controlled_h2_records(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 2 rendering must resolve every annotation value at runtime."""
+    result_path = tmp_path / "phase2.json"
+    result_path.write_text(json.dumps(_phase2_payload()), encoding="utf-8")
+    output_dir = tmp_path / "figures"
+    output_dir.mkdir()
+    monkeypatch.setattr(build_arxiv_figures, "PHASE2_RESULT", result_path)
+
+    build_arxiv_figures._configure_plot_style()
+    build_arxiv_figures._figure_phase2_models(output_dir)
+
+    for suffix in ("pdf", "png"):
+        output = output_dir / f"figure_2_phase2_models.{suffix}"
+        assert output.is_file()
+        assert output.stat().st_size > 0

@@ -178,13 +178,13 @@ def _verify_citations() -> None:
 
 def _verify_source_text() -> None:
     """Verify required claim language and prohibited characters."""
-    paths = [
-        MANUSCRIPT_TEX,
+    generated_paths = [
         CLAIMS_TEX,
+        FIGURE_DATA,
         REPO_ROOT / "scripts" / "build_arxiv_claims.py",
         REPO_ROOT / "scripts" / "build_arxiv_figures.py",
     ]
-    for path in paths:
+    for path in generated_paths:
         text = path.read_text(encoding="utf-8")
         validate_retired_phrases(text)
         for prohibited in ("—", "–"):

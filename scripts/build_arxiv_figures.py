@@ -317,6 +317,11 @@ def _phase2_data() -> tuple[list[dict[str, object]], dict[str, object]]:
 def _figure_phase2_models(output_dir: Path) -> None:
     """Build the Phase 2 model comparison."""
     models, h2 = _phase2_data()
+    delta = float(h2["mae_delta_mm"])
+    reduction = float(h2["mae_reduction_fraction"])
+    ci95 = h2.get("ci95_mm")
+    if not isinstance(ci95, list) or len(ci95) != 2:
+        raise ValueError("Phase 2 H2 record must contain a paired interval")
     names = [str(model["name"]) for model in models]
     labels = {
         "B0_Persistence": "B0 Persistence",
@@ -398,9 +403,6 @@ def _figure_phase2_models(output_dir: Path) -> None:
         fontsize=7.2,
         color=MUTED,
     )
-    ci95 = h2.get("ci95_mm")
-    if not isinstance(ci95, list) or len(ci95) != 2:
-        raise ValueError("Phase 2 H2 record must contain a paired interval")
     by_name = {str(model["name"]): model for model in models}
     b0_count = int(by_name["B0_Persistence"]["sample_count"])
     common_count = int(by_name["B1_CropCoefficient"]["sample_count"])

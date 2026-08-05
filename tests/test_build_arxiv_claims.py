@@ -56,5 +56,18 @@ def test_m2_scope_check_excludes_b0_and_requires_the_common_sample() -> None:
 
 def test_claim_labels_keep_b0_and_h2_roles_distinct() -> None:
     """Claim labels identify B0 as a diagnostic and H2 as a comparison."""
-    assert build_arxiv_claims.B0_SCOPE_LABEL == "B0: 1,555 consecutive-day pairs"
+    models = build_arxiv_claims._model_by_name(_phase2_payload())
+    build_arxiv_claims._validate_phase2_models(models)
+    assert build_arxiv_claims._b0_scope_label(models) == (
+        "B0: 1,555 consecutive-day pairs"
+    )
     assert build_arxiv_claims.H2_SCOPE_LABEL == "H2: preregistered comparison"
+
+
+def test_b0_scope_label_reads_the_machine_sample_count() -> None:
+    """The generated B0 label must follow the validated record count."""
+    models = build_arxiv_claims._model_by_name(_phase2_payload())
+    models["B0_Persistence"]["sample_count"] = 1_556
+    assert build_arxiv_claims._b0_scope_label(models) == (
+        "B0: 1,556 consecutive-day pairs"
+    )

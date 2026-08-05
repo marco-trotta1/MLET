@@ -35,7 +35,6 @@ COMMON_MODEL_NAMES = (
 )
 B0_MODEL_NAME = "B0_Persistence"
 B0_SAMPLE_COUNT = 1_555
-B0_SCOPE_LABEL = "B0: 1,555 consecutive-day pairs"
 H2_SCOPE_LABEL = "H2: preregistered comparison"
 PHASE2_SCOPE_LABEL = "station-held-out 10-fold evaluation"
 GRID_SCOPE_LABEL = "common 0.5-degree GEFS grid-point subset"
@@ -100,6 +99,11 @@ def _validate_phase2_models(models: dict[str, dict[str, object]]) -> None:
         )
 
 
+def _b0_scope_label(models: dict[str, dict[str, object]]) -> str:
+    """Format the B0 scope label from the validated machine record."""
+    return f"B0: {int(models[B0_MODEL_NAME]['sample_count']):,} consecutive-day pairs"
+
+
 def _macro(name: str, value: str) -> str:
     """Format one immutable LaTeX macro."""
     return f"\\newcommand{{\\{name}}}{{{value}}}"
@@ -115,6 +119,7 @@ def _build_claims() -> list[str]:
     registry = _object(AGRIMET_REGISTRY)
     models = _model_by_name(phase2)
     _validate_phase2_models(models)
+    b0_scope_label = _b0_scope_label(models)
     h2 = phase2.get("h2")
     if not isinstance(h2, dict):
         raise ValueError("The Phase 2 record lacks the H2 result")
@@ -204,7 +209,7 @@ def _build_claims() -> list[str]:
         _macro("BootstrapPhaseTwo", "2,000"),
         _macro("BootstrapETo", "1,000"),
         _macro("PhaseTwoScope", PHASE2_SCOPE_LABEL),
-        _macro("BZeroScope", B0_SCOPE_LABEL),
+        _macro("BZeroScope", b0_scope_label),
         _macro("HtwoScope", H2_SCOPE_LABEL),
         _macro("GridSubsetLabel", GRID_SCOPE_LABEL),
         _macro("FeasibilityBandLabel", QUANTILE_BAND_LABEL),
