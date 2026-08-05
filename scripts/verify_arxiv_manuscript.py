@@ -399,12 +399,15 @@ def _verify_pdf(pdf_path: Path) -> None:
     """Verify the compiled PDF metadata and log."""
     if not pdf_path.is_file() or pdf_path.stat().st_size == 0:
         raise ValueError(f"The compiled PDF is missing: {pdf_path}")
-    result = subprocess.run(
-        ["pdfinfo", str(pdf_path)],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["pdfinfo", str(pdf_path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise ValueError("The PDF metadata check failed") from error
     info = result.stdout
     pages_match = re.search(r"^Pages:\s+(\d+)$", info, flags=re.MULTILINE)
     if pages_match is None or int(pages_match.group(1)) < 8:

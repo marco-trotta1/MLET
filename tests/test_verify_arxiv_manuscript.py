@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -125,6 +126,21 @@ def test_verifier_rejects_replaced_final_pdf(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="PDF|clean source"):
         _verify_final_package(stale)
+
+
+def test_verifier_normalizes_pdfinfo_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A Poppler parser failure must become the verifier's stable validation error."""
+    from scripts import verify_arxiv_manuscript
+
+    def fail_pdfinfo(command: list[str], **_kwargs: object) -> None:
+        raise subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr(verify_arxiv_manuscript.subprocess, "run", fail_pdfinfo)
+
+    with pytest.raises(ValueError, match="PDF metadata"):
+        verify_arxiv_manuscript._verify_pdf(verify_arxiv_manuscript.FINAL_PDF)
 
 
 def test_verifier_rejects_visible_pdf_overlay(tmp_path: Path) -> None:
