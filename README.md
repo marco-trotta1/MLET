@@ -198,8 +198,9 @@ Evaluate it with `mlet outlook hindcast --evidence ARCHIVE_ROOT/evidence.json
 --output docs/results/idaho_eto_hindcast.md`.
 
 The Phase 2 historical report states that, on the 85-station weather-complete
-public subset, the OpenET-inclusive model reduced field-withheld daily-ET MAE
-by 43.4% relative to the best OpenET-free baseline (95% CI 0.399–0.911 mm).
+public subset, the preregistered M3 OpenETRidge model reduced field-withheld
+daily-ET MAE by 43.4% relative to B2 WeatherRidge. The paired 95% confidence
+interval is 0.399 to 0.911 mm/day.
 The independent reproduction receipt is
 [`docs/results/phase2_openet_independent_reproduction_receipt.json`](docs/results/phase2_openet_independent_reproduction_receipt.json).
 This is daily-ET evidence only. It is not validation of the Idaho outlook,

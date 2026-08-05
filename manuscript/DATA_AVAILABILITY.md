@@ -14,8 +14,8 @@ The map audit is in
 The ETo target source is the USBR AgriMet historical archive. The forecast
 source is the NOAA GEFS reforecast archive. A complete outcome archive is not
 yet included. The verified weekly GEFS layout uses Wednesday 00Z issues from
-2013-01-02 through 2019-12-25, 11 members, and lead days through 35. A full
-The 2019-07-03 feasibility archive contains 187 of 187 required GEFS objects,
+2013-01-02 through 2019-12-25, 11 members, and lead days through 35. The
+2019-07-03 feasibility archive contains 187 of 187 required GEFS objects,
 one decoded version-2 artifact, and one BOII target case. Do not state that the
 full ETo data set is available until all issue receipts, target records, and
 checksums are published with the hindcast result.

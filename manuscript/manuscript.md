@@ -121,11 +121,11 @@ The generated table is in
 | M2 OpenETRecal | 0.781 | 1.060 | 0.005 | 7,923 |
 | M3 OpenETRidge | 0.856 | 1.386 | -0.013 | 7,923 |
 
-The reported best OpenET-inclusive model is M2 OpenETRecal. The reported MAE
-reduction against B2 WeatherRidge is 43.4 percent. The paired 95 percent
-confidence interval for the MAE difference is 0.399 to 0.911 mm/day. The
-The independent reproduction receipt confirms the result and its source
-archive hashes.
+The preregistered H2 model is M3 OpenETRidge. Its MAE is 0.856 mm/day versus
+1.514 mm/day for B2 WeatherRidge. The reduction is 43.4 percent. The paired
+95 percent confidence interval is 0.399 to 0.911 mm/day. M2 OpenETRecal has
+the lowest descriptive MAE, 0.781 mm/day, but it is not the H2 arm. The
+independent reproduction receipt confirms the result and its source hashes.
 
 ### ETo outlook result
 

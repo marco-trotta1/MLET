@@ -1,0 +1,338 @@
+{
+  "boii_feasibility": {
+    "baseline_mae_mm": 0.5048250000000002,
+    "bootstrap_cluster_count": 1,
+    "case_count": 1,
+    "completion_blocker_count": 424,
+    "coverage": 0.2,
+    "mae_mm": 1.5418852669683474,
+    "mean_interval_width_mm": 1.8045376167338147,
+    "mean_pinball_loss_mm": 0.5401514899049531,
+    "rows": [
+      {
+        "baseline_mm": 4.8895,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 1,
+        "longitude": -116.17694,
+        "p10": 5.82315593446782,
+        "p50": 6.069897379321088,
+        "p90": 6.271258395908525,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-03"
+      },
+      {
+        "baseline_mm": 4.8895,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 2,
+        "longitude": -116.17694,
+        "p10": 5.58614728139936,
+        "p50": 5.821717439879285,
+        "p90": 6.03810233729473,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-04"
+      },
+      {
+        "baseline_mm": 4.191,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 3,
+        "longitude": -116.17694,
+        "p10": 5.8374746156745205,
+        "p50": 6.357505402405978,
+        "p90": 6.858012459574841,
+        "target_mm": 5.334,
+        "valid_date": "2019-07-05"
+      },
+      {
+        "baseline_mm": 4.699,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 4,
+        "longitude": -116.17694,
+        "p10": 6.076766054446756,
+        "p50": 6.650922585325202,
+        "p90": 7.69699017998409,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-06"
+      },
+      {
+        "baseline_mm": 4.762499999999999,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 5,
+        "longitude": -116.17694,
+        "p10": 5.326756618904731,
+        "p50": 5.855178610016933,
+        "p90": 6.12362391896882,
+        "target_mm": 4.571999999999999,
+        "valid_date": "2019-07-07"
+      },
+      {
+        "baseline_mm": 4.699,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 6,
+        "longitude": -116.17694,
+        "p10": 5.322172229727722,
+        "p50": 6.325332233561029,
+        "p90": 6.8062770616817,
+        "target_mm": 3.8099999999999996,
+        "valid_date": "2019-07-08"
+      },
+      {
+        "baseline_mm": 4.699,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 7,
+        "longitude": -116.17694,
+        "p10": 5.331518755880128,
+        "p50": 6.452488542471808,
+        "p90": 6.584761157259929,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-09"
+      },
+      {
+        "baseline_mm": 4.191,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 8,
+        "longitude": -116.17694,
+        "p10": 5.541239752797482,
+        "p50": 6.74535322390444,
+        "p90": 7.321477288958004,
+        "target_mm": 3.8099999999999996,
+        "valid_date": "2019-07-10"
+      },
+      {
+        "baseline_mm": 4.064,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 9,
+        "longitude": -116.17694,
+        "p10": 6.176944069101478,
+        "p50": 6.817018536162592,
+        "p90": 7.642803856588995,
+        "target_mm": 5.588,
+        "valid_date": "2019-07-11"
+      },
+      {
+        "baseline_mm": 4.699,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 10,
+        "longitude": -116.17694,
+        "p10": 5.499909399795201,
+        "p50": 6.220217592505266,
+        "p90": 7.806941651694007,
+        "target_mm": 5.588,
+        "valid_date": "2019-07-12"
+      },
+      {
+        "baseline_mm": 4.6354999999999995,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 11,
+        "longitude": -116.17694,
+        "p10": 5.157029954974737,
+        "p50": 7.013217345070498,
+        "p90": 8.08807196675028,
+        "target_mm": 5.334,
+        "valid_date": "2019-07-13"
+      },
+      {
+        "baseline_mm": 4.699,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 12,
+        "longitude": -116.17694,
+        "p10": 5.378219566733877,
+        "p50": 6.206143710336679,
+        "p90": 7.371691294344906,
+        "target_mm": 5.588,
+        "valid_date": "2019-07-14"
+      },
+      {
+        "baseline_mm": 4.762499999999999,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 13,
+        "longitude": -116.17694,
+        "p10": 5.7307984980519455,
+        "p50": 6.543069934646101,
+        "p90": 8.323301231460244,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-15"
+      },
+      {
+        "baseline_mm": 5.0165,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 14,
+        "longitude": -116.17694,
+        "p10": 6.091820502167115,
+        "p50": 6.609050287667695,
+        "p90": 7.831493810725329,
+        "target_mm": 4.571999999999999,
+        "valid_date": "2019-07-16"
+      },
+      {
+        "baseline_mm": 4.5085,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 15,
+        "longitude": -116.17694,
+        "p10": 4.718983695349227,
+        "p50": 6.3649112689538905,
+        "p90": 7.832874604364013,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-17"
+      },
+      {
+        "baseline_mm": 4.952999999999999,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 16,
+        "longitude": -116.17694,
+        "p10": 5.649924276064681,
+        "p50": 6.0121989714725474,
+        "p90": 7.744929091086469,
+        "target_mm": 5.334,
+        "valid_date": "2019-07-18"
+      },
+      {
+        "baseline_mm": 5.0165,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 17,
+        "longitude": -116.17694,
+        "p10": 6.0831275849195166,
+        "p50": 6.830248767237573,
+        "p90": 7.590595269277454,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-19"
+      },
+      {
+        "baseline_mm": 4.8895,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 18,
+        "longitude": -116.17694,
+        "p10": 5.174395759725403,
+        "p50": 7.059019647675195,
+        "p90": 8.275384233717762,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-20"
+      },
+      {
+        "baseline_mm": 4.8895,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 19,
+        "longitude": -116.17694,
+        "p10": 6.238247377531778,
+        "p50": 8.061481659882437,
+        "p90": 8.464731675369775,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-21"
+      },
+      {
+        "baseline_mm": 4.762499999999999,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 20,
+        "longitude": -116.17694,
+        "p10": 5.62267218028564,
+        "p50": 6.644732200870709,
+        "p90": 7.784734957665544,
+        "target_mm": 4.571999999999999,
+        "valid_date": "2019-07-22"
+      }
+    ],
+    "station_count": 1,
+    "target_count": 20
+  },
+  "kind": "mlet.arxiv-figure-data",
+  "phase2": {
+    "h2": {
+      "best_openet_free_model": "B2_WeatherRidge",
+      "ci95_mm": [
+        0.39940040090677065,
+        0.9114997667489539
+      ],
+      "mae_delta_mm": 0.6579318561302683,
+      "mae_reduction_fraction": 0.43449722771732197
+    },
+    "models": [
+      {
+        "bias_mm": 0.05848543790417327,
+        "mae_mm": 0.3495935161205248,
+        "name": "B0_Persistence",
+        "rmse_mm": 0.5717634968470112,
+        "sample_count": 1555
+      },
+      {
+        "bias_mm": 0.1492750566190032,
+        "mae_mm": 1.5324851095502567,
+        "name": "B1_CropCoefficient",
+        "rmse_mm": 2.005050436017603,
+        "sample_count": 7923
+      },
+      {
+        "bias_mm": -0.09780005740217465,
+        "mae_mm": 1.5142371784206408,
+        "name": "B2_WeatherRidge",
+        "rmse_mm": 2.687441854711977,
+        "sample_count": 7923
+      },
+      {
+        "bias_mm": 0.1541044357780231,
+        "mae_mm": 0.7841375071094303,
+        "name": "M1_OpenETDirect",
+        "rmse_mm": 1.0662810280153165,
+        "sample_count": 7923
+      },
+      {
+        "bias_mm": 0.00487922297634197,
+        "mae_mm": 0.7812075909524736,
+        "name": "M2_OpenETRecal",
+        "rmse_mm": 1.0600038739076456,
+        "sample_count": 7923
+      },
+      {
+        "bias_mm": -0.012951423143982961,
+        "mae_mm": 0.8563053222903725,
+        "name": "M3_OpenETRidge",
+        "rmse_mm": 1.386460041892388,
+        "sample_count": 7923
+      }
+    ]
+  },
+  "schema_version": 1,
+  "sources": {
+    "feasibility_evidence": {
+      "evaluation_sha256": "9735fedb7a11c6aa18c5fa4146288acda5d487ba89bb0df8ad6efc414bcca039",
+      "path": "data/outlook/eto_feasibility_archive/evidence.json",
+      "sha256": "890555ea6e0f912655fbdcbb7cd1291c019ce9545e21407f3a9432f1582bba38"
+    },
+    "feasibility_outlook": {
+      "path": "data/outlook/eto_feasibility_archive/cases/issue-20190703-station-BOII-season-JJA-fold-4/outlook.json",
+      "sha256": "9476bab0be5cd879d1912a40c73ff5d694d9ae95502d67e8f6d82ee2426adb3b"
+    },
+    "feasibility_target": {
+      "path": "data/outlook/eto_feasibility_archive/cases/issue-20190703-station-BOII-season-JJA-fold-4/target.json",
+      "sha256": "7aabbf02699745d7051bc09d7c00bd59e969abbcf639d391728086fd817d9751"
+    },
+    "phase2_result": {
+      "path": "docs/results/phase2_openet_value.json",
+      "sha256": "2a2cece4a4febaa6105d5182ae01e161b98db7c18bb0ae499310fe160cd5eee3"
+    }
+  },
+  "support": {
+    "cell_count": 400,
+    "feasibility_cell_observations": 20,
+    "minimum_cell_observations": 12000,
+    "minimum_per_cell": 30
+  }
+}

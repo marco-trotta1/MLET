@@ -1,0 +1,908 @@
+\documentclass[10pt,letterpaper]{article}
+
+\usepackage[letterpaper,top=0.68in,bottom=0.70in,left=0.74in,right=0.74in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext,newtxmath}
+\usepackage[scaled=0.92]{helvet}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{amsmath,mathtools}
+\usepackage{enumitem}
+\usepackage[font=small,labelfont=bf,labelsep=period]{caption}
+\usepackage[round,authoryear]{natbib}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{balance}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{MLETInk}{HTML}{171717}
+\definecolor{MLETMuted}{HTML}{5B5B5B}
+\definecolor{MLETRule}{HTML}{999999}
+\definecolor{MLETBlue}{HTML}{6688A4}
+\definecolor{MLETTeal}{HTML}{6C9D9A}
+\definecolor{MLETRed}{HTML}{B66A5B}
+\definecolor{MLETGold}{HTML}{D1992D}
+\definecolor{MLETPaleBlue}{HTML}{EEF3F6}
+\definecolor{MLETPaleRed}{HTML}{F7EFED}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=MLETInk,
+  citecolor=MLETBlue,
+  urlcolor=MLETBlue,
+  pdftitle={MLET: OpenET Value and an Auditable Reference-Evapotranspiration Outlook},
+  pdfauthor={Meetpal Kukal and Marco Trotta}
+}
+\urlstyle{same}
+
+\graphicspath{{figures/}{assets/}{../assets/}}
+\input{generated_claims.tex}
+
+\newcommand{\mlet}{\textsc{MLET}}
+\newcommand{\eto}{\mathrm{ET}_{\mathrm{o}}}
+\newcommand{\etaactual}{\mathrm{ET}_{\mathrm{a}}}
+\newcommand{\mmday}{\mathrm{mm\,day^{-1}}}
+\newcommand{\km}{\mathrm{km}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\claimpending}{\textcolor{MLETRed}{\textbf{evaluation pending}}}
+\newcommand{\sourcepath}[1]{\path{#1}}
+
+\setlength{\parindent}{1em}
+\setlength{\parskip}{0pt}
+\setlength{\columnsep}{0.24in}
+\setlength{\tabcolsep}{4pt}
+\setlength{\headheight}{18pt}
+\setlist{nosep,leftmargin=1.35em}
+\setlist[enumerate]{label=\arabic*.}
+\captionsetup{width=0.96\linewidth}
+
+\titleformat{\section}
+  {\large\bfseries\color{MLETInk}}{\thesection}{0.55em}{}
+\titleformat{\subsection}
+  {\normalsize\bfseries\color{MLETInk}}{\thesubsection}{0.50em}{}
+\titleformat{\subsubsection}
+  {\normalsize\itshape\color{MLETInk}}{\thesubsubsection}{0.45em}{}
+\titlespacing*{\section}{0pt}{1.15ex plus 0.3ex}{0.55ex}
+\titlespacing*{\subsection}{0pt}{0.95ex plus 0.25ex}{0.35ex}
+\titlespacing*{\subsubsection}{0pt}{0.75ex plus 0.2ex}{0.25ex}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\sffamily\scriptsize\color{MLETMuted}\mlet{} $\mid$ manuscript preprint}
+\fancyhead[R]{\sffamily\scriptsize\color{MLETMuted}evidence-separated evapotranspiration}
+\fancyfoot[C]{\sffamily\small\thepage}
+\renewcommand{\headrulewidth}{0.35pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{MLETRule}\leaders\hrule height \headrulewidth\hfill}}
+\fancypagestyle{firstpage}{
+  \fancyhf{}
+  \fancyfoot[C]{\sffamily\small\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyhead[L]{\sffamily\scriptsize\color{MLETMuted}\mlet{} $\mid$ manuscript preprint}
+  \fancyhead[R]{\sffamily\scriptsize\color{MLETMuted}evidence-separated evapotranspiration}
+  \fancyfoot[C]{\sffamily\small\thepage}
+  \renewcommand{\headrulewidth}{0.35pt}
+  \renewcommand{\headrule}{\hbox to\headwidth{\color{MLETRule}\leaders\hrule height \headrulewidth\hfill}}
+}
+\makeatletter
+\let\ps@plain\ps@fancy
+\makeatother
+
+\begin{document}
+\onecolumn
+\thispagestyle{firstpage}
+
+\noindent\color{MLETInk}\rule{\textwidth}{0.8pt}
+\vspace{0.26em}
+
+\begin{center}
+{\fontsize{19}{22}\selectfont\bfseries
+MLET: OpenET Value and an Auditable\\[-0.1em]
+Reference-Evapotranspiration Outlook\par}
+\vspace{0.42em}
+\rule{\textwidth}{0.55pt}
+\vspace{0.58em}
+
+\begin{tabular}{
+  @{}>{\centering\arraybackslash}m{0.30\textwidth}
+  @{\hspace{0.025\textwidth}}c
+  @{\hspace{0.025\textwidth}}>{\centering\arraybackslash}m{0.30\textwidth}@{}
+}
+{\large Meetpal Kukal$^{1}$} & {\large and} & {\large Marco Trotta$^{2}$}\\[0.46em]
+\includegraphics[height=0.43in]{uidaho_logo.png} & &
+\raisebox{0.055in}{\includegraphics[height=0.32in]{irrigant_logo.png}}\\[0.26em]
+{\small\shortstack{$^{1}$University of Idaho\\Moscow, Idaho, USA}} & &
+{\small\shortstack{$^{2}$Irrigant\\Idaho, USA}}\\[0.12em]
+{\small\href{mailto:mkukal@uidaho.edu}{mkukal@uidaho.edu}} & &
+{\small\href{mailto:marcotrotta909@gmail.com}{marcotrotta909@gmail.com}}
+\end{tabular}
+\end{center}
+
+\vspace{0.55em}
+\begin{center}
+{\large\bfseries Abstract}
+\end{center}
+\begin{quote}
+\small
+Evapotranspiration is not one forecast target. Reference evapotranspiration
+($\eto$) describes atmospheric demand for a defined reference surface.
+Actual evapotranspiration ($\etaactual$) also depends on crop condition, soil
+water, and management. \mlet{} therefore maintains two evidence paths. The
+retrospective path tests whether OpenET improves daily actual-ET prediction at
+field-withheld flux stations. The prospective path defines an auditable
+20-day, weather-driven reference-$\eto$ artifact for Idaho. The reproduced
+Phase~2 record contains \PhaseTwoN{} station-days from \PhaseTwoStations{}
+stations. The preregistered comparison is M3 OpenETRidge against B2
+WeatherRidge. M3 has mean absolute error (MAE) \MThreeMAE{} $\mmday$ versus
+\BTwoMAE{} $\mmday$ for B2. This is a \HtwoDelta{} $\mmday$ improvement and a
+\HtwoReduction\% reduction. A \BootstrapPhaseTwo-replicate station-blocked
+bootstrap gives a 95\% interval of [\HtwoCILow{}, \HtwoCIHigh{}] $\mmday$.
+M2 OpenETRecal has the lowest descriptive MAE, \MTwoMAE{} $\mmday$, but it is
+not the preregistered arm. The prospective path applies the ASCE
+short-reference equation to archived GEFSv12 members. It stores p10, p50, and
+p90 for leads 1 through 20. Published USBR AgriMet ETos supplies an independent
+target. One real issue, one station, and \FeasibilityN{} targets pass the
+source and identity checks. That diagnostic has MAE \FeasibilityMAE{}
+$\mmday$, while a prior-year climatology has MAE \FeasibilityBaselineMAE{}
+$\mmday$. It has only \FeasibilityClusters{} bootstrap cluster and fails the
+frozen support gate. We make no $\eto$ skill, field-scale actual-ET, or
+irrigation claim.
+\end{quote}
+
+\noindent\textbf{Keywords:} evapotranspiration; actual ET; reference $\eto$;
+OpenET; GEFS; AgriMet; forecast audit; provenance; uncertainty
+
+\section{Introduction}
+
+Evapotranspiration connects the land surface, the atmosphere, and water
+management. It also names several different physical quantities. Reference
+$\eto$ measures atmospheric demand over a defined reference surface
+\citep{allen1998,asce2005}. Actual $\etaactual$ is the water flux from the
+observed crop and soil system. It responds to water stress, crop development,
+soil condition, and management. A retrospective actual-ET estimate and a
+prospective reference-$\eto$ outlook can therefore be individually valid and
+jointly misleading when they share one label.
+
+Satellite ET products provide broad retrospective information. OpenET joins
+several remote-sensing models and has been evaluated against in situ ET
+observations across the contiguous United States \citep{volk2023}. Weather
+ensembles provide a different evidence source. They can drive a standardized
+reference-$\eto$ equation for future dates, but they do not observe future
+crop or soil state. The scientific question is not only whether a model has a
+low error. The question is also whether the target, issue time, baseline, and
+claim remain unchanged from data acquisition to publication.
+
+This paper reports one completed comparison and one incomplete outlook
+evaluation. The completed comparison asks whether an OpenET feature improves
+retrospective daily actual-ET prediction under field withholding. The outlook
+protocol asks whether archived GEFSv12 weather can support a calibrated
+20-day reference-$\eto$ artifact against independent AgriMet ETos targets.
+The protocol fails closed when source time, station identity, or evaluation
+support is incomplete.
+
+The work makes four contributions. First, it defines a target ontology that
+prevents actual ET, reference $\eto$, and conditional crop ET from becoming
+interchangeable. Second, it reproduces a checksum-bound Phase~2 comparison and
+reports its preregistered model arm. Third, it implements an issue-time-valid
+reference-$\eto$ artifact with quantiles, source receipts, and station-to-grid
+identity. Fourth, it exposes an incomplete evaluation as a machine-readable
+state. This last contribution prevents one feasible case from becoming a
+validation claim.
+
+\clearpage
+\section{Evidence architecture}
+
+Figure~\ref{fig:evidence-paths} gives the governing separation. The left path
+has historical OpenET values and historical flux labels. The right path has a
+forecast issue, future local dates, and later AgriMet observations. Results do
+not cross this boundary.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.98\textwidth]{figure_1_evidence_paths.pdf}
+  \caption{Two targets require two evidence paths. The left result is a
+  retrospective actual-ET comparison. Its fitted-model sample has
+  $n=\PhaseTwoN{}$ station-days from \PhaseTwoStations{} stations. The right
+  path is a prospective reference-$\eto$ protocol. Its one real case supplies
+  $n=\FeasibilityN{}$ targets, but the complete \SupportCells-cell outcome
+  gate remains open.}
+  \label{fig:evidence-paths}
+\end{figure}
+
+\subsection{Target ontology}
+
+Table~\ref{tab:ontology} states the allowed claims. There is no generic future
+actual-ET layer in the current product contract. The evaluated future layer is
+\code{eto\_mm}. Every other future ET quantity needs a separate target and a
+separate protocol.
+
+\begin{table}[h]
+\centering
+\caption{Target ontology and claim boundary.}
+\label{tab:ontology}
+\small
+\begin{tabularx}{0.98\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
+  >{\raggedright\arraybackslash}p{0.23\textwidth}
+  >{\raggedright\arraybackslash}p{0.30\textwidth}
+  >{\raggedright\arraybackslash}X}
+\toprule
+Layer or label & Quantity & Time and source & Allowed claim \\
+\midrule
+\code{ET\_corr} & Energy-balance-corrected actual ET & Historical flux label & Retrospective daily actual-ET prediction \\
+\code{eto\_mm} & ASCE short-reference $\eto$ & Future local date from issue-time GEFS & Regional reference-$\eto$ outlook after the frozen hindcast gate \\
+AgriMet \code{ETos} & Published grass-reference ET & Later station observation; converted from inches per day & Independent reference-$\eto$ evaluation target \\
+\code{potential\_et\_c\_mm} & $K_c\eto$ under ample-water assumptions & Conditional future projection & Conditional crop ET only \\
+\code{eta\_analysis\_mm} & Satellite actual-ET analysis & Delayed historical observation & Analysis comparison only \\
+Conditional $\etaactual$ scenarios & Named water and soil assumptions & Future scenario & Scenario evidence only \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Proof obligations}
+
+Each public claim must bind six identities: the physical target, the source
+artifact, the forecast issue, the valid date, the independent target, and the
+evaluation split. A missing identity is not imputed. The evaluator returns an
+incomplete state. The state can contain diagnostic metrics, but it cannot
+contain a promotion decision.
+
+\clearpage
+\twocolumn
+
+\section{Data and evidence artifacts}
+
+\subsection{Retrospective actual-ET data}
+
+The Phase~2 build joins daily OpenET model ET with a public flux-tower ET
+archive on exact station and date keys. The source manifest binds the two
+archives by identifiers and checksums. The joined dataset has \JoinedRows{}
+rows from \JoinedStations{} stations. It has \JoinedLabels{} non-gap labels.
+The scored label is the energy-balance-corrected \code{ET\_corr} value. The
+uncorrected \code{ET} column is never scored.
+
+The ridge-model comparison uses the common finite weather subset. This subset
+has \PhaseTwoN{} station-days from \PhaseTwoStations{} stations. Negative
+measured \code{ET\_corr} values remain in the label set. Negative satellite ET
+and negative reference ET fail input validation. This asymmetric rule keeps
+observations intact and rejects physically invalid predictors.
+
+The OpenET source data and the flux benchmark follow the Phase~II accuracy
+study \citep{volk2023}. The present experiment does not re-estimate that
+study's site-level accuracy. It asks a narrower prediction question under one
+repository-frozen split.
+
+\subsection{Prospective weather data}
+
+The outlook uses the NOAA GEFSv12 weekly reforecast archive
+\citep{ncep2021}. The frozen schedule contains the Wednesday 00Z issues from
+2013-01-02 through 2019-12-25. This is 365 planned issues. The feasibility
+receipt covers one issue, 2019-07-03 00Z. It finds \GEFSObjects{} of
+\GEFSObjects{} planned objects and \GEFSBytes{} advertised bytes. These are
+exact inventory values for one issue. They are not a transfer-performance
+benchmark.
+
+The decoder produces \GEFSRows{} weather rows from \GEFSGrids{} native grid
+points, \GEFSMembers{} ensemble members, and \GEFSValidDates{} valid dates.
+The identity $\GEFSGrids\times\GEFSMembers\times\GEFSValidDates=\GEFSRows$
+is checked before the $\eto$ builder runs. Each normalized artifact contains
+its raw-object receipt and SHA-256 digest.
+
+\subsection{Independent AgriMet targets}
+
+USBR AgriMet publishes daily ETos as ASCE-EWRI grass-reference ET
+\citep{usbrarchive,usbrlocations}. The acquisition adapter parses the official
+data boundary. It preserves missing markers as exclusions. It converts each
+non-missing value from inches per day with the exact factor 25.4.
+
+The current station snapshot has \AgriMetCurrentStations{} stations, including
+\AgriMetIdahoStations{} in Idaho. This snapshot does not establish historical
+coordinates. Historical page evidence supports \AgriMetHistoricalStations{}
+stations. Their acquisition record contains \AgriMetRows{} daily values and
+\AgriMetExclusions{} exclusions from 2015-06-17 through 2019-12-31. The
+maximum observed station-to-grid distance is 25.475 km across these 19
+mappings. The frozen limit is 50 km. This mapping is station identity, not
+field geometry.
+
+\section{Methods}
+
+\subsection{Phase 2 field withholding}
+
+The primary split assigns stations to $k=10$ deterministic folds. The fold
+seed is \PhaseTwoSeed. A fitted model never sees a row from its held-out
+stations. Feature means, feature scales, coefficients, and the crop
+coefficient use training rows only. A separate split trains before 2019-01-01
+and describes later rows. That time split is not the primary decision split.
+
+The experiment fixes six models. B0 persistence uses the previous labeled day
+at one station. Its \PersistenceN{} complete day-pairs make it an oracle-like
+diagnostic. It is excluded from the H2 decision. B1 learns
+
+\begin{equation}
+  \widehat K_c=
+  \frac{1}{|\mathcal T|}\sum_{i\in\mathcal T}
+  \frac{y_i}{E^{\mathrm{o}}_i},
+  \qquad \widehat y_i=\widehat K_c E^{\mathrm{o}}_i,
+  \label{eq:kc}
+\end{equation}
+
+where $\mathcal T$ contains training rows. B2 is ridge regression on $\eto$,
+mean temperature, vapor-pressure deficit, wind speed, and sine and cosine
+day-of-year terms. M1 uses OpenET directly. M2 fits an intercept and slope,
+
+\begin{equation}
+  \widehat y_i=\widehat\alpha+\widehat\beta x_i^{\mathrm{OpenET}}.
+  \label{eq:m2}
+\end{equation}
+
+M3 adds OpenET to all B2 predictors. B2 and M3 solve
+
+\begin{equation}
+  \widehat{\boldsymbol\beta}=
+  \arg\min_{\boldsymbol\beta}
+  \left\{\sum_{i\in\mathcal T}
+  (y_i-\mathbf x_i^{\mathsf T}\boldsymbol\beta)^2
+  +\lambda\lVert\boldsymbol\beta\rVert_2^2\right\},
+  \qquad \lambda=1.
+  \label{eq:ridge}
+\end{equation}
+
+The code standardizes predictors with training statistics. It does not
+penalize the intercept.
+
+\subsection{Deterministic metrics and H2}
+
+For prediction $\widehat y_i$ and observed target $y_i$, the experiment uses
+
+\begin{align}
+  \operatorname{MAE} &= \frac{1}{n}\sum_{i=1}^{n}|\widehat y_i-y_i|,
+  \label{eq:mae}\\
+  \operatorname{RMSE} &=
+  \sqrt{\frac{1}{n}\sum_{i=1}^{n}(\widehat y_i-y_i)^2},
+  \label{eq:rmse}\\
+  \operatorname{Bias} &=
+  \frac{1}{n}\sum_{i=1}^{n}(\widehat y_i-y_i).
+  \label{eq:bias}
+\end{align}
+
+The preregistration selects the better OpenET-free fitted candidate from B1
+and B2. It then compares that model with M3. B2 wins the OpenET-free
+selection. The paired station-day contrast is
+
+\begin{equation}
+  \Delta_{\mathrm{MAE}}=
+  \frac{1}{n}\sum_{i=1}^{n}
+  \left(|e_{B2,i}|-|e_{M3,i}|\right),
+  \qquad r=\frac{\Delta_{\mathrm{MAE}}}{\operatorname{MAE}_{B2}}.
+  \label{eq:h2}
+\end{equation}
+
+Inference resamples stations, not rows. It uses \BootstrapPhaseTwo{}
+replicates and seed \PhaseTwoSeed. The reported interval is the percentile
+interval of the paired MAE improvement \citep{efron1993}.
+
+\subsection{Weather conversion and reference ETo}
+
+The GEFS decoder converts each member to local daily ASCE inputs. Temperature
+uses $T_C=T_K-273.15$. Ten-meter wind uses
+$u_{10}=\sqrt{u^2+v^2}$ before the reference implementation adjusts its
+height. Vapor pressure follows
+
+\begin{equation}
+  e_a=\frac{q p}{\epsilon+(1-\epsilon)q}\frac{1}{1000},
+  \qquad \epsilon=0.622,
+  \label{eq:vapor}
+\end{equation}
+
+where $q$ is specific humidity in $\mathrm{kg\,kg^{-1}}$, $p$ is pressure in
+Pa, and $e_a$ is kPa. Radiation changes from $\mathrm{J\,m^{-2}}$ to
+$\mathrm{MJ\,m^{-2}}$. Interval midpoints assign weather intervals to the
+America/Boise civil day. A UTC-day aggregate fails schema validation.
+
+For each member, the code calls the ASCE short-reference equation
+\citep{asce2005,thorp2022}:
+
+\begin{equation}
+  \eto=
+  \frac{0.408\Delta(R_n-G)+
+  \gamma\frac{900}{T+273}u_2(e_s-e_a)}
+  {\Delta+\gamma(1+0.34u_2)}.
+  \label{eq:asce}
+\end{equation}
+
+Here $\eto$ has units $\mmday$. The terms have the ASCE daily short-reference
+definitions. The implementation uses \code{pyfao56.refet.ascedaily("S",
+...)}. The vendored software version is 1.4.3.
+
+Let $E_{g\ell j}$ be Eq.~\ref{eq:asce} for grid point $g$, lead $\ell$, and
+member $j$. The artifact stores
+
+\begin{equation}
+  q_{g\ell}(\alpha)=Q_{\alpha}
+  \left(\{E_{g\ell j}\}_{j=1}^{m}\right),
+  \qquad \alpha\in\{0.10,0.50,0.90\}.
+  \label{eq:quantiles}
+\end{equation}
+
+The feasibility case has $m=\GEFSMembers$. The contract rejects duplicate
+members, missing leads, negative values, and unordered quantiles.
+
+\subsection{Issue time and independent target}
+
+For issue $t_0$ and lead $\ell$, the valid date is
+
+\begin{equation}
+  d(t_0,\ell)=
+  \operatorname{date}_{\mathrm{America/Boise}}(t_0)+\ell,
+  \qquad \ell\in\{1,\ldots,20\}.
+  \label{eq:date}
+\end{equation}
+
+Source metadata must show historical availability at or before $t_0$. The
+target must become available only after its completed local day. Retrieval at
+a later archive date does not change either information boundary.
+
+For station $s$ and date $d$, the independent target is
+
+\begin{equation}
+  y_{sd}=25.4\,\operatorname{ETos}^{\mathrm{in/day}}_{sd}.
+  \label{eq:target}
+\end{equation}
+
+The code does not recompute this target from GEFS. It does not replace a
+missing ETos value with zero or interpolation.
+
+\subsection{Leakage-safe climatology}
+
+The simple baseline is a prior-year station and day-of-year mean. For issue
+year $Y_0$ and day of year $k$,
+
+\begin{equation}
+  b_{s,k,Y_0}=
+  \frac{1}{|\mathcal Y_{s,k,Y_0}|}
+  \sum_{Y\in\mathcal Y_{s,k,Y_0}} y_{s,k,Y},
+  \quad
+  \mathcal Y_{s,k,Y_0}=\{Y:Y<Y_0\}.
+  \label{eq:climatology}
+\end{equation}
+
+The evaluated year and all future years are absent. A missing prior-year set
+creates an explicit exclusion.
+
+\subsection{Probabilistic metrics and support}
+
+The outcome protocol reports p50 MAE, RMSE, and bias. It also reports p10-p90
+coverage and width:
+
+\begin{align}
+  C_{10,90}&=\frac{1}{n}\sum_{i=1}^{n}
+  \mathbf 1\{q_{0.10,i}\le y_i\le q_{0.90,i}\},
+  \label{eq:coverage}\\
+  W_{10,90}&=\frac{1}{n}\sum_{i=1}^{n}
+  (q_{0.90,i}-q_{0.10,i}).
+  \label{eq:width}
+\end{align}
+
+For quantile level $\alpha$, pinball loss is
+
+\begin{equation}
+  \rho_{\alpha}(y,q)=
+  \begin{cases}
+    \alpha(y-q), & y\ge q,\\
+    (\alpha-1)(y-q), & y<q.
+  \end{cases}
+  \label{eq:pinball}
+\end{equation}
+
+The mean score averages Eq.~\ref{eq:pinball} over observations and the three
+stored quantiles \citep{koenker1978,gneiting2007}. It is not the continuous
+ranked probability score.
+
+Spatial folds use one-degree blocks. The fold is the SHA-256 digest of a fixed
+namespace and block, modulo 5. The evaluator crosses 20 leads, four seasons,
+and five folds. This gives \SupportCells{} cells. Each cell needs at least
+\SupportMinimum{} paired targets. Thus the minimum support count is
+\SupportMinimumTotal{} cell observations. The paired ETo interval uses
+\BootstrapETo{} cluster-bootstrap replicates with seed \EToSeed. A cluster is
+one local issue date and target station. An interval requires at least two
+clusters.
+
+\section{Results}
+
+\subsection{Preregistered OpenET value result}
+
+Figure~\ref{fig:phase2-models} and Table~\ref{tab:phase2} report the committed
+field-withheld result. The common fitted-model sample is $n=\PhaseTwoN{}$
+station-days from \PhaseTwoStations{} stations. The preregistered H2 model is
+M3, not M2.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.97\textwidth]{figure_2_phase2_models.pdf}
+  \caption{Field-withheld actual-ET MAE. B2 and M3 form the preregistered H2
+  comparison. Their common sample contains $n=\PhaseTwoN{}$ rows from
+  \PhaseTwoStations{} stations. M2 has the lowest descriptive point MAE, but
+  it does not inherit the M3 interval. B0 uses $n=\PersistenceN{}$
+  consecutive-day pairs and is excluded from H2.}
+  \label{fig:phase2-models}
+\end{figure*}
+
+\begin{table}[t]
+\centering
+\caption{Field-withheld Phase 2 metrics in $\mmday$.}
+\label{tab:phase2}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Model & MAE & RMSE & Bias & $n$ \\
+\midrule
+B0 Persistence & \BZeroMAE & \BZeroRMSE & \BZeroBias & \PersistenceN \\
+B1 CropCoefficient & \BOneMAE & \BOneRMSE & \BOneBias & \PhaseTwoN \\
+B2 WeatherRidge & \BTwoMAE & \BTwoRMSE & \BTwoBias & \PhaseTwoN \\
+M1 OpenETDirect & \MOneMAE & \MOneRMSE & \MOneBias & \PhaseTwoN \\
+M2 OpenETRecal & \MTwoMAE & \MTwoRMSE & \MTwoBias & \PhaseTwoN \\
+M3 OpenETRidge & \MThreeMAE & \MThreeRMSE & \MThreeBias & \PhaseTwoN \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+M3 has MAE \MThreeMAE{} $\mmday$. B2 has MAE \BTwoMAE{} $\mmday$. The paired
+improvement is \HtwoDelta{} $\mmday$, or \HtwoReduction\%. The
+\BootstrapPhaseTwo-replicate station-blocked 95\% interval is
+[\HtwoCILow{}, \HtwoCIHigh{}] $\mmday$. The interval excludes zero under the
+frozen protocol.
+
+M2 has the lowest point MAE, \MTwoMAE{} $\mmday$. Its direct point reduction
+from B2 is 48.4\%, computed on $n=\PhaseTwoN{}$ common rows. This is a
+descriptive contrast. The result record contains no paired M2 interval. We do
+not attach the M3 interval to M2.
+
+The Phase~2 result is retrospective. It does not test GEFS, the 20-day
+horizon, soil-water dynamics, or an irrigation decision.
+
+\subsection{Real reference-ETo feasibility diagnostic}
+
+The one-issue candidate passes the source count, member count, lead count,
+quantile order, local-day, station-history, target-time, and grid-distance
+checks. Figure~\ref{fig:boii} shows its BOII trajectory. The case has one
+2019-07-03 issue, one station, and $n=\FeasibilityN{}$ daily targets.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.97\textwidth]{figure_3_boii_feasibility.pdf}
+  \caption{One real BOII feasibility case. The GEFS member distribution gives
+  p10, p50, and p90 reference $\eto$ for leads 1 through 20. The independent
+  target is AgriMet ETos. The baseline is the prior-year station and
+  day-of-year mean. The scope is one issue, one station, and
+  $n=\FeasibilityN{}$ targets. It is diagnostic only.}
+  \label{fig:boii}
+\end{figure*}
+
+The p50 MAE is \FeasibilityMAE{} $\mmday$. The climatology MAE is
+\FeasibilityBaselineMAE{} $\mmday$. The paired point improvement is
+\FeasibilityImprovement{} $\mmday$, so the candidate is worse for this case.
+The p50 RMSE is \FeasibilityRMSE{} $\mmday$, and the bias is
+\FeasibilityBias{} $\mmday$. The p10-p90 coverage is
+\FeasibilityCoverage{}, against a nominal width of 0.80. The mean interval
+width is \FeasibilityWidth{} $\mmday$. The mean three-quantile pinball loss is
+\FeasibilityPinball{} $\mmday$.
+
+These values have no sampling interval. The case has only
+\FeasibilityClusters{} bootstrap cluster. It also has one target per occupied
+lead cell, below the frozen minimum of \SupportMinimum. The result is a
+negative feasibility diagnostic, not an estimate of general forecast skill.
+
+\subsection{Spatial artifact and support state}
+
+Figure~\ref{fig:native-grid} shows the real native-grid artifact. Each panel
+contains \GEFSGrids{} weather-grid points. It does not show field boundaries.
+The gold marker identifies BOII and its mapped grid point.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.97\textwidth]{figure_4_native_grid.pdf}
+  \caption{Native GEFS reference-$\eto$ fields for the real 2019-07-03
+  candidate. The first three panels show p50 at leads 1, 10, and 20. The last
+  panel shows p90 minus p10 at lead 20. Each panel contains
+  $n=\GEFSGrids{}$ grid points. No field geometry or area-weighted Idaho
+  estimate is inferred.}
+  \label{fig:native-grid}
+\end{figure*}
+
+Figure~\ref{fig:support} makes the incomplete state explicit. The real archive
+supplies one target in each JJA, fold-4 lead cell. This is 20 cell
+observations. The frozen gate needs \SupportMinimumTotal{} cell observations
+when every one of the \SupportCells{} cells reaches its minimum. The present
+archive therefore supports no full-hindcast claim.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.97\textwidth]{figure_5_support_tensor.pdf}
+  \caption{Frozen reference-$\eto$ support tensor. The real feasibility
+  archive occupies 20 cells with one target each. No cell reaches the
+  $n\ge\SupportMinimum{}$ threshold. The complete protocol requires all
+  \SupportCells{} lead-season-fold cells.}
+  \label{fig:support}
+\end{figure*}
+
+\section{Discussion}
+
+\subsection{What the Phase 2 result establishes}
+
+The completed result supports one narrow conclusion. Under the frozen
+field-withheld split, M3 OpenETRidge reduces retrospective daily actual-ET MAE
+against B2 WeatherRidge. The paired interval accounts for station clustering.
+It does not account for a new geographic domain, a new label system, or a
+future weather issue. The comparison therefore supports OpenET value within
+this benchmark. It does not validate the outlook.
+
+M2 creates an important reporting test. Its point MAE is lower than M3. A
+reader could reasonably call M2 the descriptive winner. The preregistered H2
+arm is still M3 because the runner fixed that model. A paper must report both
+facts. Combining M2's point error with M3's interval would create a result that
+no execution produced.
+
+The persistence row has a much lower MAE than every fitted model. That value
+uses only \PersistenceN{} consecutive-day pairs and consumes the previous
+observed label. It is not available for a lead-1 forecast without an observed
+prior day. We therefore treat it as an oracle-like diagnostic, not the H2
+baseline.
+
+\subsection{What the feasibility case establishes}
+
+The reference-$\eto$ case shows that the data path can produce an auditable
+artifact. The path starts with an archived issue and ends with a later,
+independent station target. It preserves local-day semantics, members,
+quantiles, source receipts, and checksums. This is a systems result.
+
+The diagnostic forecast is worse than the simple climatology for the one case.
+Its median forecast also has a positive bias of \FeasibilityBias{}
+$\mmday$. The p10-p90 interval covers only 20\% of the 20 targets. These
+numbers warn against promotion. They do not identify a stable lead effect,
+season effect, or statewide effect. One issue and one station cannot estimate
+those effects.
+
+The incomplete state is scientifically useful. It prevents source feasibility
+from becoming forecast validation. It also preserves the negative diagnostic
+instead of deleting it. A full result must include every frozen support cell,
+even when the candidate does not improve on climatology.
+
+\subsection{Why target separation matters}
+
+Reference $\eto$ is a weather-derived demand index. Actual ET is a realized
+surface flux. An actual-ET outlook also needs crop state, root-zone water, and
+management assumptions. A crop coefficient can convert $\eto$ to potential
+crop ET under named assumptions. It cannot by itself create unconditional
+actual ET.
+
+This boundary affects model assessment. A retrospective satellite feature can
+help predict historical actual ET. That evidence does not make the feature
+available at a future issue. An AgriMet ETos target can assess future reference
+$\eto$. That evidence does not assess field-scale actual ET. The ontology in
+Table~\ref{tab:ontology} keeps these claims separate by construction.
+
+\section{Limitations}
+
+The paper has seven main limitations.
+
+\begin{enumerate}
+  \item The complete 365-issue GEFS and AgriMet outcome archive is not present.
+  Reference-$\eto$ skill remains \claimpending.
+
+  \item The current AgriMet registry is not a historical movement ledger.
+  Historical page evidence covers \AgriMetHistoricalStations{} stations.
+
+  \item The BOII location evidence brackets the case date. It does not prove
+  an unchanged coordinate for every date from 2013 through 2019.
+
+  \item The spatial artifact contains weather-grid points. It does not contain
+  field boundaries, crop labels, or area weights.
+
+  \item The Phase~2 comparison uses public flux labels and historical OpenET.
+  It does not measure future forecast performance.
+
+  \item The one-case ETo metrics have $n=\FeasibilityN{}$ and one cluster.
+  Their uncertainty is not estimable under the frozen bootstrap.
+
+  \item The codebase contains a non-serving FAO-56 dual water-balance
+  scaffold. No result in this paper depends on that untrained scaffold.
+\end{enumerate}
+
+\section{Conclusions}
+
+\mlet{} separates retrospective actual ET from prospective reference $\eto$.
+The Phase~2 record supports a preregistered M3 versus B2 actual-ET result. M3
+reduces MAE by \HtwoReduction\%, with a paired 95\% interval of
+[\HtwoCILow{}, \HtwoCIHigh{}] $\mmday$. M2 has a lower descriptive point MAE,
+but it has no recorded paired interval.
+
+The reference-$\eto$ path produces a real, checksum-bound candidate and an
+independent target. Its one-case diagnostic is worse than climatology and has
+insufficient support. The paper therefore makes no reference-$\eto$ skill or
+irrigation claim. Promotion requires the complete frozen hindcast and a
+separate release review.
+
+\section*{Data and code availability}
+
+The repository stores the Phase~2 result, its independent reproduction
+receipt, the GEFS feasibility receipts, the AgriMet target artifacts, and the
+schema-v4 feasibility archive. The manuscript figures read those artifacts
+directly. The scripts \sourcepath{scripts/build_arxiv_claims.py} and
+\sourcepath{scripts/build_arxiv_figures.py} regenerate the numerical macros
+and figures. The complete raw GEFS plan is approximately 3.026 TB by a
+single-issue multiplication estimate. That estimate uses 365 planned issues
+and one 8,289,206,079-byte inventory. It has no sampling uncertainty and is
+not a measured full transfer.
+
+\section*{Reproducibility statement}
+
+The Phase~2 protocol uses seed \PhaseTwoSeed{} and
+\BootstrapPhaseTwo{} station-blocked replicates. The ETo protocol uses seed
+\EToSeed{} and \BootstrapETo{} issue-station cluster replicates. Generated
+claims fail when B2 minus M3 does not equal the H2 delta. They also fail when
+M2 is not the descriptive minimum or when the ETo evidence scope changes.
+Appendix~\ref{app:artifacts} records the exact artifact digests used here.
+
+\appendix
+
+\section{Implementation map}
+\label{app:implementation}
+
+Table~\ref{tab:implementation} maps each manuscript operation to the local
+implementation. This map is part of the claim audit. It is not a substitute
+for the source code.
+
+\begin{table*}[t]
+\centering
+\caption{Equation and claim map to the implementation.}
+\label{tab:implementation}
+\small
+\begin{tabularx}{0.98\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
+  >{\raggedright\arraybackslash}p{0.30\textwidth}
+  >{\raggedright\arraybackslash}X}
+\toprule
+Operation & Local implementation & Enforced invariant \\
+\midrule
+Phase 2 join & \sourcepath{src/mlet/build_dataset.py} & Exact station and date key; \code{ET\_corr} label \\
+Model definitions & \sourcepath{src/mlet/baselines.py} & Training-only fit; ridge penalty 1.0 \\
+Blocked H2 interval & \sourcepath{src/mlet/evaluate.py} & Station blocks; \BootstrapPhaseTwo{} replicates \\
+Phase 2 runner & \sourcepath{src/mlet/experiments/phase2_openet_value.py} & H2 arm is M3 versus best B1 or B2 \\
+GEFS decode & \sourcepath{src/mlet/sources/gefs_reforecast.py} & Local day; member and component identity \\
+Reference $\eto$ & \sourcepath{src/mlet/outlook/eto.py} & ASCE short reference; p10, p50, p90 \\
+Candidate contract & \sourcepath{src/mlet/outlook/eto_build.py} & 20 leads; research status; no extra layers \\
+AgriMet target & \sourcepath{src/mlet/sources/agrimet.py} & Independent ETos; exact 25.4 conversion \\
+Baseline builder & \sourcepath{scripts/build_eto_target_index.py} & Prior years only for station and day of year \\
+Outcome evaluator & \sourcepath{src/mlet/outlook/eto_hindcast.py} & \SupportCells{} cells; fail-closed completion state \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\clearpage
+\onecolumn
+
+\section{Artifact ledger}
+\label{app:artifacts}
+
+The following digests bind the plotted evidence. Paths are relative to the
+repository root.
+
+\begin{description}[style=nextline,leftmargin=0pt]
+  \item[Phase 2 result]
+  \sourcepath{docs/results/phase2_openet_value.json}\\
+  SHA-256: \code{2a2cece4a4febaa6105d5182ae01e161b98db7c18bb0ae499310fe160cd5eee3}
+
+  \item[ETo feasibility evidence]
+  \sourcepath{data/outlook/eto_feasibility_archive/evidence.json}\\
+  SHA-256: \code{890555ea6e0f912655fbdcbb7cd1291c019ce9545e21407f3a9432f1582bba38}
+
+  \item[ETo evaluation]
+  Deterministic evaluation SHA-256:
+  \code{9735fedb7a11c6aa18c5fa4146288acda5d487ba89bb0df8ad6efc414bcca039}
+
+  \item[BOII outlook]
+  \sourcepath{data/outlook/eto_feasibility_archive/cases/issue-20190703-station-BOII-season-JJA-fold-4/outlook.json}\\
+  SHA-256: \code{9476bab0be5cd879d1912a40c73ff5d694d9ae95502d67e8f6d82ee2426adb3b}
+
+  \item[BOII target]
+  \sourcepath{data/outlook/eto_feasibility_archive/cases/issue-20190703-station-BOII-season-JJA-fold-4/target.json}\\
+  SHA-256: \code{7aabbf02699745d7051bc09d7c00bd59e969abbcf639d391728086fd817d9751}
+\end{description}
+
+\section{Claim ledger}
+
+\begin{table}[h]
+\centering
+\caption{Publication claims and their current states.}
+\small
+\begin{tabularx}{0.98\textwidth}{>{\raggedright\arraybackslash}p{0.10\textwidth}
+  >{\raggedright\arraybackslash}p{0.55\textwidth}
+  >{\raggedright\arraybackslash}X}
+\toprule
+State & Claim & Evidence boundary \\
+\midrule
+Supported & M3 reduces retrospective actual-ET MAE against B2 by
+\HtwoReduction\%. & $n=\PhaseTwoN{}$, \PhaseTwoStations{} stations,
+\BootstrapPhaseTwo{} station-blocked replicates, 95\% interval
+[\HtwoCILow{}, \HtwoCIHigh{}] $\mmday$. \\
+Supported & M2 has the lowest descriptive MAE at \MTwoMAE{} $\mmday$. &
+$n=\PhaseTwoN{}$ common rows; no paired M2 interval in the record. \\
+Diagnostic & One BOII ETo case has MAE \FeasibilityMAE{} $\mmday$. & One
+issue, one station, $n=\FeasibilityN{}$, one bootstrap cluster. \\
+Pending & The 20-day reference-$\eto$ outlook improves on climatology. & Full
+365-issue archive, all \SupportCells{} cells, and release review required. \\
+Out of scope & The artifact predicts field-scale actual ET or irrigation need. &
+No field target, crop state, soil-water target, or irrigation outcome exists. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\clearpage
+\twocolumn
+\balance
+\begin{thebibliography}{99}
+\setlength{\itemsep}{5pt}
+\interlinepenalty=10000
+
+\bibitem[Allen et al.(1998)]{allen1998}
+Allen, R. G., Pereira, L. S., Raes, D., \& Smith, M. (1998).
+\textit{Crop evapotranspiration: Guidelines for computing crop water
+requirements} (FAO Irrigation and Drainage Paper No. 56). Food and
+Agriculture Organization of the United Nations.
+
+\bibitem[ASCE Task Committee(2005)]{asce2005}
+ASCE Task Committee on Standardization of Reference Evapotranspiration.
+(2005). \textit{The ASCE standardized reference evapotranspiration equation}.
+American Society of Civil Engineers.
+\url{https://doi.org/10.1061/9780784408056}
+
+\bibitem[Efron and Tibshirani(1993)]{efron1993}
+Efron, B., \& Tibshirani, R. J. (1993). \textit{An introduction to the
+bootstrap}. Chapman \& Hall/CRC.
+
+\bibitem[Gneiting and Raftery(2007)]{gneiting2007}
+Gneiting, T., \& Raftery, A. E. (2007). Strictly proper scoring rules,
+prediction, and estimation. \textit{Journal of the American Statistical
+Association, 102}(477), 359--378.
+\url{https://doi.org/10.1198/016214506000001437}
+
+\bibitem[Koenker and Bassett(1978)]{koenker1978}
+Koenker, R., \& Bassett, G., Jr. (1978). Regression quantiles.
+\textit{Econometrica, 46}(1), 33--50.
+\url{https://doi.org/10.2307/1913643}
+
+\bibitem[National Centers for Environmental Prediction(2021)]{ncep2021}
+National Centers for Environmental Prediction. (2021). \textit{GEFSv12
+reforecast archive} [Data set]. NOAA Open Data.
+\url{https://noaa-gefs-retrospective.s3.amazonaws.com/index.html}
+
+\bibitem[Thorp(2022)]{thorp2022}
+Thorp, K. R. (2022). pyfao56: FAO-56 evapotranspiration in Python.
+\textit{SoftwareX, 19}, 101208.
+\url{https://doi.org/10.1016/j.softx.2022.101208}
+
+\bibitem[U.S. Bureau of Reclamation(2024a)]{usbrarchive}
+U.S. Bureau of Reclamation. (2024a). \textit{AgriMet historical weather data
+access}. \url{https://www.usbr.gov/pn/agrimet/webarcread.html}
+
+\bibitem[U.S. Bureau of Reclamation(2024b)]{usbrlocations}
+U.S. Bureau of Reclamation. (2024b). \textit{AgriMet station locations and
+links to homepages}. \url{https://www.usbr.gov/pn/agrimet/location.html}
+
+\bibitem[Volk et al.(2023)]{volk2023}
+Volk, J. M., Huntington, J. L., Melton, F. S., Allen, R., Anderson, M.,
+Fisher, J. B., Kilic, A., Ruhoff, A., Senay, G. B., Minor, B., Morton, C.,
+Ott, T., Johnson, L., Andrade, B. C. D., Carrara, W., Doherty, C. T.,
+Dunkerly, C., Friedrichs, M., Guzman, A., \ldots{} Yang, Y. (2023). Assessing
+the accuracy of OpenET satellite-based evapotranspiration data to support
+water resource and land management applications. \textit{Nature Water}.
+\url{https://doi.org/10.1038/s44221-023-00181-7}
+
+\end{thebibliography}
+
+\end{document}
