@@ -167,6 +167,32 @@ def _support_tensor_annotation(report: EtoHindcastReport) -> str:
     )
 
 
+def _support_dimensions(report: EtoHindcastReport) -> dict[str, int]:
+    """Return support dimensions from the evaluated cells and gate."""
+    cells = report.support.get("cells")
+    if not isinstance(cells, list) or not cells:
+        raise ValueError("The evaluated support record has no cells")
+    typed_cells = [cell for cell in cells if isinstance(cell, dict)]
+    if len(typed_cells) != len(cells):
+        raise ValueError("The evaluated support cells must be objects")
+    leads = {int(cell["lead_day"]) for cell in typed_cells}
+    seasons = {str(cell["season"]) for cell in typed_cells}
+    folds = {int(cell["spatial_fold"]) for cell in typed_cells}
+    cell_count = int(report.support["cell_count"])
+    minimum_per_cell = int(report.support["minimum_paired_targets"])
+    if cell_count != len(leads) * len(seasons) * len(folds):
+        raise ValueError("The support gate does not match evaluated dimensions")
+    _scope_text, observed_count = _support_tensor_scope(report)
+    return {
+        "cell_count": cell_count,
+        "minimum_per_cell": minimum_per_cell,
+        "observed_count": observed_count,
+        "lead_count": len(leads),
+        "season_count": len(seasons),
+        "fold_count": len(folds),
+    }
+
+
 def _configure_plot_style() -> None:
     """Match the locked manuscript prototype."""
     plt.rcParams.update(
@@ -221,6 +247,11 @@ def _box(
     stroke: str,
 ) -> None:
     """Draw one rounded evidence box."""
+    multiline = "\n" in title
+    title_fontsize = 5.8 if len(title) > 55 else 7.0 if multiline else 8.2
+    subtitle_fontsize = 5.8 if multiline else 7.0
+    title_y = y + height * (0.68 if multiline else 0.62)
+    subtitle_y = y + height * (0.10 if multiline else 0.28)
     axis.add_patch(
         FancyBboxPatch(
             (x, y),
@@ -234,24 +265,24 @@ def _box(
     )
     axis.text(
         x + width / 2,
-        y + height * 0.62,
+        title_y,
         title,
         ha="center",
         va="center",
         color=INK,
         family="sans-serif",
         weight="bold",
-        fontsize=8.2,
+        fontsize=title_fontsize,
     )
     axis.text(
         x + width / 2,
-        y + height * 0.28,
+        subtitle_y,
         subtitle,
         ha="center",
         va="center",
         color=MUTED,
         family="sans-serif",
-        fontsize=7.0,
+        fontsize=subtitle_fontsize,
     )
 
 
@@ -279,6 +310,8 @@ def _figure_evidence_paths(output_dir: Path) -> None:
     """Build the target and evidence architecture."""
     models, h2 = _phase2_data()
     phase2_station_count = _phase2_station_count(_load_json(PHASE2_RESULT))
+    feasibility_report = evaluate_eto_hindcast_evidence(FEASIBILITY_EVIDENCE)
+    support_dimensions = _support_dimensions(feasibility_report)
     model_by_name = {str(model["name"]): model for model in models}
     b2_mae = float(model_by_name["B2_WeatherRidge"]["mae_mm"])
     m3_mae = float(model_by_name["M3_OpenETRidge"]["mae_mm"])
@@ -303,7 +336,7 @@ def _figure_evidence_paths(output_dir: Path) -> None:
     axis.text(
         0.75,
         0.96,
-        "Prospective reference ETo",
+        "Prospective reference evapotranspiration (ETo)",
         ha="center",
         va="top",
         weight="bold",
@@ -329,8 +362,18 @@ def _figure_evidence_paths(output_dir: Path) -> None:
             "GEFSv12 reforecast",
             "source-issue-aligned retrospective reforecast",
         ),
-        (0.58, 0.48, "ASCE short-reference ETo", "p10, p50, p90; leads 1 to 20"),
-        (0.58, 0.25, "USBR AgriMet ETos", "independent station target"),
+        (
+            0.58,
+            0.48,
+            "American Society of Civil\nEngineers Environmental and Water\nResources Institute (ASCE-EWRI)",
+            "standard reference evapotranspiration (ETo);\np10, p50, p90",
+        ),
+        (
+            0.58,
+            0.25,
+            "U.S. Bureau of Reclamation (USBR)\nAgriMet",
+            "grass-reference evapotranspiration (ETos) target",
+        ),
     ]
     for x, y, title, subtitle in left_boxes:
         _box(
@@ -350,15 +393,16 @@ def _figure_evidence_paths(output_dir: Path) -> None:
             x=x,
             y=y,
             width=0.34,
-            height=0.13,
+            height=0.17,
             title=title,
             subtitle=subtitle,
             fill=PALE_BLUE,
             stroke=BLUE,
         )
-    for x, color in ((0.25, RED), (0.75, BLUE)):
-        _arrow(axis, start=(x, 0.71), end=(x, 0.62), color=color)
-        _arrow(axis, start=(x, 0.48), end=(x, 0.39), color=color)
+    _arrow(axis, start=(0.25, 0.71), end=(0.25, 0.62), color=RED)
+    _arrow(axis, start=(0.25, 0.48), end=(0.25, 0.39), color=RED)
+    _arrow(axis, start=(0.75, 0.71), end=(0.75, 0.66), color=BLUE)
+    _arrow(axis, start=(0.75, 0.48), end=(0.75, 0.43), color=BLUE)
 
     axis.text(
         0.25,
@@ -379,7 +423,7 @@ def _figure_evidence_paths(output_dir: Path) -> None:
         0.75,
         0.12,
         "One real issue and one station\npass the source checks\n"
-        "The 400-cell gate remains incomplete",
+        f"The {support_dimensions['cell_count']}-cell gate remains incomplete",
         ha="center",
         va="center",
         color=MUTED,
@@ -598,6 +642,7 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
     """Build the real BOII feasibility trajectory."""
     rows = _feasibility_rows()
     report = evaluate_eto_hindcast_evidence(FEASIBILITY_EVIDENCE)
+    support_dimensions = _support_dimensions(report)
     metric = next(
         item for item in report.metrics if item.group == "season" and item.key == "JJA"
     )
@@ -650,7 +695,8 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
             f"{EMPIRICAL_COVERAGE_LABEL} {coverage['empirical']:.2f}; "
             f"{NOMINAL_COVERAGE_LABEL} {coverage['nominal']:.2f}; "
             f"p10 to p90 mean width {metric.mean_interval_width_mm:.3f} mm/day. "
-            f"Support 20 < {int(report.support['minimum_paired_targets'])} and one "
+            f"Support {support_dimensions['observed_count']} < "
+            f"{support_dimensions['minimum_per_cell']} and one "
             "bootstrap cluster, so no skill interval is identified."
         ),
         ha="left",
@@ -849,31 +895,46 @@ def _figure_native_grid(output_dir: Path) -> None:
 
 
 def _figure_support_tensor(output_dir: Path) -> None:
-    """Build the 400-cell evaluation support map."""
+    """Build the evaluated support map."""
     report = evaluate_eto_hindcast_evidence(FEASIBILITY_EVIDENCE)
-    matrix = np.zeros((20, 20), dtype=int)
-    season_index = {season: index for index, season in enumerate(("DJF", "MAM", "JJA", "SON"))}
+    dimensions = _support_dimensions(report)
+    metric_keys = [
+        metric.key.split(":")
+        for metric in report.metrics
+        if metric.group == "lead_season_spatial_fold"
+    ]
+    leads = sorted({int(parts[0]) for parts in metric_keys})
+    seasons = sorted({parts[1] for parts in metric_keys})
+    folds = sorted({int(parts[2]) for parts in metric_keys})
+    matrix = np.zeros((len(seasons) * len(folds), len(leads)), dtype=int)
+    season_index = {season: index for index, season in enumerate(seasons)}
+    fold_index = {fold: index for index, fold in enumerate(folds)}
+    lead_index = {lead: index for index, lead in enumerate(leads)}
     for metric in report.metrics:
         if metric.group != "lead_season_spatial_fold":
             continue
         lead_text, season, fold_text = metric.key.split(":")
-        row = season_index[season] * 5 + int(fold_text)
-        matrix[row, int(lead_text) - 1] = metric.sample_count
+        row = season_index[season] * len(folds) + fold_index[int(fold_text)]
+        matrix[row, lead_index[int(lead_text)]] = metric.sample_count
     states = np.zeros_like(matrix)
-    minimum = int(report.support["minimum_paired_targets"])
+    minimum = dimensions["minimum_per_cell"]
     states[(matrix > 0) & (matrix < minimum)] = 1
     states[matrix >= minimum] = 2
     support_map = ListedColormap(["#eeeeee", RED, BLUE])
     figure, axis = plt.subplots(figsize=(7.0, 3.75))
     axis.imshow(states, aspect="auto", cmap=support_map, vmin=0, vmax=2, interpolation="nearest")
-    labels = [f"{season}, fold {fold}" for season in ("DJF", "MAM", "JJA", "SON") for fold in range(5)]
-    axis.set_yticks(np.arange(20), labels)
-    axis.set_xticks(np.arange(20), [str(lead) for lead in range(1, 21)])
+    labels = [f"{season}, fold {fold}" for season in seasons for fold in folds]
+    axis.set_yticks(np.arange(len(labels)), labels)
+    axis.set_xticks(np.arange(len(leads)), [str(lead) for lead in leads])
     axis.set_xlabel("Lead day")
     axis.set_ylabel("Held-out season and spatial fold")
-    axis.set_title("Preregistered ETo support tensor: 20 leads by 4 seasons by 5 folds")
-    axis.set_xticks(np.arange(-0.5, 20, 1), minor=True)
-    axis.set_yticks(np.arange(-0.5, 20, 1), minor=True)
+    axis.set_title(
+        "Preregistered ETo support tensor: "
+        f"{dimensions['lead_count']} leads by {dimensions['season_count']} seasons "
+        f"by {dimensions['fold_count']} folds"
+    )
+    axis.set_xticks(np.arange(-0.5, len(leads), 1), minor=True)
+    axis.set_yticks(np.arange(-0.5, len(labels), 1), minor=True)
     axis.grid(which="minor", color="white", linewidth=0.6)
     axis.tick_params(which="minor", bottom=False, left=False)
     axis.spines.top.set_visible(True)
@@ -895,8 +956,8 @@ def _figure_support_tensor(output_dir: Path) -> None:
         0.01,
         (
             f"{annotation} The frozen minimum is "
-            f"{int(report.support['cell_count']) * minimum:,} cell observations "
-            f"({int(report.support['cell_count'])} cells x {minimum})."
+            f"{dimensions['cell_count'] * minimum:,} cell observations "
+            f"({dimensions['cell_count']} cells x {minimum})."
         ),
         ha="left",
         va="bottom",

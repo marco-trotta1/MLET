@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,7 @@ from scripts.verify_arxiv_manuscript import (
     MANUSCRIPT_TEX,
     RETIRED_PHRASES,
     _verify_generated_artifacts,
+    _verify_final_package,
     _verify_phase2_receipt,
     _verify_citations,
     validate_retired_phrases,
@@ -110,3 +112,30 @@ def test_verifier_rejects_stale_generated_claims(
 
     with pytest.raises(ValueError, match="claim file is stale"):
         _verify_generated_artifacts()
+
+
+def test_verifier_rejects_replaced_final_pdf(tmp_path: Path) -> None:
+    """A truncated final PDF must fail the clean-source content check."""
+    from scripts import verify_arxiv_manuscript
+
+    stale = tmp_path / "stale.pdf"
+    stale.write_bytes(verify_arxiv_manuscript.FINAL_PDF.read_bytes()[:-128])
+
+    with pytest.raises(ValueError, match="PDF|clean source"):
+        _verify_final_package(stale)
+
+
+def test_verifier_rejects_stale_clean_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A changed tracked clean source file must fail package verification."""
+    from scripts import verify_arxiv_manuscript
+
+    source = tmp_path / "mlet_preprint_source"
+    shutil.copytree(verify_arxiv_manuscript.SOURCE_ROOT, source)
+    generated = source / "generated_claims.tex"
+    generated.write_bytes(generated.read_bytes() + b"% stale\n")
+    monkeypatch.setattr(verify_arxiv_manuscript, "SOURCE_ROOT", source)
+
+    with pytest.raises(ValueError, match="clean source"):
+        _verify_final_package(verify_arxiv_manuscript.FINAL_PDF)

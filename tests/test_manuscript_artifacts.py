@@ -10,6 +10,7 @@ import pytest
 
 from mlet.manuscript_artifacts import (
     _load_result,
+    _phase2_station_count,
     build_eto_hindcast_artifacts,
     build_phase2_artifacts,
 )
@@ -173,8 +174,10 @@ def test_phase2_artifact_generator_is_deterministic_and_claim_safe(
     assert "0.658" in report
 
 
-def test_phase2_result_schema_requires_station_count(tmp_path: Path) -> None:
-    """The Phase 2 contract must carry its computed station count."""
+def test_phase2_schema_one_legacy_shape_does_not_invent_station_count(
+    tmp_path: Path,
+) -> None:
+    """The legacy schema remains readable without treating rows as stations."""
     result = {
         "schema_version": 1,
         "kind": "mlet.phase2-openet-value-result",
@@ -184,14 +187,39 @@ def test_phase2_result_schema_requires_station_count(tmp_path: Path) -> None:
             "git_revision": "test-revision",
             "seed": 20260713,
         },
-        "field_withheld": {"models": []},
-        "h2": {},
+        "field_withheld": {
+            "models": [
+                {
+                    "name": "B2_WeatherRidge",
+                    "mae_mm": 1.5,
+                    "rmse_mm": 2.0,
+                    "bias_mm": 0.0,
+                    "sample_count": 7923,
+                },
+                {
+                    "name": "M3_OpenETRidge",
+                    "mae_mm": 0.8,
+                    "rmse_mm": 1.1,
+                    "bias_mm": 0.0,
+                    "sample_count": 7923,
+                },
+            ]
+        },
+        "h2": {
+            "best_openet_free_model": "B2_WeatherRidge",
+            "mae_reduction_fraction": 0.4,
+            "mae_delta_mm": 0.7,
+            "ci95_mm": [0.1, 0.9],
+        },
     }
     source = tmp_path / "phase2.json"
     source.write_text(json.dumps(result), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="fields must match the schema exactly"):
-        _load_result(source)
+    loaded = _load_result(source)
+    assert loaded == result
+    assert "station_count" not in loaded
+    with pytest.raises(ValueError, match="station_count"):
+        _phase2_station_count(loaded)
 
 
 def test_phase2_schema_two_requires_bootstrap_replicates(tmp_path: Path) -> None:

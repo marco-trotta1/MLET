@@ -135,3 +135,66 @@ The one-case BOII result remains a retrospective diagnostic.
 Tectonic still reports environment font substitutions and underfull boxes.
 
 These warnings do not indicate clipping, broken references, or failed compilation.
+
+## Final fix wave · 2026-08-05
+
+This wave closes the six residual review findings.
+
+### RED evidence
+
+The focused RED command was:
+
+```text
+PYTHONPATH=src python3 -m pytest -q tests/test_manuscript_artifacts.py tests/test_cli_phase2.py tests/test_build_arxiv_claims.py tests/test_build_arxiv_figures.py tests/test_verify_arxiv_manuscript.py
+```
+
+Collection stopped because `scripts.verify_arxiv_manuscript` lacked the new
+`_verify_final_package` helper. The failure was expected for the new verifier tests.
+
+### Changes
+
+- Schema 1 preserves its legacy result shape. It no longer infers station count from model rows. Any downstream station claim now requires an explicit station count.
+- M2 versus B2 reduction is generated from serialized model MAE values.
+- Support figures derive cell, lead, season, fold, and observation dimensions from evaluator records.
+- The abstract expands ASCE-EWRI and cites the ASCE standard on first use. Figure 1 expands ASCE-EWRI, ETo, and ETos labels.
+- The verifier binds the final PDF to the tracked clean source tree and safe source archive. Build-ready verification invokes this package check.
+- The clean source tree, source archive, figures, claims, and PDF were regenerated from canonical inputs.
+- The claim ledger and bibliography now use a two-column flow with a controlled page break. Figure 2 remains on page 5. The PDF remains 10 US Letter pages.
+
+### GREEN evidence
+
+The focused regression command reports:
+
+```text
+33 passed, 1 warning in 4.70s
+```
+
+The full build-ready command reports:
+
+```text
+726 passed, 1 warning in 10.95s
+== VERIFY PASSED ==
+== BUILD READY: non-gated software and manuscript work passed ==
+```
+
+The manuscript verifier reports:
+
+```text
+MLET arXiv manuscript verification passed.
+```
+
+The package verifier rejects a truncated final PDF and a changed clean-source
+claim file. The clean source compiles and its PDF text signature matches the final PDF.
+
+The final PDF SHA-256 is
+`b72983cdc728785a120cbbcdb5005e4ad05a607906120c0c6a718a0af256f5d6`.
+
+The final PDF text signature is
+`36ec39138df71fd8e7f829a81decf20e53e81079f38ba8e930fe4f4c9bd6cf70`.
+
+The source archive SHA-256 is
+`3d348d017683a7ac2c326176ea95ac3b05e4b852cb871233df77b27cb99c8431`.
+
+The remaining gate is the full reference-ETo hindcast. The one-case BOII result
+remains a retrospective diagnostic. Tectonic reports only environment font
+substitutions and underfull boxes.

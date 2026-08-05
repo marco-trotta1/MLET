@@ -128,6 +128,15 @@ def _b0_scope_label(models: dict[str, dict[str, object]]) -> str:
     return f"B0: {int(models[B0_MODEL_NAME]['sample_count']):,} consecutive-day pairs"
 
 
+def _m2_b2_reduction_percent(models: dict[str, dict[str, object]]) -> float:
+    """Return the descriptive M2 reduction against the serialized B2 value."""
+    b2_mae = float(models["B2_WeatherRidge"]["mae_mm"])
+    m2_mae = float(models["M2_OpenETRecal"]["mae_mm"])
+    if b2_mae <= 0.0:
+        raise ValueError("B2 MAE must be positive for the M2 contrast")
+    return 100.0 * (b2_mae - m2_mae) / b2_mae
+
+
 def _phase2_scope_label(models: dict[str, dict[str, object]]) -> str:
     """Format the fitted-model evaluation scope from serialized rows."""
     return f"{PHASE2_SCOPE_LABEL} on {_phase2_common_sample_count(models):,} rows"
@@ -191,6 +200,7 @@ def _build_claims() -> list[str]:
         raise ValueError("The H2 reduction does not match the delta")
     if not m2_mae < m3_mae:
         raise ValueError("M2 must remain the descriptive minimum")
+    m2_b2_reduction = _m2_b2_reduction_percent(models)
     if int(b2["sample_count"]) != int(m3["sample_count"]):
         raise ValueError("The H2 arms must use a common sample")
 
@@ -247,6 +257,7 @@ def _build_claims() -> list[str]:
         _macro("MOneRMSE", f"{float(models['M1_OpenETDirect']['rmse_mm']):.3f}"),
         _macro("MOneBias", f"{float(models['M1_OpenETDirect']['bias_mm']):.3f}"),
         _macro("MTwoMAE", f"{m2_mae:.3f}"),
+        _macro("MTwoBTwoReduction", f"{m2_b2_reduction:.1f}"),
         _macro("MTwoRMSE", f"{float(m2['rmse_mm']):.3f}"),
         _macro("MTwoBias", f"{float(m2['bias_mm']):.3f}"),
         _macro("MThreeMAE", f"{m3_mae:.3f}"),

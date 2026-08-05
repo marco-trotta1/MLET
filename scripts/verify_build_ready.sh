@@ -14,7 +14,12 @@ import tempfile
 
 from mlet.manuscript_artifacts import build_phase2_artifacts
 from mlet.outlook.eto_hindcast import evaluate_eto_hindcast_evidence
-from scripts.verify_arxiv_manuscript import _verify_generated_artifacts, _verify_phase2_receipt
+from scripts.verify_arxiv_manuscript import (
+    FINAL_PDF,
+    _verify_final_package,
+    _verify_generated_artifacts,
+    _verify_phase2_receipt,
+)
 from mlet.sources.agrimet_station_registry import (
     load_agrimet_station_registry,
     stations_for_state,
@@ -32,6 +37,7 @@ if actual_digest != expected_digest:
 
 _verify_phase2_receipt()
 _verify_generated_artifacts()
+_verify_final_package(FINAL_PDF)
 
 fixture_report = evaluate_eto_hindcast_evidence(
     Path("examples/outlook/eto_hindcast_evidence.json")

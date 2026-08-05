@@ -10,8 +10,11 @@ import math
 import os
 import re
 import subprocess
+import tarfile
 import tempfile
 from pathlib import Path
+
+from pypdf import PdfReader
 
 try:
     from scripts.build_arxiv_claims import (
@@ -38,6 +41,9 @@ FIGURE_ROOT = FIGURE_DATA.parent
 CLAIMS_TEX = REPO_ROOT / "manuscript" / "arxiv" / "generated_claims.tex"
 MANUSCRIPT_TEX = REPO_ROOT / "manuscript" / "arxiv" / "mlet_preprint.tex"
 COMPILE_LOG = REPO_ROOT / "output" / "pdf" / "mlet_preprint.log"
+FINAL_PDF = REPO_ROOT / "output" / "pdf" / "mlet_preprint.pdf"
+SOURCE_ROOT = REPO_ROOT / "output" / "arxiv" / "mlet_preprint_source"
+SOURCE_ARCHIVE = REPO_ROOT / "output" / "arxiv" / "mlet_preprint_source.tar.gz"
 
 RETIRED_PHRASES = (
     "field-withheld",
@@ -415,6 +421,102 @@ def _verify_pdf(pdf_path: Path) -> None:
                 raise ValueError(f"The compile log contains: {term}")
 
 
+def _pdf_signature(pdf_path: Path) -> tuple[int, str, str]:
+    """Return stable page, text, and title values for one compiled PDF."""
+    try:
+        reader = PdfReader(str(pdf_path))
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        metadata = reader.metadata or {}
+        title = str(metadata.get("/Title") or "")
+    except Exception as error:
+        raise ValueError(f"The PDF cannot be read: {pdf_path}") from error
+    return len(reader.pages), hashlib.sha256(text.encode("utf-8")).hexdigest(), title
+
+
+def _source_manifest() -> dict[str, Path]:
+    """Return the tracked clean source files and their canonical inputs."""
+    manifest = {
+        "ARXIV_SUBMISSION.md": REPO_ROOT / "manuscript" / "arxiv" / "ARXIV_SUBMISSION.md",
+        "generated_claims.tex": CLAIMS_TEX,
+        "mlet_preprint.tex": MANUSCRIPT_TEX,
+        "assets/irrigant_logo.png": REPO_ROOT / "manuscript" / "assets" / "irrigant_logo.png",
+        "assets/uidaho_logo.png": REPO_ROOT / "manuscript" / "assets" / "uidaho_logo.png",
+    }
+    for stem in (
+        "figure_1_evidence_paths",
+        "figure_2_phase2_models",
+        "figure_3_boii_feasibility",
+        "figure_4_native_grid",
+        "figure_5_support_tensor",
+    ):
+        manifest[f"figures/{stem}.pdf"] = FIGURE_ROOT / f"{stem}.pdf"
+    return manifest
+
+
+def _verify_clean_source(pdf_path: Path) -> None:
+    """Verify the tracked source tree, archive, and clean-source PDF binding."""
+    manifest = _source_manifest()
+    if not SOURCE_ROOT.is_dir():
+        raise ValueError("The tracked clean source directory is missing")
+    for relative, canonical in manifest.items():
+        source_path = SOURCE_ROOT / relative
+        if not source_path.is_file() or source_path.read_bytes() != canonical.read_bytes():
+            raise ValueError(f"The tracked clean source is stale or replaced: {relative}")
+
+    if not SOURCE_ARCHIVE.is_file() or SOURCE_ARCHIVE.stat().st_size == 0:
+        raise ValueError("The tracked clean source archive is missing")
+    expected_files = set(manifest)
+    archived_files: set[str] = set()
+    try:
+        with tarfile.open(SOURCE_ARCHIVE, mode="r:gz") as archive:
+            for member in archive.getmembers():
+                member_path = Path(member.name)
+                if member_path.is_absolute() or ".." in member_path.parts:
+                    raise ValueError("The clean source archive contains an unsafe path")
+                relative = member.name.removeprefix("./").rstrip("/")
+                if not relative or member.isdir():
+                    continue
+                if not member.isfile() or relative not in expected_files:
+                    raise ValueError("The clean source archive contains an unexpected file")
+                extracted = archive.extractfile(member)
+                if extracted is None or extracted.read() != (SOURCE_ROOT / relative).read_bytes():
+                    raise ValueError(f"The clean source archive is stale: {relative}")
+                archived_files.add(relative)
+    except (OSError, tarfile.TarError) as error:
+        raise ValueError("The clean source archive cannot be read") from error
+    if archived_files != expected_files:
+        missing = sorted(expected_files - archived_files)
+        raise ValueError(f"The clean source archive lacks files: {missing}")
+
+    with tempfile.TemporaryDirectory(prefix="mlet-clean-source-") as directory:
+        output = Path(directory)
+        try:
+            subprocess.run(
+                [
+                    "tectonic",
+                    "--outdir",
+                    str(output),
+                    "--keep-logs",
+                    "mlet_preprint.tex",
+                ],
+                check=True,
+                cwd=SOURCE_ROOT,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as error:
+            raise ValueError("The tracked clean source does not compile") from error
+        clean_pdf = output / "mlet_preprint.pdf"
+        if _pdf_signature(pdf_path) != _pdf_signature(clean_pdf):
+            raise ValueError("The final PDF and tracked clean source content differ")
+
+
+def _verify_final_package(pdf_path: Path) -> None:
+    """Verify the final PDF and bind it to the tracked clean source package."""
+    _verify_pdf(pdf_path)
+    _verify_clean_source(pdf_path)
+
+
 def main() -> int:
     """Run all manuscript verification checks."""
     parser = argparse.ArgumentParser()
@@ -428,7 +530,7 @@ def main() -> int:
     _verify_figure_sources()
     _verify_citations()
     _verify_source_text()
-    _verify_pdf(args.pdf.resolve())
+    _verify_final_package(args.pdf.resolve())
     print("MLET arXiv manuscript verification passed.")
     return 0
 

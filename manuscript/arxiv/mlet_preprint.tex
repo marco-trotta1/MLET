@@ -17,6 +17,7 @@
 \usepackage{fancyhdr}
 \usepackage{titlesec}
 \usepackage{balance}
+\usepackage{multicol}
 \usepackage{stfloats}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
@@ -139,28 +140,30 @@ and an Auditable Reference-Evapotranspiration Outlook\par}
 Machine Learning Evapotranspiration (MLET) separates two targets. Reference
 evapotranspiration (ETo, denoted $\eto$ below) describes atmospheric demand for
 a defined reference surface. Actual evapotranspiration ($\etaactual$) also
-depends on crop condition, soil water, and management. MLET therefore keeps
-two evidence paths. The retrospective path tests OpenET for daily actual-ET
-prediction. The prospective path defines an auditable 20-day reference-ETo
-artifact for Idaho. The reproduced Phase~2 record contains \PhaseTwoN{}
+depends on crop condition, soil water, and management. MLET therefore uses two
+evidence paths: retrospective OpenET actual-ET prediction and a prospective
+20-day reference-ETo artifact for Idaho. The reproduced Phase~2 record contains
+\PhaseTwoN{}
 station-days from \PhaseTwoStations{} stations. The preregistered comparison
 is M3 OpenETRidge against B2 WeatherRidge. M3 has mean absolute error (MAE)
 \MThreeMAE{} $\mmday$ versus \BTwoMAE{} $\mmday$ for B2. This is a
 \HtwoDelta{} $\mmday$ improvement and a \HtwoReduction\% reduction. A
 \BootstrapPhaseTwo-replicate station-blocked bootstrap gives a 95\% interval
 of [\HtwoCILow{}, \HtwoCIHigh{}] $\mmday$. M2 OpenETRecal has the lowest MAE
-among B1, B2, and M1 through M3 on the \PhaseTwoN{}-row common fitted-model
-sample, at \MTwoMAE{} $\mmday$. It is not the preregistered arm. The
-prospective path applies the ASCE standardized short-reference equation to
-archived ensemble members. One real issue, one station, and \FeasibilityN{}
-targets pass source and identity checks. That retrospective reforecast
-diagnostic has MAE \FeasibilityMAE{} $\mmday$, while prior-station climatology
-has MAE \FeasibilityBaselineMAE{} $\mmday$. The signed baseline-minus-forecast
-MAE difference is \FeasibilityImprovement{} $\mmday$, so forecast MAE is higher.
-Empirical p10-to-p90 coverage is \FeasibilityCoverage{} against a nominal
-coverage target of \FeasibilityNominalCoverage{}, and mean band width is
-\FeasibilityWidth{} $\mmday$. One bootstrap cluster and fewer than 30 targets
-per support cell prevent a confidence interval and a skill claim.
+among B1, B2, and M1 through M3 on \PhaseTwoN{} common fitted-model rows at
+\MTwoMAE{} $\mmday$. It is not the preregistered arm. The
+prospective path applies the American Society of Civil Engineers Environmental
+and Water Resources Institute (ASCE-EWRI) standardized short-reference equation
+to archived ensemble members \citep{asce2005}. One real issue, one station, and
+\FeasibilityN{} targets pass source and identity checks. That retrospective
+reforecast diagnostic has MAE \FeasibilityMAE{} $\mmday$, while prior-station
+climatology has MAE \FeasibilityBaselineMAE{} $\mmday$. The signed
+baseline-minus-forecast MAE difference is \FeasibilityImprovement{} $\mmday$, so
+forecast MAE is higher. Empirical p10-to-p90 coverage is
+\FeasibilityCoverage{} against a nominal coverage target of
+\FeasibilityNominalCoverage{}, and mean band width is \FeasibilityWidth{}
+$\mmday$. One bootstrap cluster and fewer than \SupportMinimum{} targets per
+support cell prevent a confidence interval and a skill claim.
 \end{quote}
 
 \noindent\textbf{Keywords:} evapotranspiration; actual ET; reference $\eto$;
@@ -249,7 +252,7 @@ separate protocol.
 Layer or label & Quantity & Time and source & Allowed claim \\
 \midrule
 \code{ET\_corr} & Energy-balance-corrected actual ET & Historical flux label & Retrospective daily actual-ET prediction \\
-\code{eto\_mm} & ASCE short-reference $\eto$ & Future local date from issue-time GEFS & Regional reference-$\eto$ outlook after the frozen hindcast gate \\
+\code{eto\_mm} & Standardized short-reference $\eto$ & Future local date from issue-time GEFS & Regional reference-$\eto$ outlook after the frozen hindcast gate \\
 AgriMet \code{ETos} & Published grass-reference ET & Later station observation; converted from inches per day & Independent reference-$\eto$ evaluation target \\
 \code{potential\_et\_c\_mm} & $K_c\eto$ under ample-water assumptions & Conditional future projection & Conditional crop ET only \\
 \code{eta\_analysis\_mm} & Satellite actual-ET analysis & Delayed historical observation & Analysis comparison only \\
@@ -628,7 +631,7 @@ protocol.
 
 M2 has the lowest point MAE among B1, B2, and M1 through M3 on
 $\PhaseTwoN{}$ common fitted-model rows, at \MTwoMAE{} $\mmday$. Its direct point
-reduction from B2 is 48.4\%. This is a
+reduction from B2 is \MTwoBTwoReduction\%. This is a
 descriptive contrast. The result record contains no paired M2 interval. We do
 not attach the M3 interval to M2.
 
@@ -696,7 +699,7 @@ area-weighted Idaho estimate is inferred.}
 \end{figure*}
 
 Figure~\ref{fig:support} makes the incomplete state explicit. The real archive
-supplies one target in each JJA, fold-2 lead cell. This is 20 cell
+supplies one target in each JJA, fold-2 lead cell. This is \FeasibilityN{} cell
 observations. The frozen gate needs \SupportMinimumTotal{} observations when
 every one of the \SupportCells{} cells reaches its minimum. The present archive
 therefore supports no full-hindcast claim.
@@ -705,7 +708,7 @@ therefore supports no full-hindcast claim.
   \centering
   \includegraphics[width=0.97\textwidth]{figure_5_support_tensor.pdf}
   \caption{Frozen reference-$\eto$ support tensor. The real feasibility
-  archive occupies 20 cells with one target each. No cell reaches the
+  archive occupies \FeasibilityN{} cells with one target each. No cell reaches the
   $n\ge\SupportMinimum{}$ threshold. The complete protocol requires all
   \SupportCells{} lead-season-fold cells.}
   \label{fig:support}
@@ -950,9 +953,7 @@ No field target, crop state, soil-water target, or irrigation outcome exists. \\
 \end{tabularx}
 \end{table}
 
-\clearpage
-\twocolumn
-\balance
+\begin{multicols}{2}
 \begin{thebibliography}{99}
 \setlength{\itemsep}{5pt}
 \interlinepenalty=10000
@@ -972,6 +973,8 @@ American Society of Civil Engineers.
 \bibitem[Efron and Tibshirani(1993)]{efron1993}
 Efron, B., \& Tibshirani, R. J. (1993). \textit{An introduction to the
 bootstrap}. Chapman \& Hall/CRC.
+
+\newpage
 
 \bibitem[Gneiting and Raftery(2007)]{gneiting2007}
 Gneiting, T., \& Raftery, A. E. (2007). Strictly proper scoring rules,
@@ -1013,5 +1016,6 @@ water resource and land management applications. \textit{Nature Water, 2}(2),
 \url{https://doi.org/10.1038/s44221-023-00181-7}
 
 \end{thebibliography}
+\end{multicols}
 
 \end{document}

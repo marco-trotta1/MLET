@@ -3,6 +3,11 @@
 Title: MLET: Incremental Predictive Value of OpenET and an Auditable
 Reference-Evapotranspiration Outlook.
 
+Public repository: https://github.com/marco-trotta1/MLET. Immutable scientific
+code revision: `d8feb34`. Dataset DOIs:
+https://doi.org/10.5281/zenodo.10119477 and
+https://doi.org/10.5281/zenodo.7636781.
+
 Use mlet_preprint.tex as the main file. The source compiles with Tectonic and
 uses the letter-paper layout in the manuscript.
 

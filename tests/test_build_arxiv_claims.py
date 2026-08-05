@@ -73,6 +73,15 @@ def test_b0_scope_label_reads_the_machine_sample_count() -> None:
     )
 
 
+def test_m2_b2_reduction_reads_serialized_model_values() -> None:
+    """The descriptive M2 contrast must follow the model records."""
+    models = build_arxiv_claims._model_by_name(_phase2_payload())
+    expected = (1.514 - 0.781) / 1.514 * 100.0
+    assert build_arxiv_claims._m2_b2_reduction_percent(models) == pytest.approx(expected)
+    models["M2_OpenETRecal"]["mae_mm"] = 0.5
+    assert build_arxiv_claims._m2_b2_reduction_percent(models) != pytest.approx(expected)
+
+
 def test_phase2_station_count_claim_reads_the_result_record() -> None:
     """The generated station claim must follow the serialized result count."""
     payload = _phase2_payload()

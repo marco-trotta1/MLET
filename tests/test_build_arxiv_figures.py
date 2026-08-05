@@ -138,6 +138,15 @@ def test_support_annotation_comes_from_evaluated_metrics() -> None:
     assert "fold-4" not in annotation
 
 
+def test_support_dimensions_come_from_evaluator_record() -> None:
+    """Figure support dimensions must follow the evaluator record."""
+    report = evaluate_eto_hindcast_evidence(build_arxiv_figures.FEASIBILITY_EVIDENCE)
+    dimensions = build_arxiv_figures._support_dimensions(report)
+    assert dimensions["cell_count"] == int(report.support["cell_count"])
+    assert dimensions["observed_count"] == 20
+    assert dimensions["minimum_per_cell"] == int(report.support["minimum_paired_targets"])
+
+
 def test_feasibility_paths_reject_traversal(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

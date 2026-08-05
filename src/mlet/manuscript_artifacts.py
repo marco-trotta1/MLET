@@ -635,30 +635,16 @@ def _load_result(path: Path) -> dict[str, object]:
         raise ValueError("Phase 2 provenance must contain a git revision")
     if type(provenance["seed"]) is not int:
         raise ValueError("Phase 2 provenance seed must be an integer")
-    if schema_version == 1 and "station_count" not in payload:
-        try:
-            _phase2_station_count(payload)
-        except ValueError as error:
-            raise ValueError("Phase 2 result fields must match the schema exactly") from error
     return payload
 
 
 def _phase2_station_count(payload: dict[str, object]) -> int:
-    """Return station count while preserving the schema-1 parser."""
+    """Return an explicit station count without inferring it from row counts."""
     value = payload.get("station_count")
     if type(value) is int and value > 0:
         return value
-    models = payload.get("field_withheld")
-    if isinstance(models, dict):
-        rows = models.get("models")
-        if isinstance(rows, list) and rows:
-            sample_counts = {
-                int(row["sample_count"])
-                for row in rows
-                if isinstance(row, dict) and type(row.get("sample_count")) is int
-            }
-            if sample_counts:
-                return max(sample_counts)
+    if payload.get("schema_version") == 1:
+        raise ValueError("Legacy schema-1 Phase 2 result lacks station_count")
     raise ValueError("Phase 2 result must contain a positive station_count")
 
 
