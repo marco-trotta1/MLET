@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from mlet.outlook.eto_hindcast import evaluate_eto_hindcast_evidence
 from scripts import build_arxiv_figures
 
 
@@ -92,3 +93,58 @@ def test_phase2_render_uses_controlled_h2_records(
         output = output_dir / f"figure_2_phase2_models.{suffix}"
         assert output.is_file()
         assert output.stat().st_size > 0
+
+
+def test_feasibility_paths_follow_the_single_evidence_case() -> None:
+    """Figure inputs must resolve from the tracked one-case evidence record."""
+    case_id, outlook_path, target_path = (
+        build_arxiv_figures._resolve_feasibility_case_paths()
+    )
+
+    assert case_id == "issue-20190703-station-BOII-season-JJA-fold-2"
+    assert outlook_path.name == "outlook.json"
+    assert target_path.name == "target.json"
+    assert "season-JJA-fold-2" in outlook_path.parent.name
+    assert "season-JJA-fold-2" in target_path.parent.name
+
+
+def test_support_annotation_comes_from_evaluated_metrics() -> None:
+    """The support note must report the evaluated season, fold, and count."""
+    report = evaluate_eto_hindcast_evidence(build_arxiv_figures.FEASIBILITY_EVIDENCE)
+
+    annotation = build_arxiv_figures._support_tensor_annotation(report)
+
+    assert "JJA-fold-2" in annotation
+    assert "20 cell observations" in annotation
+    assert "fold-4" not in annotation
+
+
+def test_feasibility_paths_reject_traversal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Evidence paths must stay below the configured archive root."""
+    root = tmp_path / "archive"
+    root.mkdir()
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}\n", encoding="utf-8")
+    evidence = root / "evidence.json"
+    evidence.write_text(
+        json.dumps(
+            {
+                "cases": [
+                    {
+                        "case_id": "case",
+                        "forecast": {"artifact_path": "../outside.json"},
+                        "target": {"path": "target.json"},
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (root / "target.json").write_text("{}\n", encoding="utf-8")
+    monkeypatch.setattr(build_arxiv_figures, "FEASIBILITY_ROOT", root)
+    monkeypatch.setattr(build_arxiv_figures, "FEASIBILITY_EVIDENCE", evidence)
+
+    with pytest.raises(ValueError, match="outside|relative"):
+        build_arxiv_figures._resolve_feasibility_case_paths()

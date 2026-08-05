@@ -18,7 +18,7 @@ from matplotlib.colors import LinearSegmentedColormap, ListedColormap
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Patch
 import numpy as np
 
-from mlet.outlook.eto_hindcast import evaluate_eto_hindcast_evidence
+from mlet.outlook.eto_hindcast import EtoHindcastReport, evaluate_eto_hindcast_evidence
 try:
     from scripts.build_arxiv_claims import (
         GRID_SCOPE_LABEL,
@@ -45,13 +45,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PHASE2_RESULT = REPO_ROOT / "docs" / "results" / "phase2_openet_value.json"
 FEASIBILITY_ROOT = REPO_ROOT / "data" / "outlook" / "eto_feasibility_archive"
 FEASIBILITY_EVIDENCE = FEASIBILITY_ROOT / "evidence.json"
-FEASIBILITY_CASE = (
-    FEASIBILITY_ROOT
-    / "cases"
-    / "issue-20190703-station-BOII-season-JJA-fold-4"
-)
-FEASIBILITY_OUTLOOK = FEASIBILITY_CASE / "outlook.json"
-FEASIBILITY_TARGET = FEASIBILITY_CASE / "target.json"
 
 INK = "#171717"
 MUTED = "#5b5b5b"
@@ -80,6 +73,78 @@ def _load_json(path: Path) -> dict[str, object]:
 def _sha256(path: Path) -> str:
     """Return the SHA-256 digest for one file."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _resolve_archive_file(root: Path, value: object, label: str) -> Path:
+    """Resolve one evidence path and keep it below the archive root."""
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{label} must be a non-empty relative path")
+    relative = Path(value)
+    if relative.is_absolute():
+        raise ValueError(f"{label} must be a relative path")
+    try:
+        candidate = (root / relative).resolve(strict=True)
+    except OSError as error:
+        raise ValueError(f"{label} must name an existing file") from error
+    try:
+        candidate.relative_to(root)
+    except ValueError as error:
+        raise ValueError(f"{label} resolves outside the feasibility archive") from error
+    if not candidate.is_file():
+        raise ValueError(f"{label} must name an existing file")
+    return candidate
+
+
+def _resolve_feasibility_case_paths() -> tuple[str, Path, Path]:
+    """Resolve the one forecast case and its target from the evidence record."""
+    root = FEASIBILITY_ROOT.resolve(strict=True)
+    evidence = _load_json(FEASIBILITY_EVIDENCE)
+    cases = evidence.get("cases")
+    if not isinstance(cases, list) or len(cases) != 1:
+        raise ValueError("The feasibility evidence must contain exactly one case")
+    case = cases[0]
+    if not isinstance(case, dict):
+        raise ValueError("The feasibility case must be an object")
+    case_id = case.get("case_id")
+    if not isinstance(case_id, str) or not case_id:
+        raise ValueError("The feasibility case must contain a case ID")
+    forecast = case.get("forecast")
+    target = case.get("target")
+    if not isinstance(forecast, dict) or not isinstance(target, dict):
+        raise ValueError("The feasibility case must contain forecast and target records")
+    outlook_path = _resolve_archive_file(
+        root, forecast.get("artifact_path"), "forecast artifact path"
+    )
+    target_path = _resolve_archive_file(root, target.get("path"), "target artifact path")
+    return case_id, outlook_path, target_path
+
+
+def _support_tensor_scope(report: EtoHindcastReport) -> tuple[str, int]:
+    """Return active evaluated season-fold scope and observation count."""
+    active: list[tuple[str, int, int]] = []
+    for metric in report.metrics:
+        if metric.group != "lead_season_spatial_fold" or metric.sample_count <= 0:
+            continue
+        parts = metric.key.split(":")
+        if len(parts) != 3:
+            raise ValueError("The evaluated support metric key is malformed")
+        _lead_text, season, fold_text = parts
+        active.append((season, int(fold_text), int(metric.sample_count)))
+    if not active:
+        raise ValueError("The evaluated support tensor has no observations")
+    scopes = sorted({(season, fold) for season, fold, _count in active})
+    scope_text = ", ".join(f"{season}-fold-{fold}" for season, fold in scopes)
+    observation_count = sum(count for _season, _fold, count in active)
+    return scope_text, observation_count
+
+
+def _support_tensor_annotation(report: EtoHindcastReport) -> str:
+    """Format the support note from evaluated support metrics."""
+    scope_text, observation_count = _support_tensor_scope(report)
+    return (
+        f"The real feasibility archive supplies {observation_count} cell observations "
+        f"across {scope_text}."
+    )
 
 
 def _configure_plot_style() -> None:
@@ -426,8 +491,9 @@ def _figure_phase2_models(output_dir: Path) -> None:
 
 def _feasibility_rows() -> list[dict[str, float | int | str]]:
     """Join the real BOII target with its mapped forecast quantiles."""
-    outlook = _load_json(FEASIBILITY_OUTLOOK)
-    target = _load_json(FEASIBILITY_TARGET)
+    _case_id, outlook_path, target_path = _resolve_feasibility_case_paths()
+    outlook = _load_json(outlook_path)
+    target = _load_json(target_path)
     values = target.get("values")
     collections = outlook.get("feature_collections")
     if not isinstance(values, list) or not isinstance(collections, list):
@@ -541,7 +607,8 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
 
 def _common_grid_ids() -> tuple[str, ...]:
     """Return the deterministic common grid-point subset across all leads."""
-    outlook = _load_json(FEASIBILITY_OUTLOOK)
+    _case_id, outlook_path, _target_path = _resolve_feasibility_case_paths()
+    outlook = _load_json(outlook_path)
     collections = outlook.get("feature_collections")
     if not isinstance(collections, list) or not collections:
         raise ValueError("Forecast candidate lacks feature collections")
@@ -568,7 +635,8 @@ def _common_grid_ids() -> tuple[str, ...]:
 
 def _spatial_collection(lead_day: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Return coordinates and quantiles for one candidate lead."""
-    outlook = _load_json(FEASIBILITY_OUTLOOK)
+    _case_id, outlook_path, _target_path = _resolve_feasibility_case_paths()
+    outlook = _load_json(outlook_path)
     collections = outlook.get("feature_collections")
     if not isinstance(collections, list):
         raise ValueError("Forecast candidate lacks feature collections")
@@ -762,10 +830,14 @@ def _figure_support_tensor(output_dir: Path) -> None:
         ncol=3,
         frameon=False,
     )
+    annotation = _support_tensor_annotation(report)
     figure.text(
         0.01,
         0.01,
-        "The real feasibility archive supplies one target in each JJA-fold-4 lead cell: 20 cell observations. The frozen minimum is 12,000 cell observations (400 cells x 30).",
+        (
+            f"{annotation} The frozen minimum is 12,000 cell observations "
+            "(400 cells x 30)."
+        ),
         ha="left",
         va="bottom",
         family="sans-serif",
@@ -781,6 +853,8 @@ def _write_figure_data(output_dir: Path) -> None:
     models, h2 = _phase2_data()
     rows = _feasibility_rows()
     report = evaluate_eto_hindcast_evidence(FEASIBILITY_EVIDENCE)
+    _case_id, outlook_path, target_path = _resolve_feasibility_case_paths()
+    _scope_text, feasibility_cell_observations = _support_tensor_scope(report)
     season_metric = next(
         item for item in report.metrics if item.group == "season" and item.key == "JJA"
     )
@@ -798,12 +872,12 @@ def _write_figure_data(output_dir: Path) -> None:
                 "evaluation_sha256": report.evaluation_sha256,
             },
             "feasibility_outlook": {
-                "path": str(FEASIBILITY_OUTLOOK.relative_to(REPO_ROOT)),
-                "sha256": _sha256(FEASIBILITY_OUTLOOK),
+                "path": str(outlook_path.relative_to(REPO_ROOT)),
+                "sha256": _sha256(outlook_path),
             },
             "feasibility_target": {
-                "path": str(FEASIBILITY_TARGET.relative_to(REPO_ROOT)),
-                "sha256": _sha256(FEASIBILITY_TARGET),
+                "path": str(target_path.relative_to(REPO_ROOT)),
+                "sha256": _sha256(target_path),
             },
         },
         "phase2": {"models": models, "h2": h2},
@@ -830,7 +904,7 @@ def _write_figure_data(output_dir: Path) -> None:
             "cell_count": 400,
             "minimum_per_cell": 30,
             "minimum_cell_observations": 12_000,
-            "feasibility_cell_observations": 20,
+            "feasibility_cell_observations": feasibility_cell_observations,
         },
     }
     (output_dir / "figure_data.json").write_text(
