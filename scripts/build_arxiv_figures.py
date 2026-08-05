@@ -247,11 +247,17 @@ def _box(
     stroke: str,
 ) -> None:
     """Draw one rounded evidence box."""
-    multiline = "\n" in title
-    title_fontsize = 5.8 if len(title) > 55 else 7.0 if multiline else 8.2
-    subtitle_fontsize = 5.8 if multiline else 7.0
-    title_y = y + height * (0.68 if multiline else 0.62)
-    subtitle_y = y + height * (0.10 if multiline else 0.28)
+    title_lines = title.count("\n") + 1
+    subtitle_lines = subtitle.count("\n") + 1
+    if title_lines >= 3:
+        title_fontsize = 5.9
+    elif title_lines == 2:
+        title_fontsize = 6.8
+    else:
+        title_fontsize = 7.9
+    subtitle_fontsize = 5.9 if subtitle_lines >= 2 else 6.6
+    title_y = y + height * (0.70 if subtitle_lines >= 2 else 0.66)
+    subtitle_y = y + height * (0.22 if subtitle_lines >= 2 else 0.25)
     axis.add_patch(
         FancyBboxPatch(
             (x, y),
@@ -273,6 +279,7 @@ def _box(
         family="sans-serif",
         weight="bold",
         fontsize=title_fontsize,
+        linespacing=0.98,
     )
     axis.text(
         x + width / 2,
@@ -283,6 +290,7 @@ def _box(
         color=MUTED,
         family="sans-serif",
         fontsize=subtitle_fontsize,
+        linespacing=0.98,
     )
 
 
@@ -320,7 +328,7 @@ def _figure_evidence_paths(output_dir: Path) -> None:
     ci95 = h2["ci95_mm"]
     if not isinstance(ci95, list) or len(ci95) != 2:
         raise ValueError("Phase 2 H2 record must contain a paired interval")
-    figure, axis = plt.subplots(figsize=(7.0, 3.05))
+    figure, axis = plt.subplots(figsize=(7.0, 3.20))
     axis.set_xlim(0, 1)
     axis.set_ylim(0, 1)
     axis.axis("off")
@@ -345,34 +353,34 @@ def _figure_evidence_paths(output_dir: Path) -> None:
     axis.plot([0.5, 0.5], [0.13, 0.91], color=RULE, linewidth=0.7)
 
     left_boxes = [
-        (0.08, 0.71, "OpenET and flux", "152 joined stations"),
+        (0.055, 0.695, "OpenET and flux", "152 joined stations"),
         (
-            0.08,
-            0.48,
-            "Station-held-out 10-fold evaluation",
+            0.055,
+            0.445,
+            "Station-held-out\n10-fold evaluation",
             f"{phase2_station_count:,} stations; "
             f"{_phase2_common_sample_count(_model_by_name(_load_json(PHASE2_RESULT))):,} common rows",
         ),
-        (0.08, 0.25, "Preregistered M3 comparison", "station-blocked bootstrap"),
+        (0.055, 0.195, "Preregistered M3\ncomparison", "station-blocked bootstrap"),
     ]
     right_boxes = [
         (
-            0.58,
-            0.71,
+            0.555,
+            0.695,
             "GEFSv12 reforecast",
-            "source-issue-aligned retrospective reforecast",
+            "source-issue-aligned\nretrospective reforecast",
         ),
         (
-            0.58,
-            0.48,
+            0.555,
+            0.445,
             "American Society of Civil\nEngineers Environmental and Water\nResources Institute (ASCE-EWRI)",
-            "standard reference evapotranspiration (ETo);\np10, p50, p90",
+            "standard reference ETo\np10, p50, p90",
         ),
         (
-            0.58,
-            0.25,
-            "U.S. Bureau of Reclamation (USBR)\nAgriMet",
-            "grass-reference evapotranspiration (ETos) target",
+            0.555,
+            0.195,
+            "U.S. Bureau of Reclamation\nAgriMet",
+            "grass-reference ETos\nevaluation target",
         ),
     ]
     for x, y, title, subtitle in left_boxes:
@@ -380,8 +388,8 @@ def _figure_evidence_paths(output_dir: Path) -> None:
             axis,
             x=x,
             y=y,
-            width=0.34,
-            height=0.13,
+            width=0.39,
+            height=0.19,
             title=title,
             subtitle=subtitle,
             fill=PALE_RED,
@@ -392,21 +400,21 @@ def _figure_evidence_paths(output_dir: Path) -> None:
             axis,
             x=x,
             y=y,
-            width=0.34,
-            height=0.17,
+            width=0.39,
+            height=0.19,
             title=title,
             subtitle=subtitle,
             fill=PALE_BLUE,
             stroke=BLUE,
         )
-    _arrow(axis, start=(0.25, 0.71), end=(0.25, 0.62), color=RED)
-    _arrow(axis, start=(0.25, 0.48), end=(0.25, 0.39), color=RED)
-    _arrow(axis, start=(0.75, 0.71), end=(0.75, 0.66), color=BLUE)
-    _arrow(axis, start=(0.75, 0.48), end=(0.75, 0.43), color=BLUE)
+    _arrow(axis, start=(0.25, 0.695), end=(0.25, 0.635), color=RED)
+    _arrow(axis, start=(0.25, 0.445), end=(0.25, 0.385), color=RED)
+    _arrow(axis, start=(0.75, 0.695), end=(0.75, 0.635), color=BLUE)
+    _arrow(axis, start=(0.75, 0.445), end=(0.75, 0.385), color=BLUE)
 
     axis.text(
         0.25,
-        0.12,
+        0.085,
         (
             f"M3: {m3_mae:.3f}; B2: {b2_mae:.3f} mm/day\n"
             f"{100.0 * reduction:.1f}% reduction; paired 95% CI\n"
@@ -421,7 +429,7 @@ def _figure_evidence_paths(output_dir: Path) -> None:
     )
     axis.text(
         0.75,
-        0.12,
+        0.085,
         "One real issue and one station\npass the source checks\n"
         f"The {support_dimensions['cell_count']}-cell gate remains incomplete",
         ha="center",
@@ -654,7 +662,7 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
     target = np.array([float(row["target_mm"]) for row in rows])
     baseline = np.array([float(row["baseline_mm"]) for row in rows])
 
-    figure, axis = plt.subplots(figsize=(7.0, 3.45))
+    figure, axis = plt.subplots(figsize=(7.0, 3.65))
     axis.fill_between(
         leads,
         p10,
@@ -680,10 +688,30 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
     axis.set_xticks([1, 5, 10, 15, 20])
     axis.set_xlabel("Lead day from the 2019-07-03 00Z GEFS issue")
     axis.set_ylabel("Reference ETo (mm/day)")
-    axis.set_title("Real BOII feasibility case: forecast distribution, target, and climatology")
+    axis.set_title(
+        "Real BOII feasibility case: forecast distribution, target, and climatology",
+        pad=41,
+    )
     axis.grid(True, color="#dddddd", linewidth=0.45)
     axis.set_axisbelow(True)
-    axis.legend(loc="upper right", frameon=False, ncol=2)
+    handles, _labels = axis.get_legend_handles_labels()
+    legend_labels = (
+        "GEFS ETo p10-p90 band (uncalibrated)",
+        "GEFS ETo p50",
+        "AgriMet ETos target",
+        "Strictly prior-year station/day mean",
+    )
+    axis.legend(
+        handles,
+        legend_labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.02),
+        frameon=False,
+        ncol=2,
+        columnspacing=2.0,
+        handletextpad=0.7,
+        labelspacing=0.55,
+    )
     figure.text(
         0.075,
         0.025,
@@ -705,7 +733,7 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
         fontsize=7.0,
         color=MUTED,
     )
-    figure.subplots_adjust(left=0.08, right=0.99, top=0.88, bottom=0.25)
+    figure.subplots_adjust(left=0.08, right=0.99, top=0.74, bottom=0.23)
     _save_figure(figure, output_dir, "figure_3_boii_feasibility")
 
 
