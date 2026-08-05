@@ -14,7 +14,8 @@ station-held-out 10-fold evaluation contains 7,923 station-days. The
 preregistered M3 OpenETRidge model has MAE 0.856 mm/day. B2 WeatherRidge has
 MAE 1.514 mm/day. The paired station-blocked 95 percent interval for the
 baseline-minus-M3 MAE difference is 0.399 to 0.911 mm/day. M2 OpenETRecal has
-the lowest descriptive MAE, 0.781 mm/day, without a paired interval.
+the lowest MAE among B1, B2, and M1 through M3 on 7,923 common fitted-model
+rows. Its MAE is 0.781 mm/day, with no paired interval.
 
 The outlook path computes GEFSv12 ASCE standardized short-reference ETo and
 compares it with published USBR AgriMet ETos. The BOII case is a retrospective
@@ -60,8 +61,8 @@ not penalized. M2 is ordinary least squares with an intercept and slope.
 H2 is a preregistered comparison, not a model. It requires at least 10 percent
 lower pooled MAE than the better of B1 and B2. Its station-blocked 95 percent
 confidence interval for the baseline-minus-M3 difference must be above zero.
-M2 has the lowest MAE only among B1, B2, and M1 through M3 on the common
-7,923-row sample.
+M2 has the lowest MAE only among B1, B2, and M1 through M3 on 7,923 common
+fitted-model rows.
 
 ### Reference-ETo outlook
 
@@ -115,8 +116,9 @@ release.
 
 M3 OpenETRidge reports MAE 0.856 mm/day against 1.514 mm/day for B2
 WeatherRidge. The reduction is 43.4 percent. The paired 95 percent interval is
-0.399 to 0.911 mm/day. M2 OpenETRecal has the lowest descriptive MAE,
-0.781 mm/day. It has no paired interval.
+0.399 to 0.911 mm/day. M2 OpenETRecal has the lowest MAE among B1, B2, and M1
+through M3 on 7,923 common fitted-model rows. Its MAE is
+0.781 mm/day, with no paired interval.
 
 ### BOII feasibility diagnostic
 
@@ -148,4 +150,28 @@ made. A complete archive and release review are required.
 
 ## References
 
-See references.bib.
+- Allen, R. G., Pereira, L. S., Raes, D., and Smith, M. (1998). *Crop
+  evapotranspiration: Guidelines for computing crop water requirements*. Food
+  and Agriculture Organization of the United Nations.
+- ASCE Task Committee on Standardization of Reference Evapotranspiration.
+  (2005). *The ASCE standardized reference evapotranspiration equation*.
+  American Society of Civil Engineers. https://doi.org/10.1061/9780784408056
+- Efron, B., and Tibshirani, R. J. (1993). *An introduction to the bootstrap*.
+  Chapman and Hall/CRC.
+- Gneiting, T., and Raftery, A. E. (2007). Strictly proper scoring rules,
+  prediction, and estimation. *Journal of the American Statistical
+  Association, 102*(477), 359-378. https://doi.org/10.1198/016214506000001437
+- Koenker, R., and Bassett, G., Jr. (1978). Regression quantiles.
+  *Econometrica, 46*(1), 33-50. https://doi.org/10.2307/1913643
+- National Centers for Environmental Prediction. (2021). *GEFSv12 reforecast
+  archive*. NOAA Open Data.
+- Thorp, K. R. (2022). pyfao56: FAO-56 evapotranspiration in Python.
+  *SoftwareX, 19*, 101208. https://doi.org/10.1016/j.softx.2022.101208
+- U.S. Bureau of Reclamation. (2024a). *AgriMet historical weather data
+  access*.
+- U.S. Bureau of Reclamation. (2024b). *AgriMet station locations and links
+  to homepages*.
+- Volk, J. M., et al. (2024). Assessing the accuracy of OpenET satellite-based
+  evapotranspiration data to support water resource and land management
+  applications. *Nature Water, 2*(2), 193-205.
+  https://doi.org/10.1038/s44221-023-00181-7

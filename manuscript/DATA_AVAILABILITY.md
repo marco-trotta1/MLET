@@ -1,5 +1,12 @@
 # Data availability
 
+The public repository is https://github.com/marco-trotta1/MLET. This manuscript
+uses immutable scientific code revision `d8feb34`.
+
+The Phase 2 source archives are available at
+https://doi.org/10.5281/zenodo.10119477 and
+https://doi.org/10.5281/zenodo.7636781.
+
 The Phase 2 source manifest is at ../data/manifest.json. The machine-readable
 Phase 2 result is at ../docs/results/phase2_openet_value.json.
 

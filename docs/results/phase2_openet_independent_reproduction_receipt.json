@@ -15,11 +15,11 @@
     "h2_reduction_matches_to_three_decimals": true
   },
   "data_manifest_sha256": "722dfa28b99d723d85142f3868b4e8939ceb1b3d2470ddcbff050af1c6e693f8",
-  "git_revision": "fb64dab",
+  "git_revision": "d8feb34",
   "kind": "mlet.phase2-openet-independent-reproduction-receipt",
   "output_sha256": {
-    "report_markdown": "ea382924e317d66b89bbc2fe6a8e54c4d169776c0b7f596c0220fecbff739ba4",
-    "result_json": "68b6e1d6d6cca60a9a4865d97e29167aad8997845c471ebb8ceae36f75a9a773"
+    "result_json": "a74c86b4f6d351e9d3c560bd95d722cc2d4394a2843fc9e4c02a9b8c427df42e",
+    "report_markdown": "ea382924e317d66b89bbc2fe6a8e54c4d169776c0b7f596c0220fecbff739ba4"
   },
   "result": {
     "schema_version": 2,
@@ -29,7 +29,7 @@
     "bootstrap_replicates": 2000,
     "provenance": {
       "data_manifest_sha256": "722dfa28b99d723d85142f3868b4e8939ceb1b3d2470ddcbff050af1c6e693f8",
-      "git_revision": "fb64dab",
+      "git_revision": "d8feb34",
       "seed": 20260713
     },
     "field_withheld": {

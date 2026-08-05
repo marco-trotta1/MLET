@@ -16,7 +16,8 @@ the issue-time cutoff and the gate required before any public validation claim.
 
 ## Research questions
 
-The current product question is whether real, issue-time-valid data can support
+The current product question is whether a source-issue-aligned retrospective
+reforecast can support
 an auditable 20-day Idaho ETo outlook with useful uncertainty characterization.
 Phase 2 answers a narrower, retrospective research question:
 
