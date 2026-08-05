@@ -233,12 +233,15 @@ Add focused tests for these rules:
 - B0 is reported separately because it uses 1,555 consecutive-day pairs.
 - H2 is a preregistered comparison or hypothesis. It is not a model.
 - The p10 to p90 interval is an uncalibrated ensemble quantile band.
-- The value 0.80 is nominal coverage. It is not interval width.
+- The value 0.80 is the nominal coverage target. The measured value is empirical coverage. Neither value is interval width.
 - The grid label is `common 0.5-degree GEFS grid-point subset`.
 - The Phase 2 label is `station-held-out 10-fold evaluation`.
 - The verifier rejects every retired phrase listed above.
 - A repeatable `--station-id` option restricts index generation to named mapped stations.
 - An unknown selected station fails before index generation.
+- Figure case paths come from the one-case evidence record. No fold identifier is hard-coded.
+- The support-tensor annotation derives its season, fold, and count from evaluated metrics.
+- The GEFS index receipt names the stream-index artifact next to its SHA-256 digest.
 
 ### Step 2: Run the red tests
 
@@ -252,7 +255,7 @@ Expected result: at least one assertion fails against the current scripts.
 
 ### Step 3: Implement exact generation rules
 
-Validate the common-sample M2 comparison against B1, B2, M1, M2, and M3. Keep B0 outside that comparison. Update labels, legends, annotations, and verifier phrases. Do not hard-code scientific values that can be read from machine records.
+Validate the common-sample M2 comparison against B1, B2, M1, M2, and M3. Keep B0 outside that comparison. Update labels, legends, annotations, and verifier phrases. Label measured coverage as empirical coverage and record 0.80 separately as the nominal target. Derive the feasibility case paths and support annotation from the evidence record. Bind the stream-index path and digest in its receipt. Do not hard-code scientific values or fold identifiers that can be read from machine records.
 
 Add a repeatable `--station-id` option to the GEFS index builder. Keep the default behavior unchanged. Validate requested identifiers against the mapping before generation. Use this option to make the one-station feasibility scope reproducible.
 
@@ -293,6 +296,8 @@ fix(manuscript): enforce exact generation scope
 - Modify: `data/outlook/gefs_reforecast_20190703_artifact_receipt.json`
 - Modify: `data/outlook/gefs_reforecast_20190703_feasibility.json`
 - Modify: `data/outlook/eto_feasibility_gefs_index.json`
+- Create: `data/outlook/gefs_reforecast_20190703_stream_index.json`
+- Modify: `data/outlook/eto_feasibility_gefs_index-receipt.json`
 - Modify: `data/outlook/eto_feasibility_agrimet_index.json`
 - Replace the fold-4 files under `data/outlook/eto_feasibility_targets/` and `data/outlook/eto_feasibility_archive/` with fold-2 files.
 - Modify: `manuscript/arxiv/generated_claims.tex`
@@ -329,6 +334,8 @@ Regenerate:
 PYTHONPATH=src python3 scripts/build_arxiv_claims.py --out manuscript/arxiv/generated_claims.tex
 PYTHONPATH=src python3 scripts/build_arxiv_figures.py --out manuscript/arxiv/figures
 ```
+
+Run both commands without a process-local override or monkeypatch.
 
 ### Step 5: Run evidence and full verification
 
