@@ -21,6 +21,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install manuscript verification tools
+        env:
+          TECTONIC_ARCHIVE_SHA256: 1a715688baf591e650c8aeb160ae934e181685eecbb38b317de30b269ac5d606
+          TECTONIC_ARCHIVE_URL: https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-unknown-linux-gnu.tar.gz
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes poppler-utils
+          tectonic_archive="$RUNNER_TEMP/tectonic.tar.gz"
+          curl --fail --location --silent --show-error "$TECTONIC_ARCHIVE_URL" --output "$tectonic_archive"
+          echo "$TECTONIC_ARCHIVE_SHA256  $tectonic_archive" | sha256sum --check
+          tar --extract --gzip --file "$tectonic_archive" --directory "$RUNNER_TEMP"
+          sudo install --mode 0755 "$RUNNER_TEMP/tectonic" /usr/local/bin/tectonic
+          pdfinfo -v
+          pdftoppm -v
+          tectonic --version
       - name: Provision trusted pytest scratch root
         run: sudo install -d -m 0755 -o "$(id -u)" -g "$(id -g)" /mlet-pytest
       - name: Install package
@@ -38,6 +53,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install manuscript verification tools
+        env:
+          TECTONIC_ARCHIVE_SHA256: 1a715688baf591e650c8aeb160ae934e181685eecbb38b317de30b269ac5d606
+          TECTONIC_ARCHIVE_URL: https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-unknown-linux-gnu.tar.gz
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes poppler-utils
+          tectonic_archive="$RUNNER_TEMP/tectonic.tar.gz"
+          curl --fail --location --silent --show-error "$TECTONIC_ARCHIVE_URL" --output "$tectonic_archive"
+          echo "$TECTONIC_ARCHIVE_SHA256  $tectonic_archive" | sha256sum --check
+          tar --extract --gzip --file "$tectonic_archive" --directory "$RUNNER_TEMP"
+          sudo install --mode 0755 "$RUNNER_TEMP/tectonic" /usr/local/bin/tectonic
+          pdfinfo -v
+          pdftoppm -v
+          tectonic --version
       - name: Provision trusted pytest scratch root
         run: sudo install -d -m 0755 -o "$(id -u)" -g "$(id -g)" /mlet-pytest
       - name: Install package with the hybrid extra
