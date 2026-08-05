@@ -1,186 +1,139 @@
-# MLET: OpenET value and an auditable reference-ET outlook
+# MLET: Incremental Predictive Value of OpenET and an Auditable Reference-Evapotranspiration Outlook
 
 **Manuscript status:** Draft for internal review.
 
-**Evidence status:** The Phase 2 result is independently reproduced. The ETo
-outlook software and source contracts are implemented. The full ETo hindcast
-is not yet complete.
+**Evidence status:** The Phase 2 result is independently reproduced. The
+complete reference-ETo hindcast remains pending.
 
 ## Abstract
 
-Evapotranspiration estimates support water management, crop studies, and
-forecast evaluation. MLET separates two questions that require different
-targets. The first question asks whether OpenET improves daily actual-ET
-prediction at field-withheld flux stations. The second asks whether archived
-ensemble weather can support a 20-day regional reference-ET outlook.
+Machine Learning Evapotranspiration (MLET) keeps actual ET and reference ETo
+as separate evidence paths. The retrospective path uses OpenET and
+energy-balance-corrected daily actual ET at 85 stations. The common
+station-held-out 10-fold evaluation contains 7,923 station-days. The
+preregistered M3 OpenETRidge model has MAE 0.856 mm/day. B2 WeatherRidge has
+MAE 1.514 mm/day. The paired station-blocked 95 percent interval for the
+baseline-minus-M3 MAE difference is 0.399 to 0.911 mm/day. M2 OpenETRecal has
+the lowest descriptive MAE, 0.781 mm/day, without a paired interval.
 
-The Phase 2 record reports a field-withheld comparison on a common complete
-subset of 85 stations and 7,923 station-days. The best OpenET-inclusive model
-has a reported MAE of 0.856 mm/day. The best OpenET-free weather model has a
-reported MAE of 1.514 mm/day. The reported reduction is 43.4 percent. The
-paired 95 percent confidence interval for the MAE difference is 0.399 to
-0.911 mm/day. The independent reproduction receipt matches the committed
-result to three decimal places and binds the source archives by checksum.
-
-The outlook evaluates only weather-driven ASCE short-reference ETo. It uses
-archived GEFS reforecast inputs and published USBR AgriMet ETos targets. The
-software records source times, checksums, station identity, grid identity, and
-layer-level claim status. Conditional crop ET and ETa scenarios remain outside
-the formal validation target. Historical station evidence now supports 19
-stations through the acquired target window, with BOII as the full feasibility
-case. The full outcome archive is still required before ETo skill is reported.
+The outlook path computes GEFSv12 ASCE standardized short-reference ETo and
+compares it with published USBR AgriMet ETos. The BOII case is a retrospective
+reforecast diagnostic. It contains one issue, one station, and 20 targets.
+Forecast MAE is 1.133 mm/day. Fixed prior-years station climatology MAE is
+0.505 mm/day. The signed baseline-minus-forecast MAE difference is
+-0.628 mm/day, so forecast MAE is higher. Empirical p10-to-p90 coverage is
+0.25 against a nominal target of 0.80. Mean band width is 1.453 mm/day. One
+bootstrap cluster and fewer than 30 targets per support cell prevent a paired
+confidence interval. Full-archive reference-ETo skill remains pending.
 
 ## Introduction
 
-Evapotranspiration is not one measurable quantity with one universal forecast
-target. Reference ETo describes atmospheric demand for a defined reference
-surface. Actual ET depends on crop condition, soil water, and management.
-Confusing these quantities can turn a regional weather product into an
-unsupported field irrigation claim.
+Reference ETo describes atmospheric demand for a defined reference surface.
+Actual ET depends on crop condition, soil water, and management. MLET therefore
+uses separate targets, baselines, source receipts, and claim boundaries.
 
-MLET therefore uses separate evidence paths. Phase 2 tests the incremental
-value of OpenET for retrospective daily actual-ET prediction. The outlook
-path tests a 20-day weather-driven reference-ET artifact. Each path has its own
-target, baseline, source receipt, and claim boundary.
-
-The project has two practical goals. First, it should provide a reproducible
-research artifact that another analyst can inspect and rebuild. Second, it
-should provide a manuscript-ready record that reports both positive and
-negative evidence without changing the protocol after results are observed.
+The completed Phase 2 question is whether OpenET adds value to retrospective
+daily actual-ET prediction. The outlook question is whether archived GEFSv12
+weather can support a 20-day regional reference-ETo artifact. Neither path
+supports a field-scale actual-ET or irrigation claim.
 
 ## Methods
 
 ### Phase 2 daily actual-ET comparison
 
-The Phase 2 benchmark joins published OpenET model ET with a public flux-tower
-collection. The join uses exact station and date keys. The target is the
-energy-balance-corrected daily ET value. The uncorrected ET column is not
-scored.
+The response is energy-balance-corrected daily actual ET. The benchmark
+reference ETo is gridMET ETo, not GEFS ETo. The OpenET input is the available
+daily OpenET actual-ET estimate.
 
-The field-withheld comparison reports persistence, a crop-coefficient baseline,
-a weather-only ridge model, and three OpenET-inclusive models. The common
-complete subset contains 85 stations and 7,923 station-days. The result record
-stores the source manifest digest and the fixed random seed.
+The primary split is station-held-out 10-fold evaluation. B0 uses 1,555
+consecutive-day pairs and remains an oracle-like diagnostic. B1 is one static
+pooled training-set mean of the response-to-gridMET-ETo ratio over rows with
+positive gridMET ETo. It is not crop-specific or stage-specific. B2 and M3
+standardize predictors with training means and standard deviations. Their
+ridge penalty is lambda=1. The intercept is the training response mean and is
+not penalized. M2 is ordinary least squares with an intercept and slope.
 
-The primary comparison is the best OpenET-inclusive model against the best
-OpenET-free model. The report uses MAE, RMSE, signed bias, and a paired
-confidence interval for the MAE difference. This comparison is retrospective.
-It is not a 20-day forecast test.
+H2 is a preregistered comparison, not a model. It requires at least 10 percent
+lower pooled MAE than the better of B1 and B2. Its station-blocked 95 percent
+confidence interval for the baseline-minus-M3 difference must be above zero.
+M2 has the lowest MAE only among B1, B2, and M1 through M3 on the common
+7,923-row sample.
 
-### ETo outlook
+### Reference-ETo outlook
 
-The outlook target is published daily USBR AgriMet ETos. ETos is ASCE-EWRI
-grass-reference ETo. The source value is published in inches per day. MLET
-converts it to millimeters with the exact factor 25.4. MLET does not calculate
-the target from its forecast weather path.
+The outlook uses NOAA GEFSv12 retrospective reforecast inputs. The source issue
+is 2019-07-03 00Z. The archive became available at
+2026-08-04T18:08:54.243122Z. These are separate times. The case was not a
+public operational forecast in 2019.
 
-The protocol uses archived GEFS reforecast inputs. Weekly issues occur on
-Wednesday 00Z from 2013-01-02 through 2019-12-25. Each issue provides 11
-members through lead day 35. The ETo outlook uses leads 1 through 20. The lead
-dates use the Idaho local calendar day in the `America/Boise` time zone.
+The outlook ETo is GEFS-derived ASCE standardized short-reference ETo. Stored
+GEFS wind is measured at 10 m. The pyfao56 routine performs the internal 10 m
+to 2 m adjustment. The empirical p10, p50, and p90 values use 11 sorted
+members and NumPy linear interpolation between adjacent order statistics. The
+p10-to-p90 result is an uncalibrated ensemble quantile band.
 
-The primary baseline is station-specific day-of-year climatology. The baseline
-excludes the evaluated year. The frozen spatial fold controls forecast
-evaluation, while prior target-station history remains available to its
-station-specific baseline. The evaluator reports
-MAE, RMSE, signed bias, p10 to p90 coverage, interval width, and mean pinball
-loss. It reports support by lead, season, and spatial fold. It requires at
-least 30 paired station-date targets in each reported cell. Paired confidence
-intervals use 1,000 deterministic bootstrap replicates clustered by issue date
-and station. A cell with fewer than two clusters reports no interval.
+The spatial artifact is the exact common 0.5-degree GEFS grid-point subset
+across the 0.25-degree early and 0.5-degree late source segments. No
+interpolation creates it. The target grid cell 43.50:-116.00 maps to tile
+43:-116 and fold 2 through the full SHA-256 digest modulo five.
 
-### Provenance and claim status
+AgriMet ETos is a published station-derived grass-reference target converted
+from inches per day by 25.4. It is not a direct flux measurement or a GEFS
+recomputation. Fixed climatology uses all strictly prior years for the same
+station and day of year. It is not a learned cross-fold component.
 
-Every real candidate records source URI, source version, retrieval time, source
-availability, and checksum. A forecast candidate has the status
-`research_candidate`, `not_promoted`, and `evaluation_pending`.
+### Implementation and governance
 
-The current USBR station snapshot records 265 stations and 52 Idaho stations.
-It does not prove that a coordinate applies to a historical target date. The
-historical audit accepts 19 station pages and dated map evidence. The target
-adapter rejects stations without this history.
+The decode and ETo chain is:
 
-The formal hindcast target is `eto_mm`. `potential_et_c_mm` is a conditional
-crop-ET projection. `eta_analysis_mm` is a delayed historical analysis.
-`eta_well_watered_mm` and `eta_no_irrigation_mm` are conditional scenarios.
-None of these layers can be relabeled as an unconditional actual-ET forecast.
+- scripts/decode_gefs_reforecast.py
+- src/mlet/sources/gefs_reforecast_batch.py
+- src/mlet/sources/gefs_grib.py
+- src/mlet/sources/gefs_reforecast.py
+- src/mlet/outlook/eto.py
+
+Frozen means fixed before evaluation. Promotion means public operational
+release. Validation complete means that every required support cell meets its
+target count. Skillful means that the preregistered MAE rule and confidence
+interval rule pass. Release review is an independent check before any public
+release.
 
 ## Results
 
 ### Phase 2 result
 
-The machine-readable result is in
-[`../docs/results/phase2_openet_value.json`](../docs/results/phase2_openet_value.json).
-The generated table is in
-[`../docs/results/phase2_openet_value.md`](../docs/results/phase2_openet_value.md).
+M3 OpenETRidge reports MAE 0.856 mm/day against 1.514 mm/day for B2
+WeatherRidge. The reduction is 43.4 percent. The paired 95 percent interval is
+0.399 to 0.911 mm/day. M2 OpenETRecal has the lowest descriptive MAE,
+0.781 mm/day. It has no paired interval.
 
-| Model | MAE (mm/day) | RMSE (mm/day) | Bias (mm/day) | n |
-|---|---:|---:|---:|---:|
-| B2 WeatherRidge | 1.514 | 2.687 | -0.098 | 7,923 |
-| M1 OpenETDirect | 0.784 | 1.066 | 0.154 | 7,923 |
-| M2 OpenETRecal | 0.781 | 1.060 | 0.005 | 7,923 |
-| M3 OpenETRidge | 0.856 | 1.386 | -0.013 | 7,923 |
+### BOII feasibility diagnostic
 
-The preregistered H2 model is M3 OpenETRidge. Its MAE is 0.856 mm/day versus
-1.514 mm/day for B2 WeatherRidge. The reduction is 43.4 percent. The paired
-95 percent confidence interval is 0.399 to 0.911 mm/day. M2 OpenETRecal has
-the lowest descriptive MAE, 0.781 mm/day, but it is not the H2 arm. The
-independent reproduction receipt confirms the result and its source hashes.
-
-### ETo outlook result
-
-No full ETo hindcast result is reported in this draft. The 2019-07-03
-feasibility case passes the GEFS transfer, version-2 decode, AgriMet target,
-station-history, grid-match, checksum, and issue-time checks. The full GEFS
-and AgriMet outcome archive remains unassembled. This is a data gate, not
-evidence of forecast failure.
-
-The ETo result section will be generated from the immutable result record. It
-will report the outcome even if the forecast does not improve on climatology.
-It will not use a skill threshold to define whether the evaluation is complete.
-
-## Discussion
-
-The Phase 2 record supports a narrow retrospective statement. OpenET-inclusive
-models report lower daily actual-ET error than the best OpenET-free model in
-the recorded field-withheld comparison. The result does not establish skill
-for a future weather forecast, a soil-water forecast, or an irrigation decision.
-
-The outlook artifact addresses a different problem. Its value is auditability:
-the forecast target, source cutoff, station identity, mapped grid identity, and
-claim status remain visible in machine-readable files. This structure permits a
-later hindcast without changing the target definition after seeing outcomes.
-
-The station audit shows why historical metadata matters. A current coordinate
-can differ from an earlier station position. The ETo target path therefore
-fails closed when a historical location segment is missing. This protects the
-manuscript from a silent station move.
-
-The project does not require an OpenET key for the ETo manuscript path. It also
-does not require Irrigant access to complete the research artifact or write the
-methods and limitations sections. Those integrations are future work.
+The BOII case passes source, identity, checksum, local-day, and target-time
+checks. It is a retrospective reforecast diagnostic. The forecast has MAE
+1.133 mm/day. Prior-years station climatology has MAE 0.505 mm/day. The
+baseline-minus-forecast difference is -0.628 mm/day, so the forecast is worse.
+Empirical p10-to-p90 coverage is 0.25. The nominal target is 0.80. Mean band
+width is 1.453 mm/day. The case has one bootstrap cluster and 20 targets.
+It is below the 30-target support rule. No paired confidence interval is
+identified.
 
 ## Limitations
 
-- The Phase 2 result is independently reproduced from checksum-bound archives.
-- The ETo hindcast has no full outcome result in this draft.
-- Historical location evidence covers 19 stations, not every current station.
-- The outlook is a regional weather-grid artifact. It is not field-scale
-  validation.
-- Conditional ETc and ETa layers are not formal forecast targets.
-- The project does not test irrigation recommendations or operational release.
+- The full 365-issue GEFS and AgriMet outcome archive is absent.
+- Full-archive reference-ETo skill remains pending.
+- Historical location evidence covers 19 stations.
+- The weather artifact has grid points, not field boundaries or area weights.
+- The Phase 2 result does not measure future forecast performance.
+- The BOII uncertainty is not estimable with one bootstrap cluster.
 
 ## Conclusions
 
-MLET now has a reproducible artifact boundary for two distinct ET questions.
-The Phase 2 record provides a claim-limited historical result. The outlook
-software provides an ETo-only candidate path with strict provenance checks.
-
-The manuscript can be written now around the methods, reproduced Phase 2
-evidence, artifact design, and explicit ETo status. The ETo skill result must
-be inserted only from the generated immutable result record after the full
-archive gate passes.
+MLET reports a narrow retrospective OpenET result and a separate reference-ETo
+diagnostic. The BOII diagnostic is negative against fixed prior-station
+climatology and lacks support for a skill claim. No operational promotion is
+made. A complete archive and release review are required.
 
 ## References
 
-See [`references.bib`](references.bib).
+See references.bib.

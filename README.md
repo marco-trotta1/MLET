@@ -3,8 +3,9 @@
 Open-source machine learning evapotranspiration (MLET) is building a
 reproducible, no-setup **Idaho regional evapotranspiration outlook** alongside
 leakage-controlled ET research. The first public product is a 20-day,
-native-weather-grid map—not a field-scale measurement, field-specific
-irrigation prescription, or irrigation recommendation.
+common 0.5-degree GEFS grid-point subset map. It is not a field-scale
+measurement, field-specific irrigation prescription, or irrigation
+recommendation.
 
 The [frozen Idaho outlook product contract](docs/outlook/PRODUCT_CONTRACT.md)
 defines exactly what each map layer means, including the distinction between
@@ -20,7 +21,7 @@ an auditable 20-day Idaho ETo outlook with useful uncertainty characterization.
 Phase 2 answers a narrower, retrospective research question:
 
 > Given weather data and satellite ET, does OpenET measurably improve
-> daily actual-ET prediction at field-withheld flux-tower stations?
+> daily actual-ET prediction at station-held-out flux-tower stations?
 
 The earlier, longer-term soil-moisture research question remains:
 
@@ -106,7 +107,7 @@ pre-registration should freeze:
 
 - the OpenET hypothesis;
 - the 10% deficit-error and one-day irrigation-timing thresholds;
-- field-withheld and time-withheld splits;
+- station-held-out and time-withheld splits;
 - baseline definitions;
 - leakage checks;
 - metrics and stratifications.
@@ -137,7 +138,7 @@ The planned system should produce:
 - data freshness timestamps;
 - machine-readable forecast outputs;
 - notebooks or scripts that reproduce published figures;
-- a frozen benchmark with field-withheld splits and a pre-registered analysis
+- a frozen benchmark with station-held-out splits and a pre-registered analysis
   plan.
 
 ## Current Repository Status
@@ -166,7 +167,6 @@ Present contents:
 - the forecast-overlap consistency diagnostic;
 - frozen train-only normalisation as a hashed JSON artifact;
 - probabilistic scoring (mean pinball loss, interval coverage, interval width);
-- the non-serving hybrid FAO-56 scaffold, validated against vendored pyfao56;
 - the neuralhydrology GenericDataset exporter.
 
 The manuscript outlook claim is limited to the 20-day weather-driven ETo
@@ -198,7 +198,7 @@ Evaluate it with `mlet outlook hindcast --evidence ARCHIVE_ROOT/evidence.json
 --output docs/results/idaho_eto_hindcast.md`.
 
 The Phase 2 historical report states that, on the 85-station weather-complete
-public subset, the preregistered M3 OpenETRidge model reduced field-withheld
+public subset, the preregistered M3 OpenETRidge model reduced station-held-out
 daily-ET MAE by 43.4% relative to B2 WeatherRidge. The paired 95% confidence
 interval is 0.399 to 0.911 mm/day.
 The independent reproduction receipt is
@@ -313,9 +313,9 @@ and an FAO-56 Eq. 37 elevation coefficient ten times the published value.
 Both are documented with regression tests in
 [neuralhydrology provenance](docs/methods/NEURALHYDROLOGY_PROVENANCE.md).
 
-The non-serving hybrid scaffold is described in
-[hybrid model scaffold](docs/methods/HYBRID_MODEL_SCAFFOLD.md). It trains
-nothing and no published result depends on it.
+The FAO-56 hybrid scaffold is an isolated, non-serving experiment described in
+[hybrid model scaffold](docs/methods/HYBRID_MODEL_SCAFFOLD.md). It supports no
+published result and no manuscript claim.
 
 ## Development Notes
 

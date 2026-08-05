@@ -33,6 +33,7 @@ RETIRED_PHRASES = (
     "nominal width of 0.80",
     "native grid",
     "weather-derived demand index",
+    "non-serving FAO-56 dual water-balance",
 )
 
 
@@ -92,6 +93,10 @@ def _verify_phase2(macros: dict[str, str]) -> None:
         raise ValueError("The H2 interval is missing")
     if str(h2.get("best_openet_free_model")) != "B2_WeatherRidge":
         raise ValueError("The H2 baseline changed")
+    if reduction < 0.10:
+        raise ValueError("The H2 reduction is below the preregistered 10% threshold")
+    if float(ci95[0]) <= 0.0:
+        raise ValueError("The H2 confidence interval does not exclude zero")
     if not math.isclose(b2_mae - m3_mae, delta, rel_tol=0.0, abs_tol=1e-12):
         raise ValueError("The H2 delta no longer compares B2 with M3")
     if not math.isclose(delta / b2_mae, reduction, rel_tol=0.0, abs_tol=1e-12):
@@ -191,13 +196,45 @@ def _verify_source_text() -> None:
             if prohibited in text:
                 raise ValueError(f"The file contains a prohibited dash: {path}")
     manuscript = MANUSCRIPT_TEX.read_text(encoding="utf-8")
+    validate_retired_phrases(manuscript)
     normalized_manuscript = " ".join(manuscript.split())
     required = (
-        "The preregistered comparison is M3 OpenETRidge against B2",
-        "it is not the preregistered arm",
-        "We make no $\\eto$ skill, field-scale actual-ET, or",
-        "The paired point improvement is",
-        "It has only \\FeasibilityClusters{} bootstrap cluster",
+        "Machine Learning Evapotranspiration (MLET)",
+        "Global Ensemble Forecast System version 12 (GEFSv12)",
+        "National Oceanic and Atmospheric Administration (NOAA)",
+        "U.S. Bureau of Reclamation (USBR)",
+        "American Society of Civil Engineers Environmental and Water Resources Institute (ASCE-EWRI)",
+        "grass-reference evapotranspiration (ETos)",
+        "reference evapotranspiration (ETo)",
+        "mean absolute error (MAE)",
+        "root mean square error (RMSE)",
+        "SHA-256 (a 256-bit secure hash)",
+        "Coordinated Universal Time (UTC)",
+        "00Z (00:00 UTC)",
+        "H2 (the preregistered OpenET comparison)",
+        "BOII (the Boise, Idaho AgriMet weather-station identifier)",
+        "December-January-February (DJF)",
+        "March-April-May (MAM)",
+        "June-July-August (JJA)",
+        "September-October-November (SON)",
+        "station-held-out 10-fold evaluation",
+        "gridMET ETo",
+        "uncalibrated ensemble quantile band",
+        "published station-derived target",
+        "retrospective reforecast diagnostic",
+        "baseline-minus-forecast MAE difference",
+        "source_issue_at",
+        "archive_available_at",
+        "common 0.5-degree GEFS grid-point subset",
+        "No interpolation",
+        "Validation complete",
+        "skillful",
+        "release review",
+        "scripts/decode_gefs_reforecast.py",
+        "src/mlet/sources/gefs_reforecast_batch.py",
+        "src/mlet/sources/gefs_grib.py",
+        "src/mlet/sources/gefs_reforecast.py",
+        "src/mlet/outlook/eto.py",
     )
     for phrase in required:
         if phrase not in normalized_manuscript:
@@ -220,6 +257,10 @@ def _verify_pdf(pdf_path: Path) -> None:
         raise ValueError("The compiled manuscript has fewer than eight pages")
     if "Page size:       612 x 792 pts (letter)" not in info:
         raise ValueError("The compiled manuscript is not US Letter size")
+    title = "MLET: Incremental Predictive Value of OpenET and an Auditable Reference-Evapotranspiration Outlook"
+    title_match = re.search(r"^Title:\s+(.+)$", info, flags=re.MULTILINE)
+    if title_match is None or title_match.group(1).strip() != title:
+        raise ValueError("The compiled manuscript has the wrong PDF title")
     if COMPILE_LOG.is_file():
         log = COMPILE_LOG.read_text(encoding="utf-8", errors="replace")
         fatal_terms = ("LaTeX Error", "undefined references", "undefined citations")
