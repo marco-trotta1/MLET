@@ -5,9 +5,11 @@
     "case_count": 1,
     "completion_blocker_count": 424,
     "coverage": 0.25,
+    "empirical_coverage": 0.25,
     "mae_mm": 1.1328102850182773,
     "mean_interval_width_mm": 1.452599383884176,
     "mean_pinball_loss_mm": 0.3873446216207699,
+    "nominal_coverage": 0.8,
     "rows": [
       {
         "baseline_mm": 4.8895,
@@ -311,8 +313,10 @@
   },
   "schema_version": 1,
   "scope_labels": {
-    "coverage": "nominal coverage",
+    "coverage": "empirical p10 to p90 coverage",
+    "empirical_coverage": "empirical p10 to p90 coverage",
     "grid": "common 0.5-degree GEFS grid-point subset",
+    "nominal_coverage": "nominal p10 to p90 coverage target",
     "phase2": "station-held-out 10-fold evaluation",
     "quantile_band": "uncalibrated ensemble p10 to p90 quantile band"
   },
