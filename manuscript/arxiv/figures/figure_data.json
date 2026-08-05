@@ -309,7 +309,8 @@
         "rmse_mm": 1.386460041892388,
         "sample_count": 7923
       }
-    ]
+    ],
+    "station_count": 85
   },
   "schema_version": 1,
   "scope_labels": {
@@ -336,7 +337,7 @@
     },
     "phase2_result": {
       "path": "docs/results/phase2_openet_value.json",
-      "sha256": "2a2cece4a4febaa6105d5182ae01e161b98db7c18bb0ae499310fe160cd5eee3"
+      "sha256": "e1fe4886faacfa6d3be909fe69e793fb240d23c71fb05a3fe29472c39453dc29"
     }
   },
   "support": {

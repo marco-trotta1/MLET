@@ -52,6 +52,14 @@ def _object(path: Path) -> dict[str, object]:
     return value
 
 
+def _phase2_station_count(payload: dict[str, object]) -> int:
+    """Return the computed Phase 2 station count from the result record."""
+    value = payload.get("station_count")
+    if type(value) is not int or value < 1:
+        raise ValueError("The Phase 2 record lacks a positive station_count")
+    return value
+
+
 def _model_by_name(payload: dict[str, object]) -> dict[str, dict[str, object]]:
     """Return the Phase 2 model records by name."""
     field_withheld = payload.get("field_withheld")
@@ -121,6 +129,7 @@ def _build_claims() -> list[str]:
     registry = _object(AGRIMET_REGISTRY)
     models = _model_by_name(phase2)
     _validate_phase2_models(models)
+    phase2_station_count = _phase2_station_count(phase2)
     b0_scope_label = _b0_scope_label(models)
     h2 = phase2.get("h2")
     if not isinstance(h2, dict):
@@ -184,7 +193,7 @@ def _build_claims() -> list[str]:
         _macro("JoinedLabels", f"{int(build_stats['labeled_rows']):,}"),
         _macro("JoinedStations", f"{int(build_stats['stations']):,}"),
         _macro("PhaseTwoN", f"{int(b2['sample_count']):,}"),
-        _macro("PhaseTwoStations", "85"),
+        _macro("PhaseTwoStations", f"{phase2_station_count:,}"),
         _macro("PersistenceN", f"{int(models['B0_Persistence']['sample_count']):,}"),
         _macro("BZeroMAE", f"{float(models['B0_Persistence']['mae_mm']):.3f}"),
         _macro("BZeroRMSE", f"{float(models['B0_Persistence']['rmse_mm']):.3f}"),

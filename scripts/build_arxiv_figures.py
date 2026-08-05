@@ -32,6 +32,7 @@ try:
         PHASE2_SCOPE_LABEL,
         QUANTILE_BAND_LABEL,
         _model_by_name,
+        _phase2_station_count,
         _validate_phase2_models,
     )
 except ModuleNotFoundError as error:
@@ -45,6 +46,7 @@ except ModuleNotFoundError as error:
         PHASE2_SCOPE_LABEL,
         QUANTILE_BAND_LABEL,
         _model_by_name,
+        _phase2_station_count,
         _validate_phase2_models,
     )
 
@@ -267,6 +269,7 @@ def _arrow(
 def _figure_evidence_paths(output_dir: Path) -> None:
     """Build the target and evidence architecture."""
     models, h2 = _phase2_data()
+    phase2_station_count = _phase2_station_count(_load_json(PHASE2_RESULT))
     model_by_name = {str(model["name"]): model for model in models}
     b2_mae = float(model_by_name["B2_WeatherRidge"]["mae_mm"])
     m3_mae = float(model_by_name["M3_OpenETRidge"]["mae_mm"])
@@ -301,7 +304,12 @@ def _figure_evidence_paths(output_dir: Path) -> None:
 
     left_boxes = [
         (0.08, 0.71, "OpenET and flux", "152 joined stations"),
-        (0.08, 0.48, "Station-held-out 10-fold evaluation", "85 stations; 7,923 common rows"),
+        (
+            0.08,
+            0.48,
+            "Station-held-out 10-fold evaluation",
+            f"{phase2_station_count:,} stations; 7,923 common rows",
+        ),
         (0.08, 0.25, "Preregistered M3 comparison", "station-blocked bootstrap"),
     ]
     right_boxes = [
@@ -381,6 +389,7 @@ def _phase2_data() -> tuple[list[dict[str, object]], dict[str, object]]:
     typed_models = [model for model in models if isinstance(model, dict)]
     by_name = _model_by_name(payload)
     _validate_phase2_models(by_name)
+    _phase2_station_count(payload)
     b2 = float(by_name["B2_WeatherRidge"]["mae_mm"])
     m3 = float(by_name["M3_OpenETRidge"]["mae_mm"])
     m2 = float(by_name["M2_OpenETRecal"]["mae_mm"])
@@ -398,6 +407,7 @@ def _phase2_data() -> tuple[list[dict[str, object]], dict[str, object]]:
 def _figure_phase2_models(output_dir: Path) -> None:
     """Build the Phase 2 model comparison."""
     models, h2 = _phase2_data()
+    phase2_station_count = _phase2_station_count(_load_json(PHASE2_RESULT))
     delta = float(h2["mae_delta_mm"])
     reduction = float(h2["mae_reduction_fraction"])
     ci95 = h2.get("ci95_mm")
@@ -491,8 +501,10 @@ def _figure_phase2_models(output_dir: Path) -> None:
         0.0,
         1.01,
         (
-            f"B0 uses {b0_count:,} consecutive-day pairs and is an oracle-like diagnostic. "
-            f"All fitted models use {common_count:,} common rows from 85 stations."
+            f"B0 uses {b0_count:,} consecutive-day pairs inside the predictor-ready "
+            "common table and is an oracle-like diagnostic. "
+            f"All fitted models use {common_count:,} common rows from "
+            f"{phase2_station_count:,} stations."
         ),
         transform=axis.transAxes,
         ha="left",
@@ -592,7 +604,16 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
     )
     axis.plot(leads, p50, color=BLUE, linewidth=1.5, marker="o", markersize=2.8, label="GEFS ETo p50")
     axis.plot(leads, target, color=RED, linewidth=1.35, marker="s", markersize=2.6, label="AgriMet ETos target")
-    axis.plot(leads, baseline, color=TEAL, linewidth=1.1, linestyle="--", marker=".", markersize=3.0, label="Prior-year day-of-year mean")
+    axis.plot(
+        leads,
+        baseline,
+        color=TEAL,
+        linewidth=1.1,
+        linestyle="--",
+        marker=".",
+        markersize=3.0,
+        label="Strictly prior target-year station/day mean",
+    )
     axis.set_xlim(1, 20)
     axis.set_xticks([1, 5, 10, 15, 20])
     axis.set_xlabel("Lead day from the 2019-07-03 00Z GEFS issue")
@@ -607,7 +628,8 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
         (
             f"Diagnostic only: {report.case_count} issue, {report.station_count} station, "
             f"n={metric.sample_count} targets. "
-            f"Forecast MAE {metric.mae_mm:.3f}; climatology MAE {metric.baseline_mae_mm:.3f} mm/day.\n"
+            f"Forecast MAE {metric.mae_mm:.3f}; strictly prior target-year climatology MAE "
+            f"{metric.baseline_mae_mm:.3f} mm/day.\n"
             f"{EMPIRICAL_COVERAGE_LABEL} {coverage['empirical']:.2f}; "
             f"{NOMINAL_COVERAGE_LABEL} {coverage['nominal']:.2f}; "
             f"p10 to p90 mean width {metric.mean_interval_width_mm:.3f} mm/day. "
@@ -869,6 +891,7 @@ def _figure_support_tensor(output_dir: Path) -> None:
 def _write_figure_data(output_dir: Path) -> None:
     """Write the values and source digests used by the figures."""
     models, h2 = _phase2_data()
+    phase2_station_count = _phase2_station_count(_load_json(PHASE2_RESULT))
     rows = _feasibility_rows()
     report = evaluate_eto_hindcast_evidence(FEASIBILITY_EVIDENCE)
     _case_id, outlook_path, target_path = _resolve_feasibility_case_paths()
@@ -899,7 +922,7 @@ def _write_figure_data(output_dir: Path) -> None:
                 "sha256": _sha256(target_path),
             },
         },
-        "phase2": {"models": models, "h2": h2},
+        "phase2": {"models": models, "h2": h2, "station_count": phase2_station_count},
         "scope_labels": {
             "phase2": PHASE2_LABEL,
             "grid": GRID_LABEL,

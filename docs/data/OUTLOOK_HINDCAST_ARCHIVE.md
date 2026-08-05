@@ -50,8 +50,9 @@ Each input issue must already contain:
 The repository target builder uses case IDs in the form
 `issue-YYYYMMDD-station-STATION-season-SEASON-fold-F`. It creates one target
 artifact per station case so each artifact retains one USBR URI and version.
-The builder uses prior-year same-station day-of-year climatology for the
-recorded baseline.
+The builder uses same-station, target-day climatology from strictly prior
+calendar years for the recorded baseline. A target valid date sets the year
+cutoff, including when a lead crosses New Year.
 
 Use `scripts/build_eto_gefs_index.py` to expand completed candidate issues into
 these station-season cases. The script omits cases without target or baseline

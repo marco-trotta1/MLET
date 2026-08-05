@@ -56,6 +56,18 @@ def test_prior_year_baseline_uses_all_prior_station_years_only() -> None:
     assert baselines[("BOII", date(2020, 7, 3))] == pytest.approx(3.0)
 
 
+def test_prior_year_baseline_uses_target_valid_date_year_for_year_crossing() -> None:
+    observations = (
+        _observation(2018, date(2018, 1, 1), 2.0),
+        _observation(2019, date(2019, 1, 1), 4.0),
+        _observation(2020, date(2020, 1, 1), 6.0),
+    )
+
+    baselines = _prior_year_baselines(observations)
+
+    assert baselines[("BOII", date(2020, 1, 1))] == pytest.approx(3.0)
+
+
 def test_target_builder_accepts_gefs_schema_two_and_rejects_schema_one(
     tmp_path: Path,
 ) -> None:

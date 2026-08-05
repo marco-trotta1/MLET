@@ -37,6 +37,8 @@ PYTHONPATH=src python3 scripts/verify_arxiv_manuscript.py --pdf
 output/pdf/mlet_preprint.pdf
 
 The Phase 2 result is reproduced. The full reference-ETo hindcast remains
-pending. The BOII artifact is a retrospective reforecast diagnostic, not a
-public operational forecast. Do not promote the outlook until the full archive,
-support checks, checksums, and independent release review are complete.
+pending. The BOII artifact is a retrospective reforecast diagnostic. Its later
+archive retrieval does not prove operational availability at the historical
+issue time. The AgriMet target retrieval time does not prove original
+publication time. Do not promote the outlook until the full archive, support
+checks, checksums, and independent release review are complete.

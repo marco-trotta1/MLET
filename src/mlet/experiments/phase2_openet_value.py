@@ -223,6 +223,9 @@ def build_phase2_result_record(
     field_withheld = result.get("field_withheld")
     if not isinstance(field_withheld, dict):
         raise ValueError("Phase 2 result must contain field_withheld metrics")
+    station_count = result.get("n_stations")
+    if type(station_count) is not int or station_count < 1:
+        raise ValueError("Phase 2 result must contain a positive n_stations")
     raw_models = field_withheld.get("models")
     if not isinstance(raw_models, dict) or not raw_models:
         raise ValueError("Phase 2 field_withheld models must be non-empty")
@@ -249,6 +252,7 @@ def build_phase2_result_record(
         "schema_version": 1,
         "kind": "mlet.phase2-openet-value-result",
         "evidence_status": "reproduced",
+        "station_count": station_count,
         "provenance": {
             "data_manifest_sha256": data_manifest_sha256,
             "git_revision": git_revision,

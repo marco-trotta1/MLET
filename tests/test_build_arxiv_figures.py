@@ -22,6 +22,7 @@ def _phase2_payload() -> dict[str, object]:
         ("M3_OpenETRidge", 0.856, 7923),
     )
     return {
+        "station_count": 85,
         "field_withheld": {
             "models": [
                 {

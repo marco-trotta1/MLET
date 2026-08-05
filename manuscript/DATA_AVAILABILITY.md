@@ -25,10 +25,15 @@ of 30 targets per cell. Empirical p10-to-p90 coverage is 0.25 against the
 nominal target of 0.80. Mean band width is 1.453 mm/day. No paired confidence
 interval is reported.
 
-The BOII timing fields are separate. The source issue time is
-2019-07-03T00:00:00Z. The archive availability time is
-2026-08-04T18:08:54.243122Z. The latter does not show public operational
-availability in 2019.
+The BOII timing fields are separate. The recorded source issue time is
+2019-07-03T00:00:00Z. The archive retrieval time is
+2026-08-04T18:08:54.243122Z. The later retrieval proves later access. It does
+not prove operational availability at the historical issue time. The AgriMet
+target retrieval time likewise does not prove original publication time.
+
+The fixed climatology uses observations from strictly prior calendar years for
+the same station and target day of year. The target valid date sets the year
+cutoff. A lead that crosses New Year uses the target date's year.
 
 Do not describe the full reference-ETo hindcast as available until every issue
 receipt, target record, checksum, support cell, and release-review result is

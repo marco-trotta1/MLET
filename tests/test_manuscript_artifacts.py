@@ -6,7 +6,13 @@ import hashlib
 import json
 from pathlib import Path
 
-from mlet.manuscript_artifacts import build_eto_hindcast_artifacts, build_phase2_artifacts
+import pytest
+
+from mlet.manuscript_artifacts import (
+    _load_result,
+    build_eto_hindcast_artifacts,
+    build_phase2_artifacts,
+)
 
 
 def _eto_result() -> dict[str, object]:
@@ -127,6 +133,7 @@ def test_phase2_artifact_generator_is_deterministic_and_claim_safe(
         "schema_version": 1,
         "kind": "mlet.phase2-openet-value-result",
         "evidence_status": "historical_report_reproduction_pending",
+        "station_count": 2,
         "provenance": {
             "data_manifest_sha256": hashlib.sha256(b"manifest").hexdigest(),
             "git_revision": "historical-revision-unavailable",
@@ -164,6 +171,27 @@ def test_phase2_artifact_generator_is_deterministic_and_claim_safe(
     report = (first / "phase2_openet_value.md").read_text(encoding="utf-8")
     assert "Historical report; independent reproduction is pending." in report
     assert "0.658" in report
+
+
+def test_phase2_result_schema_requires_station_count(tmp_path: Path) -> None:
+    """The Phase 2 contract must carry its computed station count."""
+    result = {
+        "schema_version": 1,
+        "kind": "mlet.phase2-openet-value-result",
+        "evidence_status": "reproduced",
+        "provenance": {
+            "data_manifest_sha256": hashlib.sha256(b"manifest").hexdigest(),
+            "git_revision": "test-revision",
+            "seed": 20260713,
+        },
+        "field_withheld": {"models": []},
+        "h2": {},
+    }
+    source = tmp_path / "phase2.json"
+    source.write_text(json.dumps(result), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="fields must match the schema exactly"):
+        _load_result(source)
 
 
 def test_eto_hindcast_artifact_generator_writes_required_tables_and_figures(

@@ -17,6 +17,7 @@
 \usepackage{fancyhdr}
 \usepackage{titlesec}
 \usepackage{balance}
+\usepackage{stfloats}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
 
@@ -39,6 +40,9 @@
   pdfauthor={Meetpal Kukal and Marco Trotta}
 }
 \urlstyle{same}
+\makeatletter
+\def\UrlBreaks{\do\/\do-\do_\do\_}
+\makeatother
 
 \graphicspath{{figures/}{assets/}{../assets/}}
 \input{generated_claims.tex}
@@ -277,11 +281,11 @@ reference ETo value $E_i^g$ is gridMET ETo. It is not GEFS ETo. The OpenET
 input $x_i^{\mathrm{OpenET}}$ is the available daily OpenET actual-ET estimate
 in $\mmday$.
 
-The ridge-model comparison uses the common finite weather subset. This subset
-has \PhaseTwoN{} station-days from \PhaseTwoStations{} stations. Negative
-measured \code{ET\_corr} values remain in the label set. Negative satellite ET
-and negative reference ET fail input validation. This asymmetric rule keeps
-observations intact and rejects physically invalid predictors.
+The ridge-model comparison uses the common predictor-ready table. The runner
+drops rows with a missing measured response, OpenET value, gridMET ETo value, or
+weather covariate. It also drops nonfinite weather covariates. It retains finite
+signed response values. This table has \PhaseTwoN{} station-days from
+\PhaseTwoStations{} stations. B1 fits only rows with $E_i^g>0$.
 
 The OpenET source data and the flux benchmark follow the Phase~II accuracy
 study \citep{volk2023}. The present experiment does not re-estimate that
@@ -317,7 +321,9 @@ grass-reference evapotranspiration (ETos) as reference evapotranspiration
 (ETo). The American Society of Civil Engineers Environmental and Water
 Resources Institute (ASCE-EWRI) standard defines this grass reference
 \citep{usbrarchive,usbrlocations}. ETos is a published station-derived target.
-It is not a direct flux measurement and it is not a GEFS recomputation. The
+The recorded AgriMet retrieval time proves later access to the target. It does
+not prove its original publication time. It is not a direct flux measurement
+and it is not a GEFS recomputation. The
 acquisition adapter parses the official data boundary. It preserves missing
 markers as exclusions. It converts each non-missing value from inches per day
 with the exact factor 25.4.
@@ -343,9 +349,10 @@ before 2019-01-01 and describes later rows. That time split is not the primary
 decision split.
 
 The experiment fixes six models. B0 persistence uses the previous labeled day
-at one station. Its \PersistenceN{} consecutive-day pairs make it an
-oracle-like diagnostic. B0 is separate from the common-sample comparison and
-from H2. B1 uses one static pooled training-set mean of $y_i/E_i^g$ over rows
+at one station inside the predictor-ready common table used by the runner. Its
+\PersistenceN{} consecutive-day pairs make it an oracle-like diagnostic. B0 is
+separate from the common-sample comparison and from H2. B1 uses one static
+pooled training-set mean of $y_i/E_i^g$ over rows
 with $E_i^g>0$:
 
 \begin{equation}
@@ -457,8 +464,9 @@ is soil heat flux, both in $\mathrm{MJ\,m^{-2}\,day^{-1}}$. $\Delta$ is the
 vapor-pressure slope and $\gamma$ is the psychrometric constant, both in
 $\mathrm{kPa\,degree\,C^{-1}}$. $u_2$ is 2 m wind speed in
 $\mathrm{m\,s^{-1}}$. $e_s$ is saturation vapor pressure and $e_a$ is actual
-vapor pressure, both in kPa. The implementation calls the vendored pyfao56
-ASCE daily routine. The vendored software version is 1.4.3.
+vapor pressure, both in kPa. The implementation calls the repository's
+vendored pyfao56 ASCE daily routine. The implementation map binds version 1.4.3
+to the vendored version file.
 
 Let $E_{g\ell j}$ be Eq.~\ref{eq:asce} for grid point $g$, lead $\ell$, and
 member $j$. The artifact stores
@@ -487,9 +495,12 @@ For issue $t_0$ and lead $\ell$, the valid date is
   \label{eq:date}
 \end{equation}
 
-Source metadata must show historical availability at or before $t_0$. The
-target must become available only after its completed local day. Retrieval at
-a later archive date does not change either information boundary.
+The recorded source issue time identifies $t_0$. A later archive retrieval
+timestamp records later access. It does not prove operational availability at
+$t_0$. The AgriMet target's later retrieval timestamp likewise does not prove
+its original publication time. The target must become available only after its
+completed local day. These later retrieval dates do not expand either
+information boundary.
 
 For station $s$ and date $d$, the independent target is
 
@@ -503,20 +514,23 @@ missing ETos value with zero or interpolation.
 
 \subsection{Leakage-safe climatology}
 
-The fixed climatology uses all strictly prior years for the same station and
-day of year. It is not a learned cross-fold component. For issue year $Y_0$
-and day of year $k$,
+The fixed climatology uses all strictly prior calendar years for the same
+station and target day of year. It is not a learned cross-fold component. For
+target valid date $d$, let $Y_d=\operatorname{year}(d)$ and
+$k=\operatorname{doy}(d)$. The target date, not the issue date, sets $Y_d$.
+For each station and target date,
 
 \begin{equation}
-  b_{s,k,Y_0}=
-  \frac{1}{|\mathcal Y_{s,k,Y_0}|}
-  \sum_{Y\in\mathcal Y_{s,k,Y_0}} y_{s,k,Y},
+  b_{s,d}=
+  \frac{1}{|\mathcal Y_{s,k,Y_d}|}
+  \sum_{Y\in\mathcal Y_{s,k,Y_d}} y_{s,k,Y},
   \quad
-  \mathcal Y_{s,k,Y_0}=\{Y:Y<Y_0\}.
+  \mathcal Y_{s,k,Y_d}=\{Y:Y<Y_d\}.
   \label{eq:climatology}
 \end{equation}
 
-The evaluated year and all future years are absent. A missing prior-year set
+The evaluated target year and all future years are absent. A lead that crosses
+New Year uses the year of its target valid date. A missing prior-year set
 creates an explicit exclusion.
 
 \subsection{Probabilistic metrics and support}
@@ -532,6 +546,18 @@ p10-to-p90 coverage and mean band width:
   (q_{0.90,i}-q_{0.10,i}).
   \label{eq:width}
 \end{align}
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=0.97\textwidth]{figure_2_phase2_models.pdf}
+\caption{Station-held-out actual-ET MAE. B2 and M3 form the preregistered H2
+  comparison. Their common sample contains $n=\PhaseTwoN{}$ rows from
+  \PhaseTwoStations{} stations. M2 has the lowest descriptive point MAE, but
+  it does not inherit the M3 interval. B0 uses $n=\PersistenceN{}$
+  consecutive-day pairs inside the predictor-ready common table and is
+  excluded from H2.}
+  \label{fig:phase2-models}
+\end{figure*}
 
 For quantile level $\alpha$, pinball loss is
 
@@ -569,17 +595,6 @@ Figure~\ref{fig:phase2-models} and Table~\ref{tab:phase2} report the committed
 station-held-out result. The common fitted-model sample is $n=\PhaseTwoN{}$
 station-days from \PhaseTwoStations{} stations. The preregistered H2 comparison
 uses M3, not M2.
-
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=0.97\textwidth]{figure_2_phase2_models.pdf}
-\caption{Station-held-out actual-ET MAE. B2 and M3 form the preregistered H2
-  comparison. Their common sample contains $n=\PhaseTwoN{}$ rows from
-  \PhaseTwoStations{} stations. M2 has the lowest descriptive point MAE, but
-  it does not inherit the M3 interval. B0 uses $n=\PersistenceN{}$
-  consecutive-day pairs and is excluded from H2.}
-  \label{fig:phase2-models}
-\end{figure*}
 
 \begin{table}[t]
 \centering
@@ -623,8 +638,9 @@ checks. BOII (the Boise, Idaho AgriMet weather-station identifier) is a
 retrospective reforecast diagnostic.
 
 Its \path{source_issue_at} is 2019-07-03 00Z. Its \path{archive_available_at}
-is \path{2026-08-04T18:08:54.243122Z}. The archive time is not public
-operational availability in 2019. Figure~\ref{fig:boii} shows its trajectory.
+is \path{2026-08-04T18:08:54.243122Z}. The latter is a later archive retrieval
+timestamp. It does not prove operational availability at the historical issue
+time. Figure~\ref{fig:boii} shows its trajectory.
 The case has one issue, one station, and $n=\FeasibilityN{}$ daily targets.
 
 \begin{figure*}[t]
@@ -632,14 +648,16 @@ The case has one issue, one station, and $n=\FeasibilityN{}$ daily targets.
   \includegraphics[width=0.97\textwidth]{figure_3_boii_feasibility.pdf}
   \caption{One real BOII feasibility case. The GEFS member distribution gives
   p10, p50, and p90 reference $\eto$ for leads 1 through 20. The independent
-  target is AgriMet ETos. The baseline is the prior-year station and
-  day-of-year mean. The scope is one issue, one station, and
+  target is AgriMet ETos. The baseline uses the same station and target day of
+  year with observations from strictly prior calendar years. The scope is one
+  issue, one station, and
   $n=\FeasibilityN{}$ targets. It is diagnostic only.}
   \label{fig:boii}
 \end{figure*}
 
-The p50 MAE is \FeasibilityMAE{} $\mmday$. The fixed prior-years station
-climatology MAE is \FeasibilityBaselineMAE{} $\mmday$. The signed
+The p50 MAE is \FeasibilityMAE{} $\mmday$. The fixed station and target-day
+climatology, using strictly prior calendar years, has MAE
+\FeasibilityBaselineMAE{} $\mmday$. The signed
 baseline-minus-forecast MAE difference is \FeasibilityImprovement{} $\mmday$,
 so forecast MAE is higher. The p50 RMSE is \FeasibilityRMSE{} $\mmday$, and
 the bias is \FeasibilityBias{} $\mmday$.
@@ -813,13 +831,13 @@ Table~\ref{tab:implementation} maps each manuscript operation to the local
 implementation. This map is part of the claim audit. It is not a substitute
 for the source code.
 
-\begin{table*}[t]
+\begin{table*}[!b]
 \centering
 \caption{Equation and claim map to the implementation.}
 \label{tab:implementation}
 \small
-\begin{tabularx}{0.98\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
-  >{\raggedright\arraybackslash}p{0.30\textwidth}
+\begin{tabularx}{0.98\textwidth}{>{\raggedright\arraybackslash}p{0.17\textwidth}
+  >{\raggedright\arraybackslash}p{0.38\textwidth}
   >{\raggedright\arraybackslash}X}
 \toprule
 Operation & Local implementation & Enforced invariant \\
@@ -835,7 +853,9 @@ Daily GEFS artifact & \sourcepath{src/mlet/sources/gefs_reforecast.py} & Local d
 Reference $\eto$ & \sourcepath{src/mlet/outlook/eto.py} & ASCE short reference; p10, p50, p90 \\
 Candidate contract & \sourcepath{src/mlet/outlook/eto_build.py} & 20 leads; research status; no extra layers \\
 AgriMet target & \sourcepath{src/mlet/sources/agrimet.py} & Independent ETos; exact 25.4 conversion \\
-Baseline builder & \sourcepath{scripts/build_eto_target_index.py} & Prior years only for station and day of year \\
+Baseline builder & \sourcepath{scripts/build_eto_target_index.py} & Strictly prior calendar years for station and target day \\
+Spatial fold & \sourcepath{src/mlet/outlook/spatial.py} & Full SHA-256 tile digest modulo 5; 43:-116 maps to fold 2 \\
+ASCE runtime & \sourcepath{vendor/pyfao56/src/pyfao56/__version__.py} & Vendored pyfao56 version 1.4.3 \\
 Outcome evaluator & \sourcepath{src/mlet/outlook/eto_hindcast.py} & \SupportCells{} cells; fail-closed completion state \\
 \bottomrule
 \end{tabularx}
@@ -852,7 +872,7 @@ repository root.
 
 \noindent\textbf{Phase 2 result}\\
 \sourcepath{docs/results/phase2_openet_value.json}\\
-SHA-256: \code{2a2cece4a4febaa6105d5182ae01e161b98db7c18bb0ae499310fe160cd5eee3}
+SHA-256: \code{e1fe4886faacfa6d3be909fe69e793fb240d23c71fb05a3fe29472c39453dc29}
 
 \medskip
 \noindent\textbf{ETo feasibility evidence}\\

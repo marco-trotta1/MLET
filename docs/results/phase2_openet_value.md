@@ -2,7 +2,9 @@
 
 Independent reproduction completed from the checksum-verified Phase 2 source archives.
 
-## Field-withheld model comparison
+## Station-held-out model comparison
+
+Station count: 85
 
 | model | MAE (mm/day) | RMSE (mm/day) | bias (mm/day) | n |
 |---|---:|---:|---:|---:|

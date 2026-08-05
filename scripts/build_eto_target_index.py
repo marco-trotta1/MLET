@@ -160,7 +160,7 @@ def build_target_index(
         "schema_version": 1,
         "kind": _TARGET_KIND,
         "baseline": {
-            "method": "station_day_of_year_mean_prior_to_issue_year",
+            "method": "station_day_of_year_mean_prior_to_target_valid_date_year",
             "evaluated_year_excluded": True,
             "future_years_excluded": True,
             "spatial_holdout": "not_applied_to_fixed_benchmark",

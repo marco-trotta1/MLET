@@ -13,6 +13,7 @@ _RESULT_FIELDS = {
     "schema_version",
     "kind",
     "evidence_status",
+    "station_count",
     "provenance",
     "field_withheld",
     "h2",
@@ -108,7 +109,12 @@ def build_phase2_artifacts(result_path: Path, destination: Path) -> None:
     )
     _write_new(
         output_root / "phase2_openet_value.md",
-        _markdown_bytes(models, h2, _EVIDENCE_STATUS_TEXT[status]),
+        _markdown_bytes(
+            models,
+            h2,
+            _EVIDENCE_STATUS_TEXT[status],
+            int(result["station_count"]),
+        ),
     )
 
 
@@ -598,6 +604,8 @@ def _load_result(path: Path) -> dict[str, object]:
         raise ValueError("Phase 2 result has an unsupported schema")
     if payload["evidence_status"] not in _EVIDENCE_STATUS_TEXT:
         raise ValueError("Phase 2 result evidence_status is unsupported")
+    if type(payload["station_count"]) is not int or payload["station_count"] < 1:
+        raise ValueError("Phase 2 result station_count must be a positive integer")
     provenance = payload["provenance"]
     if not isinstance(provenance, dict) or set(provenance) != {
         "data_manifest_sha256", "git_revision", "seed"
@@ -676,14 +684,19 @@ def _csv_bytes(models: list[dict[str, object]]) -> bytes:
 
 
 def _markdown_bytes(
-    models: list[dict[str, object]], h2: dict[str, object], status_text: str
+    models: list[dict[str, object]],
+    h2: dict[str, object],
+    status_text: str,
+    station_count: int,
 ) -> bytes:
     lines = [
         "# Phase 2 — OpenET-value results",
         "",
         status_text,
         "",
-        "## Field-withheld model comparison",
+        "## Station-held-out model comparison",
+        "",
+        f"Station count: {station_count}",
         "",
         "| model | MAE (mm/day) | RMSE (mm/day) | bias (mm/day) | n |",
         "|---|---:|---:|---:|---:|",

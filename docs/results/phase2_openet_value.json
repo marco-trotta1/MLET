@@ -2,6 +2,7 @@
   "schema_version": 1,
   "kind": "mlet.phase2-openet-value-result",
   "evidence_status": "reproduced",
+  "station_count": 85,
   "provenance": {
     "data_manifest_sha256": "722dfa28b99d723d85142f3868b4e8939ceb1b3d2470ddcbff050af1c6e693f8",
     "git_revision": "3364b93579df45ab54f0b753fa2b7e150ce67c87",

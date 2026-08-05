@@ -73,6 +73,13 @@ def test_b0_scope_label_reads_the_machine_sample_count() -> None:
     )
 
 
+def test_phase2_station_count_claim_reads_the_result_record() -> None:
+    """The generated station claim must follow the serialized result count."""
+    payload = _phase2_payload()
+    payload["station_count"] = 84
+    assert build_arxiv_claims._phase2_station_count(payload) == 84
+
+
 def test_claims_separate_empirical_and_nominal_coverage() -> None:
     """Generated claim macros must keep measured and nominal coverage distinct."""
     macros = {

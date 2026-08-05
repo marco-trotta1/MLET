@@ -12,11 +12,19 @@ import subprocess
 from pathlib import Path
 
 try:
-    from scripts.build_arxiv_claims import _model_by_name, _validate_phase2_models
+    from scripts.build_arxiv_claims import (
+        _model_by_name,
+        _phase2_station_count,
+        _validate_phase2_models,
+    )
 except ModuleNotFoundError as error:
     if error.name != "scripts":
         raise
-    from build_arxiv_claims import _model_by_name, _validate_phase2_models
+    from build_arxiv_claims import (
+        _model_by_name,
+        _phase2_station_count,
+        _validate_phase2_models,
+    )
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +42,8 @@ RETIRED_PHRASES = (
     "native grid",
     "weather-derived demand index",
     "non-serving FAO-56 dual water-balance",
+    "prior-year day-of-year mean",
+    "station_day_of_year_mean_prior_to_issue_year",
 )
 
 
@@ -80,6 +90,7 @@ def _verify_phase2(macros: dict[str, str]) -> None:
         raise ValueError("The Phase 2 record lacks model rows")
     by_name = _model_by_name(payload)
     _validate_phase2_models(by_name)
+    phase2_station_count = _phase2_station_count(payload)
     b2 = by_name["B2_WeatherRidge"]
     m2 = by_name["M2_OpenETRecal"]
     m3 = by_name["M3_OpenETRidge"]
@@ -110,6 +121,7 @@ def _verify_phase2(macros: dict[str, str]) -> None:
         "HtwoCILow": f"{float(ci95[0]):.3f}",
         "HtwoCIHigh": f"{float(ci95[1]):.3f}",
         "PhaseTwoN": f"{int(b2['sample_count']):,}",
+        "PhaseTwoStations": f"{phase2_station_count:,}",
     }
     for name, value in expected.items():
         if macros.get(name) != value:
@@ -188,8 +200,16 @@ def _verify_source_text() -> None:
         FIGURE_DATA,
         REPO_ROOT / "scripts" / "build_arxiv_claims.py",
         REPO_ROOT / "scripts" / "build_arxiv_figures.py",
+        REPO_ROOT / "scripts" / "build_eto_target_index.py",
+        REPO_ROOT / "data" / "outlook" / "eto_feasibility_targets" / "target-build-receipt.json",
     ]
-    for path in generated_paths:
+    prose_paths = [
+        REPO_ROOT / "manuscript" / "manuscript.md",
+        REPO_ROOT / "manuscript" / "DATA_AVAILABILITY.md",
+        REPO_ROOT / "manuscript" / "arxiv" / "ARXIV_SUBMISSION.md",
+        REPO_ROOT / "manuscript" / "SUPPLEMENT.md",
+    ]
+    for path in (*generated_paths, *prose_paths):
         text = path.read_text(encoding="utf-8")
         validate_retired_phrases(text)
         for prohibited in ("—", "–"):
@@ -225,6 +245,13 @@ def _verify_source_text() -> None:
         "baseline-minus-forecast MAE difference",
         "source_issue_at",
         "archive_available_at",
+        "later retrieval timestamp",
+        "does not prove operational availability at",
+        "original publication time",
+        "strictly prior calendar years",
+        "target date, not the issue date, sets $Y_d$",
+        "predictor-ready common table used by the runner",
+        "drops rows with a missing measured response, OpenET value, gridMET ETo value",
         "common 0.5-degree GEFS grid-point subset",
         "No interpolation",
         "Validation complete",
@@ -234,7 +261,10 @@ def _verify_source_text() -> None:
         "src/mlet/sources/gefs_reforecast_batch.py",
         "src/mlet/sources/gefs_grib.py",
         "src/mlet/sources/gefs_reforecast.py",
+        "src/mlet/outlook/spatial.py",
         "src/mlet/outlook/eto.py",
+        "vendor/pyfao56/src/pyfao56/__version__.py",
+        "Vendored pyfao56 version 1.4.3",
     )
     for phrase in required:
         if phrase not in normalized_manuscript:
