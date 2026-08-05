@@ -831,7 +831,7 @@ Table~\ref{tab:implementation} maps each manuscript operation to the local
 implementation. This map is part of the claim audit. It is not a substitute
 for the source code.
 
-\begin{table*}[!b]
+\begin{table*}[!t]
 \centering
 \caption{Equation and claim map to the implementation.}
 \label{tab:implementation}
@@ -861,40 +861,54 @@ Outcome evaluator & \sourcepath{src/mlet/outlook/eto_hindcast.py} & \SupportCell
 \end{tabularx}
 \end{table*}
 
-\clearpage
-\onecolumn
-
+\newpage
 \section{Artifact ledger}
 \label{app:artifacts}
 
+\begingroup
+\raggedright
 The following digests bind the plotted evidence. Paths are relative to the
 repository root.
 
 \noindent\textbf{Phase 2 result}\\
-\sourcepath{docs/results/phase2_openet_value.json}\\
-SHA-256: \code{e1fe4886faacfa6d3be909fe69e793fb240d23c71fb05a3fe29472c39453dc29}
+\sourcepath{docs/results/}\\
+\sourcepath{phase2_openet_value.json}\\
+SHA-256: \code{e1fe4886faacfa6d3be909fe69e793fb}\\
+\code{240d23c71fb05a3fe29472c39453dc29}
 
 \medskip
 \noindent\textbf{ETo feasibility evidence}\\
-\sourcepath{data/outlook/eto_feasibility_archive/evidence.json}\\
-SHA-256: \code{3e1f022ea7e0e6f280f9854adae7080f4c308b57da70a578ce9d6c10ae95b075}
+\sourcepath{data/outlook/eto_feasibility_archive/}\\
+\sourcepath{evidence.json}\\
+SHA-256: \code{3e1f022ea7e0e6f280f9854adae7080f}\\
+\code{4c308b57da70a578ce9d6c10ae95b075}
 
 \medskip
 \noindent\textbf{ETo evaluation}\\
-Deterministic evaluation SHA-256:
-\code{b2ab81b0463d8a01285c05604c32e26dd43335e35052584674ce3413014729c7}
+Deterministic evaluation SHA-256:\\
+\code{b2ab81b0463d8a01285c05604c32e26d}\\
+\code{d43335e35052584674ce3413014729c7}
 
 \medskip
 \noindent\textbf{BOII outlook}\\
-\sourcepath{data/outlook/eto_feasibility_archive/cases/}\\
-\sourcepath{issue-20190703-station-BOII-season-JJA-fold-2/outlook.json}\\
-SHA-256: \code{c0b51331b20f1d15f51de8f0b6a9c4efd8d2a9801fa617686a933b4d07e45163}
+\sourcepath{data/outlook/eto_feasibility_archive/}\\
+\sourcepath{cases/issue-20190703-station-BOII-season-JJA-fold-2/}\\
+\sourcepath{outlook.json}\\
+SHA-256: \code{c0b51331b20f1d15f51de8f0b6a9c4ef}\\
+\code{d8d2a9801fa617686a933b4d07e45163}
 
 \medskip
 \noindent\textbf{BOII target}\\
-\sourcepath{data/outlook/eto_feasibility_archive/cases/}\\
-\sourcepath{issue-20190703-station-BOII-season-JJA-fold-2/target.json}\\
-SHA-256: \code{1d5570ab9baf7a4bb978be2069dbff8c89b0f88546442884556f37eb481eb43f}
+\sourcepath{data/outlook/eto_feasibility_archive/}\\
+\sourcepath{cases/issue-20190703-station-BOII-season-JJA-fold-2/}\\
+\sourcepath{target.json}\\
+SHA-256: \code{1d5570ab9baf7a4bb978be2069dbff8c}\\
+\code{89b0f88546442884556f37eb481eb43f}
+
+\endgroup
+
+\clearpage
+\onecolumn
 
 \section{Claim ledger}
 
