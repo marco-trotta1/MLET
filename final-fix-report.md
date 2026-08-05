@@ -250,3 +250,42 @@ The build-ready command reports:
 The standalone manuscript verifier passes. The extracted source archive
 compiles to 10 US Letter pages. Primary and clean PDFs have equal page count,
 text hash, title, and all 10 raster hashes at 144 DPI.
+
+## Sentence-length fix · 2026-08-05
+
+The H2 description now uses two active sentences. Each sentence has fewer than 25 words.
+
+The changed paragraph contains no sentence longer than 25 words.
+
+The clean source directory, source archive, and final PDF were regenerated.
+
+The standalone verifier reports:
+
+```text
+MLET arXiv manuscript verification passed.
+```
+
+The verifier tests report:
+
+```text
+11 passed in 4.66s
+```
+
+The build-ready command reports:
+
+```text
+728 passed, 1 warning in 13.73s
+== VERIFY PASSED ==
+== BUILD READY: non-gated software and manuscript work passed ==
+```
+
+The extracted source archive compiles to 10 US Letter pages.
+Primary and clean PDFs match on page count, text hash, title, and all 10 raster hashes.
+
+The regenerated final PDF SHA-256 is
+`b2263aa8b2118bd02ac07b2bea7079ad3069cf30c47ad1e332cd113f21d55c82`.
+
+The regenerated source archive SHA-256 is
+`9f1db27dc6992cd9229e2894b43b6e6d57571f2e38e3e9d7592cedcb9ad4b929`.
+
+`git diff --check` passes.
