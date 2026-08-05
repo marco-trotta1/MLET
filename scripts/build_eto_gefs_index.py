@@ -13,6 +13,7 @@ from typing import cast
 
 from mlet.outlook.dates import outlook_valid_date
 from mlet.outlook.manifest import RunManifest
+from mlet.outlook.spatial import spatial_fold_for_grid_id
 from mlet.sources.agrimet import AgriMetEtosObservation, normalize_agrimet_etos_rows
 
 
@@ -95,7 +96,7 @@ def build_gefs_case_index(
         cases = []
         for station_id in sorted(mappings):
             mapping = mappings[station_id]
-            fold = _fold_for_coordinates(mapping["latitude"], mapping["longitude"])
+            fold = spatial_fold_for_grid_id(mapping["grid_id"])
             for season in ("DJF", "MAM", "JJA", "SON"):
                 if not _has_target_support(
                     station_id=station_id,
@@ -204,14 +205,6 @@ def _load_mappings(contents: bytes) -> dict[str, dict[str, float | str]]:
             "distance_km": _require_number(raw.get("distance_km"), "mapping distance_km"),
         }
     return result
-
-
-def _fold_for_coordinates(latitude: float | str, longitude: float | str) -> int:
-    if not isinstance(latitude, (int, float)) or not isinstance(longitude, (int, float)):
-        raise ValueError("mapping coordinates must be numeric")
-    block = f"{int(latitude // 1)}:{int(longitude // 1)}"
-    digest = hashlib.sha256(f"idaho-outlook-v1:{block}".encode("utf-8")).hexdigest()
-    return int(digest[:16], 16) % 5
 
 
 def _read_json_object(contents: bytes, label: str) -> dict[str, object]:

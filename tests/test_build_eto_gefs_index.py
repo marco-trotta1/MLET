@@ -112,6 +112,9 @@ def test_gefs_case_index_keeps_only_station_season_support(tmp_path: Path) -> No
 
     payload = json.loads(index_path.read_text(encoding="utf-8"))
     assert len(payload["issues"]) == 1
-    assert payload["issues"][0]["held_out_fold"] == 4
+    assert payload["issues"][0]["case_id"] == (
+        "issue-20190703-station-BOII-season-JJA-fold-2"
+    )
+    assert payload["issues"][0]["held_out_fold"] == 2
     assert payload["issues"][0]["held_out_season"] == "JJA"
     assert payload["issues"][0]["forecast_directory"] == "candidates/2019070300"

@@ -55,7 +55,7 @@ def _write_eto_evidence(tmp_path: Path) -> Path:
                             "coordinates": [-116.5, 43.5],
                         },
                         "properties": {
-                            "grid_id": "43:-117",
+                            "grid_id": "43.50:-116.00",
                             "valid_date": valid_date,
                             "lead_day": lead_day,
                             "layers": {
@@ -69,7 +69,7 @@ def _write_eto_evidence(tmp_path: Path) -> Path:
         targets.append(
             {
                 "target_id": "agrimet:test",
-                "grid_id": "43:-117",
+                "grid_id": "43.50:-116.00",
                 "latitude": 43.5,
                 "longitude": -116.5,
                 "lead_day": lead_day,
@@ -158,8 +158,8 @@ def _write_eto_evidence(tmp_path: Path) -> Path:
                 "source_version": "folds-v1",
                 "sha256": "c" * 64,
                 "available_at": issue,
-                "held_out_fold": 4,
-                "training_folds": [0, 1, 2, 3],
+                "held_out_fold": 2,
+                "training_folds": [0, 1, 3, 4],
                 "held_out_season": "JJA",
                 "training_seasons": ["DJF", "MAM", "SON"],
                 "training_cutoff": issue,
@@ -242,9 +242,9 @@ def test_eto_only_evidence_scores_eto_without_scenario_receipts(tmp_path: Path) 
     assert metric.mae_improvement_mm == pytest.approx(-0.25)
     assert report.validation_scope == _VALIDATION_SCOPE
     assert not any("scenario" in blocker for blocker in report.completion_blockers)
-    assert not any("recomputed station fold" in blocker for blocker in report.completion_blockers)
+    assert not any("recomputed grid fold" in blocker for blocker in report.completion_blockers)
     assert any(
-        "lead_season_spatial_fold 1:JJA:4" in blocker
+        "lead_season_spatial_fold 1:JJA:2" in blocker
         for blocker in report.completion_blockers
     )
 

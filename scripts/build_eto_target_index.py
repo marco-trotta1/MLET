@@ -15,6 +15,7 @@ from typing import cast
 from mlet.outlook.dates import outlook_valid_date
 from mlet.outlook.eto_archive import build_eto_target_artifact
 from mlet.outlook.manifest import RunManifest
+from mlet.outlook.spatial import validate_spatial_fold
 from mlet.sources.agrimet import (
     AgriMetEtosObservation,
     AgriMetGridMatch,
@@ -90,9 +91,7 @@ def build_target_index(
         mapping = mappings.get(station_id)
         if mapping is None:
             raise ValueError(f"missing grid mapping for station {station_id}")
-        actual_fold = _fold_for_coordinates(mapping["latitude"], mapping["longitude"])
-        if actual_fold != declared_fold:
-            raise ValueError("case_id fold does not match the frozen station fold")
+        validate_spatial_fold(mapping["grid_id"], declared_fold)
         forecast_directory = _resolve_directory(
             gefs_root, raw_case.get("forecast_directory"), "forecast_directory"
         )
@@ -288,14 +287,6 @@ def _case_issue_text(case_id: str) -> str:
     if match is None:
         raise ValueError("case_id must use the frozen issue-station-season-fold format")
     return match["issue"]
-
-
-def _fold_for_coordinates(latitude: object, longitude: object) -> int:
-    if not isinstance(latitude, (int, float)) or not isinstance(longitude, (int, float)):
-        raise ValueError("mapping coordinates must be numeric")
-    block = f"{int(latitude // 1)}:{int(longitude // 1)}"
-    digest = hashlib.sha256(f"idaho-outlook-v1:{block}".encode("utf-8")).hexdigest()
-    return int(digest[:16], 16) % 5
 
 
 def _resolve_directory(root: Path, value: object, label: str) -> Path:

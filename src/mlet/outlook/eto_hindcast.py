@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 from mlet.outlook.dates import idaho_local_date, idaho_local_day_end_utc, outlook_valid_date
 from mlet.outlook.eto_contract import validate_eto_candidate_payload
 from mlet.outlook.manifest import RunManifest
+from mlet.outlook.spatial import spatial_block_for_grid_id, spatial_fold_for_grid_id
 
 
 _EVIDENCE_SCHEMA_VERSION = 4
@@ -581,6 +582,7 @@ def _parse_targets(
         assert isinstance(value, dict)
         target_id = _require_text(value["target_id"], "target_id")
         grid_id = _require_text(value["grid_id"], "grid_id")
+        spatial_block_for_grid_id(grid_id)
         lead_day = _require_lead_day(value["lead_day"])
         valid_date = _parse_date(value["valid_date"], "target valid_date")
         if valid_date != outlook_valid_date(issue_time, lead_day):
@@ -684,6 +686,7 @@ def _forecast_quantiles(
             if not isinstance(properties, dict):
                 raise ValueError("forecast feature must contain properties")
             grid_id = _require_text(properties.get("grid_id"), "forecast grid_id")
+            spatial_block_for_grid_id(grid_id)
             layers = properties.get("layers")
             if not isinstance(layers, dict) or set(layers) != {"eto_mm"}:
                 raise ValueError("ETo-only forecast features must contain only eto_mm")
@@ -722,7 +725,7 @@ def _bind_rows(
         latitude = target["latitude"]
         longitude = target["longitude"]
         assert isinstance(latitude, float) and isinstance(longitude, float)
-        spatial_block = _spatial_block(latitude, longitude)
+        spatial_block = spatial_block_for_grid_id(grid_id)
         rows.append(
             _EtoRow(
                 issue_time=issue_time,
@@ -730,7 +733,7 @@ def _bind_rows(
                 valid_date=target["valid_date"],  # type: ignore[arg-type]
                 target_id=target["target_id"],  # type: ignore[arg-type]
                 spatial_block=spatial_block,
-                fold=_fold_for_block(spatial_block),
+                fold=spatial_fold_for_grid_id(grid_id),
                 p10=p10,
                 p50=p50,
                 p90=p90,
@@ -790,7 +793,7 @@ def _validate_holdout(
         blockers.append(f"case {case_index} training or calibration cutoff is after issue_time")
     for row in rows:
         if row.fold != held_fold:
-            blockers.append(f"case {case_index} target fold does not match recomputed station fold")
+            blockers.append(f"case {case_index} target fold does not match recomputed grid fold")
         if _SEASONS[row.valid_date.month] != held_season:
             blockers.append(f"case {case_index} target date is outside declared held-out season")
         if row.valid_date <= idaho_local_date(training_cutoff) or row.valid_date <= idaho_local_date(calibration_cutoff):
@@ -980,17 +983,6 @@ def _exclusion_sort_key(exclusion: EtoExclusion) -> tuple[str, str, str, str]:
         exclusion.valid_date.isoformat(),
         exclusion.reason,
     )
-
-
-def _spatial_block(latitude: float, longitude: float) -> str:
-    return f"{math.floor(latitude)}:{math.floor(longitude)}"
-
-
-def _fold_for_block(spatial_block: str) -> int:
-    digest = hashlib.sha256(
-        f"idaho-outlook-v1:{spatial_block}".encode("utf-8")
-    ).hexdigest()
-    return int(digest[:16], 16) % 5
 
 
 def _validation_scope_copy() -> dict[str, list[str]]:
