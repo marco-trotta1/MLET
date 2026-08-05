@@ -362,6 +362,8 @@ data(outlook): rebuild the BOII reforecast evidence
 **Files:**
 
 - Modify: `manuscript/arxiv/mlet_preprint.tex`
+- Modify: `manuscript/arxiv/generated_claims.tex` only through the normal generator.
+- Modify generated files below `manuscript/arxiv/figures/` only through the normal generator.
 - Modify: `manuscript/arxiv/ARXIV_SUBMISSION.md`
 - Modify: `manuscript/manuscript.md`
 - Modify: `manuscript/DATA_AVAILABILITY.md`
@@ -411,6 +413,7 @@ Make these surgical corrections:
 15. Replace the ambiguous signed improvement sentence with a baseline-minus-forecast MAE difference and its direction.
 16. Remove the non-serving FAO-56 water-balance scaffold limitation.
 17. Correct the implementation map for the complete GEFS decode and ETo chain.
+18. Remove repeated definitions and repeated claim sentences. Keep each technical fact in one best location.
 
 Use APA author-year in-text citations. Format every inline bibliography entry in APA style. Confirm that every bibliography entry is cited and every citation has one bibliography entry. Add no unsupported claim.
 
@@ -436,6 +439,7 @@ Render all PDF pages to images. Inspect every page. Pay special attention to the
 - The Figure 2 red and gray arrows remain continuous.
 - No caption, equation, table, citation, or plot label overlaps another element.
 - Page 5 has balanced graph spacing.
+- Figure 2 remains on page 5 if the required technical edits permit it.
 - The reference list is complete and readable.
 
 If a visual defect appears, fix the source, compile again, and inspect the affected pages again.
