@@ -73,7 +73,25 @@ def test_figure_labels_state_exact_scope() -> None:
         build_arxiv_figures.QUANTILE_BAND_LABEL
         == "uncalibrated ensemble p10 to p90 quantile band"
     )
-    assert build_arxiv_figures.NOMINAL_COVERAGE_LABEL == "nominal coverage"
+    assert (
+        build_arxiv_figures.EMPIRICAL_COVERAGE_LABEL
+        == "empirical p10 to p90 coverage"
+    )
+    assert (
+        build_arxiv_figures.NOMINAL_COVERAGE_LABEL
+        == "nominal p10 to p90 coverage target"
+    )
+    assert build_arxiv_figures.NOMINAL_COVERAGE_TARGET == 0.80
+
+
+def test_coverage_values_separate_empirical_and_nominal() -> None:
+    """Coverage fields preserve the evaluated value and frozen target."""
+    report = evaluate_eto_hindcast_evidence(build_arxiv_figures.FEASIBILITY_EVIDENCE)
+    metric = next(item for item in report.metrics if item.group == "season" and item.key == "JJA")
+
+    values = build_arxiv_figures._coverage_values(metric)
+
+    assert values == {"empirical": 0.25, "nominal": 0.80}
 
 
 def test_phase2_render_uses_controlled_h2_records(

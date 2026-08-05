@@ -39,7 +39,9 @@ H2_SCOPE_LABEL = "H2: preregistered comparison"
 PHASE2_SCOPE_LABEL = "station-held-out 10-fold evaluation"
 GRID_SCOPE_LABEL = "common 0.5-degree GEFS grid-point subset"
 QUANTILE_BAND_LABEL = "uncalibrated ensemble p10 to p90 quantile band"
-NOMINAL_COVERAGE_LABEL = "nominal coverage"
+EMPIRICAL_COVERAGE_LABEL = "empirical p10 to p90 coverage"
+NOMINAL_COVERAGE_LABEL = "nominal p10 to p90 coverage target"
+NOMINAL_COVERAGE_TARGET = 0.80
 
 
 def _object(path: Path) -> dict[str, object]:
@@ -213,7 +215,11 @@ def _build_claims() -> list[str]:
         _macro("HtwoScope", H2_SCOPE_LABEL),
         _macro("GridSubsetLabel", GRID_SCOPE_LABEL),
         _macro("FeasibilityBandLabel", QUANTILE_BAND_LABEL),
-        _macro("FeasibilityCoverageLabel", NOMINAL_COVERAGE_LABEL),
+        _macro("FeasibilityEmpiricalCoverageLabel", EMPIRICAL_COVERAGE_LABEL),
+        _macro("FeasibilityNominalCoverageLabel", NOMINAL_COVERAGE_LABEL),
+        _macro("FeasibilityEmpiricalCoverage", f"{metric.p10_p90_coverage:.2f}"),
+        _macro("FeasibilityNominalCoverage", f"{NOMINAL_COVERAGE_TARGET:.2f}"),
+        _macro("FeasibilityCoverageLabel", EMPIRICAL_COVERAGE_LABEL),
         _macro("GEFSObjects", f"{int(availability['available_object_count']):,}"),
         _macro("GEFSBytes", f"{int(availability['available_byte_count']):,}"),
         _macro("GEFSRows", f"{int(decode['row_count']):,}"),

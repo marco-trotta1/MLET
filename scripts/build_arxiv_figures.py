@@ -18,11 +18,17 @@ from matplotlib.colors import LinearSegmentedColormap, ListedColormap
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Patch
 import numpy as np
 
-from mlet.outlook.eto_hindcast import EtoHindcastReport, evaluate_eto_hindcast_evidence
+from mlet.outlook.eto_hindcast import (
+    EtoHindcastMetric,
+    EtoHindcastReport,
+    evaluate_eto_hindcast_evidence,
+)
 try:
     from scripts.build_arxiv_claims import (
+        EMPIRICAL_COVERAGE_LABEL,
         GRID_SCOPE_LABEL,
         NOMINAL_COVERAGE_LABEL,
+        NOMINAL_COVERAGE_TARGET,
         PHASE2_SCOPE_LABEL,
         QUANTILE_BAND_LABEL,
         _model_by_name,
@@ -32,8 +38,10 @@ except ModuleNotFoundError as error:
     if error.name != "scripts":
         raise
     from build_arxiv_claims import (
+        EMPIRICAL_COVERAGE_LABEL,
         GRID_SCOPE_LABEL,
         NOMINAL_COVERAGE_LABEL,
+        NOMINAL_COVERAGE_TARGET,
         PHASE2_SCOPE_LABEL,
         QUANTILE_BAND_LABEL,
         _model_by_name,
@@ -60,6 +68,14 @@ PALE_GOLD = "#faf5e8"
 
 PHASE2_LABEL = PHASE2_SCOPE_LABEL
 GRID_LABEL = GRID_SCOPE_LABEL
+
+
+def _coverage_values(metric: EtoHindcastMetric) -> dict[str, float]:
+    """Return empirical coverage and the frozen nominal target separately."""
+    return {
+        "empirical": float(metric.p10_p90_coverage),
+        "nominal": NOMINAL_COVERAGE_TARGET,
+    }
 
 
 def _load_json(path: Path) -> dict[str, object]:
@@ -556,6 +572,7 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
     metric = next(
         item for item in report.metrics if item.group == "season" and item.key == "JJA"
     )
+    coverage = _coverage_values(metric)
     leads = np.array([int(row["lead_day"]) for row in rows])
     p10 = np.array([float(row["p10"]) for row in rows])
     p50 = np.array([float(row["p50"]) for row in rows])
@@ -591,7 +608,8 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
             f"Diagnostic only: {report.case_count} issue, {report.station_count} station, "
             f"n={metric.sample_count} targets. "
             f"Forecast MAE {metric.mae_mm:.3f}; climatology MAE {metric.baseline_mae_mm:.3f} mm/day.\n"
-            f"{NOMINAL_COVERAGE_LABEL} {metric.p10_p90_coverage:.2f}; "
+            f"{EMPIRICAL_COVERAGE_LABEL} {coverage['empirical']:.2f}; "
+            f"{NOMINAL_COVERAGE_LABEL} {coverage['nominal']:.2f}; "
             f"p10 to p90 mean width {metric.mean_interval_width_mm:.3f} mm/day. "
             "Support 20 < 30 and one bootstrap cluster, so no skill interval is identified."
         ),
@@ -858,6 +876,7 @@ def _write_figure_data(output_dir: Path) -> None:
     season_metric = next(
         item for item in report.metrics if item.group == "season" and item.key == "JJA"
     )
+    coverage = _coverage_values(season_metric)
     payload = {
         "schema_version": 1,
         "kind": "mlet.arxiv-figure-data",
@@ -885,7 +904,9 @@ def _write_figure_data(output_dir: Path) -> None:
             "phase2": PHASE2_LABEL,
             "grid": GRID_LABEL,
             "quantile_band": QUANTILE_BAND_LABEL,
-            "coverage": NOMINAL_COVERAGE_LABEL,
+            "coverage": EMPIRICAL_COVERAGE_LABEL,
+            "empirical_coverage": EMPIRICAL_COVERAGE_LABEL,
+            "nominal_coverage": NOMINAL_COVERAGE_LABEL,
         },
         "boii_feasibility": {
             "rows": rows,
@@ -894,7 +915,9 @@ def _write_figure_data(output_dir: Path) -> None:
             "target_count": report.target_count,
             "mae_mm": season_metric.mae_mm,
             "baseline_mae_mm": season_metric.baseline_mae_mm,
-            "coverage": season_metric.p10_p90_coverage,
+            "coverage": coverage["empirical"],
+            "empirical_coverage": coverage["empirical"],
+            "nominal_coverage": coverage["nominal"],
             "mean_interval_width_mm": season_metric.mean_interval_width_mm,
             "mean_pinball_loss_mm": season_metric.mean_pinball_loss_mm,
             "bootstrap_cluster_count": season_metric.bootstrap_cluster_count,

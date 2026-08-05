@@ -71,3 +71,18 @@ def test_b0_scope_label_reads_the_machine_sample_count() -> None:
     assert build_arxiv_claims._b0_scope_label(models) == (
         "B0: 1,556 consecutive-day pairs"
     )
+
+
+def test_claims_separate_empirical_and_nominal_coverage() -> None:
+    """Generated claim macros must keep measured and nominal coverage distinct."""
+    macros = {
+        line.split("}", 1)[0].split("\\")[-1]: line
+        for line in build_arxiv_claims._build_claims()
+        if "Coverage" in line
+    }
+
+    assert "FeasibilityEmpiricalCoverage" in macros
+    assert "0.25" in macros["FeasibilityEmpiricalCoverage"]
+    assert "FeasibilityNominalCoverage" in macros
+    assert "0.80" in macros["FeasibilityNominalCoverage"]
+    assert "nominal" not in macros["FeasibilityEmpiricalCoverage"].casefold()

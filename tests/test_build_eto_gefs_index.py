@@ -1,15 +1,18 @@
 """Tests for the GEFS case index builder."""
 
 from datetime import date, datetime, timezone
+import hashlib
 import json
 from pathlib import Path
+
+import pytest
 
 from mlet.outlook.contracts import WeatherMember
 from mlet.outlook.dates import outlook_valid_dates
 from mlet.outlook.manifest import build_manifest
 from mlet.outlook.eto_build import write_eto_outlook
 from scripts.build_eto_gefs_index import build_gefs_case_index
-from scripts.build_eto_gefs_index import _select_station_ids
+from scripts.build_eto_gefs_index import _resolve_stream_index_path, _select_station_ids
 
 
 def test_gefs_case_index_keeps_only_station_season_support(tmp_path: Path) -> None:
@@ -128,6 +131,16 @@ def test_gefs_case_index_keeps_only_station_season_support(tmp_path: Path) -> No
     assert payload["issues"][0]["held_out_fold"] == 2
     assert payload["issues"][0]["held_out_season"] == "JJA"
     assert payload["issues"][0]["forecast_directory"] == "candidates/2019070300"
+    receipt = json.loads(
+        (root / "gefs-index-receipt.json").read_text(encoding="utf-8")
+    )
+    assert receipt["schema_version"] == 2
+    stream_record = receipt["stream_index"]
+    recorded_stream = (root / stream_record["path"]).resolve()
+    assert recorded_stream == stream_index.resolve()
+    assert stream_record["sha256"] == hashlib.sha256(
+        stream_index.read_bytes()
+    ).hexdigest()
 
 
 def test_gefs_case_index_rejects_unknown_station_before_writing(tmp_path: Path) -> None:
@@ -221,8 +234,6 @@ def test_gefs_case_index_rejects_unknown_station_before_writing(tmp_path: Path) 
     )
     index_path = root / "gefs-index.json"
 
-    import pytest
-
     with pytest.raises(ValueError, match="unknown station"):
         build_gefs_case_index(
             stream_index=stream_index,
@@ -240,3 +251,15 @@ def test_station_selector_is_repeatable_and_deterministic() -> None:
     assert _select_station_ids(
         {"ZETA": {}, "ALFA": {}}, ("ZETA", "ALFA", "ZETA")
     ) == ("ALFA", "ZETA")
+
+
+def test_stream_index_path_rejects_parent_escape(tmp_path: Path) -> None:
+    """The stream index must stay below the GEFS output directory."""
+    output_root = tmp_path / "output"
+    output_root.mkdir()
+    outside = tmp_path / "stream-index.json"
+    outside.write_text("{}\n", encoding="utf-8")
+
+    escaped = output_root / ".." / outside.name
+    with pytest.raises(ValueError, match="stream index|output directory"):
+        _resolve_stream_index_path(escaped, output_root)

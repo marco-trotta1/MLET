@@ -43,7 +43,12 @@ def build_gefs_case_index(
     station_ids: Sequence[str] | None = None,
 ) -> Path:
     """Build one GEFS index entry for every eligible station-season case."""
-    stream_bytes = Path(stream_index).read_bytes()
+    output = Path(destination)
+    output_root = output.parent.resolve(strict=True)
+    resolved_stream_index, stream_index_relative = _resolve_stream_index_path(
+        Path(stream_index), output_root
+    )
+    stream_bytes = resolved_stream_index.read_bytes()
     stream = _read_json_object(stream_bytes, "GEFS stream index")
     if stream.get("schema_version") != 1 or stream.get("kind") != "mlet.gefs.reforecast-stream-index":
         raise ValueError("GEFS stream index has an unsupported schema")
@@ -62,8 +67,6 @@ def build_gefs_case_index(
     baselines = _prior_year_baselines(observations)
     mappings = _load_mappings(mapping_bytes)
     selected_station_ids = _select_station_ids(mappings, station_ids)
-    output = Path(destination)
-    output_root = output.parent.resolve(strict=True)
     candidate_directory = Path(candidate_root).resolve(strict=True)
     try:
         candidate_relative = candidate_directory.relative_to(output_root)
@@ -139,12 +142,15 @@ def build_gefs_case_index(
     }
     _write_new(output, _canonical_json_bytes(payload))
     receipt = {
-        "schema_version": 1,
+        "schema_version": 2,
         "kind": "mlet.eto.gefs-case-index-receipt",
         "issue_count": len(issue_seen),
         "case_count": case_count,
         "station_count": len(selected_station_ids),
-        "stream_index_sha256": _sha256(stream_bytes),
+        "stream_index": {
+            "path": stream_index_relative.as_posix(),
+            "sha256": _sha256(stream_bytes),
+        },
         "rows_sha256": _sha256(rows_bytes),
         "mapping_sha256": _sha256(mapping_bytes),
         "gefs_index_sha256": _sha256(output.read_bytes()),
@@ -152,6 +158,26 @@ def build_gefs_case_index(
     receipt_path = output.with_name(f"{output.stem}-receipt.json")
     _write_new(receipt_path, _canonical_json_bytes(receipt))
     return output
+
+
+def _resolve_stream_index_path(
+    stream_index: Path, output_root: Path
+) -> tuple[Path, Path]:
+    """Resolve the stream index and its portable path from the receipt directory."""
+    root = Path(output_root).resolve(strict=True)
+    if not root.is_dir() or root.is_symlink():
+        raise ValueError("GEFS index output directory must be a real directory")
+    try:
+        resolved = Path(stream_index).resolve(strict=True)
+    except OSError as error:
+        raise ValueError("stream index must name an existing file") from error
+    try:
+        relative = resolved.relative_to(root)
+    except ValueError as error:
+        raise ValueError("stream index must remain below the GEFS index output directory") from error
+    if not resolved.is_file() or resolved.is_symlink():
+        raise ValueError("stream index must name a real file")
+    return resolved, relative
 
 
 def _select_station_ids(
