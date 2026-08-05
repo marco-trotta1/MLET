@@ -7,6 +7,8 @@ import shutil
 from pathlib import Path
 
 import pytest
+from pypdf import PdfReader, PdfWriter
+from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 from scripts.verify_arxiv_manuscript import (
     MANUSCRIPT_TEX,
@@ -123,6 +125,51 @@ def test_verifier_rejects_replaced_final_pdf(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="PDF|clean source"):
         _verify_final_package(stale)
+
+
+def test_verifier_rejects_visible_pdf_overlay(tmp_path: Path) -> None:
+    """A visible page overlay must fail even when PDF text metadata stays equal."""
+    from scripts import verify_arxiv_manuscript
+
+    reader = PdfReader(str(verify_arxiv_manuscript.FINAL_PDF))
+    overlay_writer = PdfWriter()
+    overlay_page = overlay_writer.add_blank_page(
+        width=float(reader.pages[0].mediabox.width),
+        height=float(reader.pages[0].mediabox.height),
+    )
+    stream = DecodedStreamObject()
+    stream.set_data(b"q 1 0 0 rg 1 0 0 RG 72 700 180 50 re B Q\n")
+    overlay_page[NameObject("/Contents")] = stream
+    overlay_page[NameObject("/Resources")] = DictionaryObject()
+
+    altered = tmp_path / "visible-overlay.pdf"
+    writer = PdfWriter(clone_from=str(verify_arxiv_manuscript.FINAL_PDF))
+    writer.pages[0].merge_page(overlay_page)
+    with altered.open("wb") as handle:
+        writer.write(handle)
+
+    original_reader = PdfReader(str(verify_arxiv_manuscript.FINAL_PDF))
+    altered_reader = PdfReader(str(altered))
+    assert len(original_reader.pages) == len(altered_reader.pages)
+    assert original_reader.metadata.get("/Title") == altered_reader.metadata.get("/Title")
+    original_text = "\n".join(page.extract_text() or "" for page in original_reader.pages)
+    altered_text = "\n".join(page.extract_text() or "" for page in altered_reader.pages)
+    assert original_text == altered_text
+
+    with pytest.raises(ValueError, match="PDF|clean source"):
+        _verify_final_package(altered)
+
+
+def test_verifier_fails_loudly_without_pdf_renderer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing raster renderer must stop package verification."""
+    from scripts import verify_arxiv_manuscript
+
+    monkeypatch.setattr(verify_arxiv_manuscript.shutil, "which", lambda _name: None)
+
+    with pytest.raises(ValueError, match="renderer.*unavailable"):
+        verify_arxiv_manuscript._pdf_signature(verify_arxiv_manuscript.FINAL_PDF)
 
 
 def test_verifier_rejects_stale_clean_source(

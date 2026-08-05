@@ -9,6 +9,7 @@ import json
 import math
 import os
 import re
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -44,6 +45,7 @@ COMPILE_LOG = REPO_ROOT / "output" / "pdf" / "mlet_preprint.log"
 FINAL_PDF = REPO_ROOT / "output" / "pdf" / "mlet_preprint.pdf"
 SOURCE_ROOT = REPO_ROOT / "output" / "arxiv" / "mlet_preprint_source"
 SOURCE_ARCHIVE = REPO_ROOT / "output" / "arxiv" / "mlet_preprint_source.tar.gz"
+PDF_RENDER_DPI = 144
 
 RETIRED_PHRASES = (
     "field-withheld",
@@ -421,8 +423,43 @@ def _verify_pdf(pdf_path: Path) -> None:
                 raise ValueError(f"The compile log contains: {term}")
 
 
-def _pdf_signature(pdf_path: Path) -> tuple[int, str, str]:
-    """Return stable page, text, and title values for one compiled PDF."""
+def _raster_hashes(pdf_path: Path, page_count: int) -> tuple[str, ...]:
+    """Return fixed-resolution per-page raster digests for one PDF."""
+    renderer = shutil.which("pdftoppm")
+    if renderer is None:
+        raise ValueError("The PDF raster renderer pdftoppm is unavailable")
+    with tempfile.TemporaryDirectory(prefix="mlet-pdf-raster-") as directory:
+        prefix = Path(directory) / "page"
+        try:
+            subprocess.run(
+                [
+                    renderer,
+                    "-r",
+                    str(PDF_RENDER_DPI),
+                    "-f",
+                    "1",
+                    "-l",
+                    str(page_count),
+                    str(pdf_path),
+                    str(prefix),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as error:
+            raise ValueError(f"The PDF raster renderer failed for {pdf_path}") from error
+        page_paths = sorted(
+            Path(directory).glob("page-*.ppm"),
+            key=lambda path: int(path.stem.rsplit("-", 1)[1]),
+        )
+        if len(page_paths) != page_count:
+            raise ValueError("The PDF raster renderer returned the wrong page count")
+        return tuple(_sha256(path) for path in page_paths)
+
+
+def _pdf_signature(pdf_path: Path) -> tuple[int, str, str, tuple[str, ...]]:
+    """Return stable page, text, title, and raster values for one PDF."""
     try:
         reader = PdfReader(str(pdf_path))
         text = "\n".join(page.extract_text() or "" for page in reader.pages)
@@ -430,7 +467,9 @@ def _pdf_signature(pdf_path: Path) -> tuple[int, str, str]:
         title = str(metadata.get("/Title") or "")
     except Exception as error:
         raise ValueError(f"The PDF cannot be read: {pdf_path}") from error
-    return len(reader.pages), hashlib.sha256(text.encode("utf-8")).hexdigest(), title
+    page_count = len(reader.pages)
+    raster_hashes = _raster_hashes(pdf_path, page_count)
+    return page_count, hashlib.sha256(text.encode("utf-8")).hexdigest(), title, raster_hashes
 
 
 def _source_manifest() -> dict[str, Path]:

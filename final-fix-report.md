@@ -198,3 +198,55 @@ The source archive SHA-256 is
 The remaining gate is the full reference-ETo hindcast. The one-case BOII result
 remains a retrospective diagnostic. Tectonic reports only environment font
 substitutions and underfull boxes.
+
+## Raster binding fix · 2026-08-05
+
+The reviewer replaced page 1 with a visible red overlay while preserving PDF
+text, page count, and title. The old verifier accepted that replacement.
+
+### RED evidence
+
+The new regression command initially reported:
+
+```text
+PYTHONPATH=src python3 -m pytest -q tests/test_verify_arxiv_manuscript.py -k visible_pdf_overlay
+1 failed, 9 deselected
+Failed: DID NOT RAISE <class 'ValueError'>
+```
+
+### Changes
+
+`scripts/verify_arxiv_manuscript.py` now renders every PDF page with the
+available `pdftoppm` renderer at a fixed 144 DPI. It hashes each PPM raster.
+The final-package signature retains page count, extracted-text SHA-256, and
+title checks. It now also compares all per-page raster hashes. A missing
+renderer raises a clear verification error.
+
+The regression suite adds visible-overlay and missing-renderer tests.
+
+### GREEN evidence
+
+The overlay regression now reports:
+
+```text
+PYTHONPATH=src python3 -m pytest -q tests/test_verify_arxiv_manuscript.py -k visible_pdf_overlay
+1 passed, 10 deselected in 2.07s
+```
+
+The focused manuscript command reports:
+
+```text
+35 passed, 1 warning in 7.01s
+```
+
+The build-ready command reports:
+
+```text
+728 passed, 1 warning in 13.25s
+== VERIFY PASSED ==
+== BUILD READY: non-gated software and manuscript work passed ==
+```
+
+The standalone manuscript verifier passes. The extracted source archive
+compiles to 10 US Letter pages. Primary and clean PDFs have equal page count,
+text hash, title, and all 10 raster hashes at 144 DPI.
