@@ -14,6 +14,7 @@ import tempfile
 
 from mlet.manuscript_artifacts import build_phase2_artifacts
 from mlet.outlook.eto_hindcast import evaluate_eto_hindcast_evidence
+from scripts.verify_arxiv_manuscript import _verify_generated_artifacts, _verify_phase2_receipt
 from mlet.sources.agrimet_station_registry import (
     load_agrimet_station_registry,
     stations_for_state,
@@ -28,6 +29,9 @@ expected_digest = "ae5f85f719a057276bf9549d2b4f69fd8a570f73ab700216d435e1c7639cb
 actual_digest = hashlib.sha256(registry_path.read_bytes()).hexdigest()
 if actual_digest != expected_digest:
     raise SystemExit("AgriMet station registry digest changed")
+
+_verify_phase2_receipt()
+_verify_generated_artifacts()
 
 fixture_report = evaluate_eto_hindcast_evidence(
     Path("examples/outlook/eto_hindcast_evidence.json")

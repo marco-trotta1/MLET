@@ -5,6 +5,16 @@
 **Status:** a prospective evaluation protocol; no hindcast result is reported
 in this document.
 
+## Amendment (2026-08-04): implemented spatial-fold formula
+
+This dated amendment records the implemented formula. It does not rewrite the
+historical preregistration text below. For each target-grid cell, floor its
+latitude and longitude. Format the block as `floor(lat):floor(lon)`. Compute the
+full SHA-256 digest of that exact block string. The fold is the integer value of
+the full hexadecimal digest modulo five. The target grid defines the block. A
+station coordinate does not define the fold. The BOII target grid cell
+`43.50:-116.00` therefore uses block `43:-116` and fold 2.
+
 ## Amendment (2026-07-29): ETo-only manuscript evaluation
 
 This amendment applies before the first real archived ETo evaluation. It

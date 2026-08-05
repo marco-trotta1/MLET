@@ -194,6 +194,28 @@ def test_phase2_result_schema_requires_station_count(tmp_path: Path) -> None:
         _load_result(source)
 
 
+def test_phase2_schema_two_requires_bootstrap_replicates(tmp_path: Path) -> None:
+    """Schema 2 must carry the deterministic Phase 2 bootstrap count."""
+    result = {
+        "schema_version": 2,
+        "kind": "mlet.phase2-openet-value-result",
+        "evidence_status": "reproduced",
+        "station_count": 2,
+        "provenance": {
+            "data_manifest_sha256": hashlib.sha256(b"manifest").hexdigest(),
+            "git_revision": "test-revision",
+            "seed": 20260713,
+        },
+        "field_withheld": {"models": []},
+        "h2": {},
+    }
+    source = tmp_path / "phase2.json"
+    source.write_text(json.dumps(result), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="fields must match the schema exactly"):
+        _load_result(source)
+
+
 def test_eto_hindcast_artifact_generator_writes_required_tables_and_figures(
     tmp_path: Path,
 ) -> None:

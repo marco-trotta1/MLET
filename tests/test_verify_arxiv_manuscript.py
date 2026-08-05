@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from scripts.verify_arxiv_manuscript import (
     MANUSCRIPT_TEX,
     RETIRED_PHRASES,
+    _verify_generated_artifacts,
+    _verify_phase2_receipt,
     _verify_citations,
     validate_retired_phrases,
 )
@@ -74,3 +79,34 @@ def test_manuscript_removes_orphan_water_balance_limitation() -> None:
 def test_verifier_audits_citation_keys() -> None:
     """Every cited key and bibliography key must have a one-to-one match."""
     _verify_citations()
+
+
+def test_verifier_rejects_replaced_phase2_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A receipt with a changed result must fail before claims publish."""
+    from scripts import verify_arxiv_manuscript
+
+    receipt = json.loads(verify_arxiv_manuscript.PHASE2_RECEIPT.read_text())
+    assert isinstance(receipt["result"], dict)
+    receipt["result"]["station_count"] = 86
+    path = tmp_path / "receipt.json"
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+    monkeypatch.setattr(verify_arxiv_manuscript, "PHASE2_RECEIPT", path)
+
+    with pytest.raises(ValueError, match="different result"):
+        _verify_phase2_receipt()
+
+
+def test_verifier_rejects_stale_generated_claims(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A replaced generated claims file must fail deterministic regeneration."""
+    from scripts import verify_arxiv_manuscript
+
+    stale = tmp_path / "generated_claims.tex"
+    stale.write_bytes(verify_arxiv_manuscript.CLAIMS_TEX.read_bytes() + b"% stale\n")
+    monkeypatch.setattr(verify_arxiv_manuscript, "CLAIMS_TEX", stale)
+
+    with pytest.raises(ValueError, match="claim file is stale"):
+        _verify_generated_artifacts()

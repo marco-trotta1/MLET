@@ -9,15 +9,17 @@ import math
 from pathlib import Path
 
 
-_RESULT_FIELDS = {
+_PHASE2_BASE_FIELDS = {
     "schema_version",
     "kind",
     "evidence_status",
-    "station_count",
     "provenance",
     "field_withheld",
     "h2",
 }
+_PHASE2_SCHEMA1_FIELDS = _PHASE2_BASE_FIELDS
+_PHASE2_SCHEMA1_STATION_FIELDS = _PHASE2_BASE_FIELDS | {"station_count"}
+_PHASE2_SCHEMA2_FIELDS = _PHASE2_SCHEMA1_STATION_FIELDS | {"bootstrap_replicates"}
 _EVIDENCE_STATUS_TEXT = {
     "reproduced": (
         "Independent reproduction completed from the checksum-verified Phase 2 source archives."
@@ -113,7 +115,7 @@ def build_phase2_artifacts(result_path: Path, destination: Path) -> None:
             models,
             h2,
             _EVIDENCE_STATUS_TEXT[status],
-            int(result["station_count"]),
+            _phase2_station_count(result),
         ),
     )
 
@@ -598,14 +600,30 @@ def _load_result(path: Path) -> dict[str, object]:
         payload = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_no_duplicates)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
         raise ValueError("Phase 2 result must be duplicate-key-free UTF-8 JSON") from error
-    if not isinstance(payload, dict) or set(payload) != _RESULT_FIELDS:
+    if not isinstance(payload, dict):
         raise ValueError("Phase 2 result fields must match the schema exactly")
-    if payload["schema_version"] != 1 or payload["kind"] != "mlet.phase2-openet-value-result":
+    fields = set(payload)
+    schema_version = payload.get("schema_version")
+    if schema_version == 1 and fields not in (
+        _PHASE2_SCHEMA1_FIELDS,
+        _PHASE2_SCHEMA1_STATION_FIELDS,
+    ):
+        raise ValueError("Phase 2 result fields must match the schema exactly")
+    if schema_version == 2 and fields != _PHASE2_SCHEMA2_FIELDS:
+        raise ValueError("Phase 2 result fields must match the schema exactly")
+    if schema_version not in (1, 2) or payload["kind"] != "mlet.phase2-openet-value-result":
         raise ValueError("Phase 2 result has an unsupported schema")
     if payload["evidence_status"] not in _EVIDENCE_STATUS_TEXT:
         raise ValueError("Phase 2 result evidence_status is unsupported")
-    if type(payload["station_count"]) is not int or payload["station_count"] < 1:
+    if "station_count" in payload and (
+        type(payload["station_count"]) is not int or payload["station_count"] < 1
+    ):
         raise ValueError("Phase 2 result station_count must be a positive integer")
+    if schema_version == 2 and (
+        type(payload["bootstrap_replicates"]) is not int
+        or payload["bootstrap_replicates"] < 1
+    ):
+        raise ValueError("Phase 2 result bootstrap_replicates must be a positive integer")
     provenance = payload["provenance"]
     if not isinstance(provenance, dict) or set(provenance) != {
         "data_manifest_sha256", "git_revision", "seed"
@@ -617,7 +635,31 @@ def _load_result(path: Path) -> dict[str, object]:
         raise ValueError("Phase 2 provenance must contain a git revision")
     if type(provenance["seed"]) is not int:
         raise ValueError("Phase 2 provenance seed must be an integer")
+    if schema_version == 1 and "station_count" not in payload:
+        try:
+            _phase2_station_count(payload)
+        except ValueError as error:
+            raise ValueError("Phase 2 result fields must match the schema exactly") from error
     return payload
+
+
+def _phase2_station_count(payload: dict[str, object]) -> int:
+    """Return station count while preserving the schema-1 parser."""
+    value = payload.get("station_count")
+    if type(value) is int and value > 0:
+        return value
+    models = payload.get("field_withheld")
+    if isinstance(models, dict):
+        rows = models.get("models")
+        if isinstance(rows, list) and rows:
+            sample_counts = {
+                int(row["sample_count"])
+                for row in rows
+                if isinstance(row, dict) and type(row.get("sample_count")) is int
+            }
+            if sample_counts:
+                return max(sample_counts)
+    raise ValueError("Phase 2 result must contain a positive station_count")
 
 
 def _models(result: dict[str, object]) -> list[dict[str, object]]:
@@ -689,6 +731,26 @@ def _markdown_bytes(
     status_text: str,
     station_count: int,
 ) -> bytes:
+    common_names = {
+        "B1_CropCoefficient",
+        "B2_WeatherRidge",
+        "M1_OpenETDirect",
+        "M2_OpenETRecal",
+        "M3_OpenETRidge",
+    }
+    common_rows = {
+        int(model["sample_count"])
+        for model in models
+        if model.get("name") in common_names
+    }
+    if len(common_rows) != 1:
+        raise ValueError("Phase 2 common fitted models must share one row count")
+    common_count = common_rows.pop()
+    b0_rows = [
+        int(model["sample_count"])
+        for model in models
+        if model.get("name") == "B0_Persistence"
+    ]
     lines = [
         "# Phase 2 — OpenET-value results",
         "",
@@ -716,6 +778,13 @@ def _markdown_bytes(
             f"MAE reduction: {100.0 * float(h2['mae_reduction_fraction']):.1f}%",
             f"MAE delta: {float(h2['mae_delta_mm']):.3f} mm/day; "
             f"95% CI [{float(h2['ci95_mm'][0]):.3f}, {float(h2['ci95_mm'][1]):.3f}] mm/day.",
+            f"M2 OpenETRecal has the lowest MAE among B1, B2, and M1 through M3 "
+            f"on {common_count:,} common fitted-model rows. B0 remains a "
+            + (
+                f"separate oracle-like diagnostic on {b0_rows[0]:,} consecutive-day pairs."
+                if b0_rows
+                else "separate oracle-like diagnostic outside this result subset."
+            ),
             "",
         ]
     )

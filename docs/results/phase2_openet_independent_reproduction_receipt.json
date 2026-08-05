@@ -15,78 +15,80 @@
     "h2_reduction_matches_to_three_decimals": true
   },
   "data_manifest_sha256": "722dfa28b99d723d85142f3868b4e8939ceb1b3d2470ddcbff050af1c6e693f8",
-  "git_revision": "3364b93579df45ab54f0b753fa2b7e150ce67c87",
+  "git_revision": "fb64dab",
   "kind": "mlet.phase2-openet-independent-reproduction-receipt",
   "output_sha256": {
-    "report_markdown": "ab1d33d5ef260bd62c12f147ec554e0de75799c7b7d6093e563cdbf292c01b2a",
-    "result_json": "bfbfd9fe50d957078ac7af9bbdd06455cc8ee24c7a0dfa184b70f57c7fe04bbe"
+    "report_markdown": "ea382924e317d66b89bbc2fe6a8e54c4d169776c0b7f596c0220fecbff739ba4",
+    "result_json": "68b6e1d6d6cca60a9a4865d97e29167aad8997845c471ebb8ceae36f75a9a773"
   },
   "result": {
+    "schema_version": 2,
+    "kind": "mlet.phase2-openet-value-result",
     "evidence_status": "reproduced",
+    "station_count": 85,
+    "bootstrap_replicates": 2000,
+    "provenance": {
+      "data_manifest_sha256": "722dfa28b99d723d85142f3868b4e8939ceb1b3d2470ddcbff050af1c6e693f8",
+      "git_revision": "fb64dab",
+      "seed": 20260713
+    },
     "field_withheld": {
       "models": [
         {
-          "bias_mm": 0.05848543790417327,
-          "mae_mm": 0.3495935161205248,
           "name": "B0_Persistence",
+          "mae_mm": 0.3495935161205248,
           "rmse_mm": 0.5717634968470112,
+          "bias_mm": 0.05848543790417327,
           "sample_count": 1555
         },
         {
-          "bias_mm": 0.1492750566190032,
-          "mae_mm": 1.5324851095502567,
           "name": "B1_CropCoefficient",
+          "mae_mm": 1.5324851095502567,
           "rmse_mm": 2.005050436017603,
+          "bias_mm": 0.1492750566190032,
           "sample_count": 7923
         },
         {
-          "bias_mm": -0.09780005740217465,
-          "mae_mm": 1.5142371784206408,
           "name": "B2_WeatherRidge",
+          "mae_mm": 1.5142371784206408,
           "rmse_mm": 2.687441854711977,
+          "bias_mm": -0.09780005740217465,
           "sample_count": 7923
         },
         {
-          "bias_mm": 0.1541044357780231,
-          "mae_mm": 0.7841375071094303,
           "name": "M1_OpenETDirect",
+          "mae_mm": 0.7841375071094303,
           "rmse_mm": 1.0662810280153165,
+          "bias_mm": 0.1541044357780231,
           "sample_count": 7923
         },
         {
-          "bias_mm": 0.00487922297634197,
-          "mae_mm": 0.7812075909524736,
           "name": "M2_OpenETRecal",
+          "mae_mm": 0.7812075909524736,
           "rmse_mm": 1.0600038739076456,
+          "bias_mm": 0.00487922297634197,
           "sample_count": 7923
         },
         {
-          "bias_mm": -0.012951423143982961,
-          "mae_mm": 0.8563053222903725,
           "name": "M3_OpenETRidge",
+          "mae_mm": 0.8563053222903725,
           "rmse_mm": 1.386460041892388,
+          "bias_mm": -0.012951423143982961,
           "sample_count": 7923
         }
       ]
     },
     "h2": {
       "best_openet_free_model": "B2_WeatherRidge",
+      "mae_reduction_fraction": 0.43449722771732197,
+      "mae_delta_mm": 0.6579318561302683,
       "ci95_mm": [
         0.39940040090677065,
         0.9114997667489539
-      ],
-      "mae_delta_mm": 0.6579318561302683,
-      "mae_reduction_fraction": 0.43449722771732197
-    },
-    "kind": "mlet.phase2-openet-value-result",
-    "provenance": {
-      "data_manifest_sha256": "722dfa28b99d723d85142f3868b4e8939ceb1b3d2470ddcbff050af1c6e693f8",
-      "git_revision": "3364b93579df45ab54f0b753fa2b7e150ce67c87",
-      "seed": 20260713
-    },
-    "schema_version": 1
+      ]
+    }
   },
-  "schema_version": 1,
+  "schema_version": 2,
   "seed": 20260713,
   "source_archives": {
     "flux_benchmark": {

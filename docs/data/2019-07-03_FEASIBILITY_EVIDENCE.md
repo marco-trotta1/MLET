@@ -38,8 +38,10 @@ Decode runtime is a single-run measurement. No repeat-run uncertainty is
 estimated.
 
 The real ETo candidate is `research_candidate`, with evaluation pending and
-promotion disabled. The candidate SHA-256 is
-`9476bab0be5cd879d1912a40c73ff5d694d9ae95502d67e8f6d82ee2426adb3b`.
+promotion disabled. The candidate manifest SHA-256 is
+`90e5f9b49bf731c272b65bad629bd98a6b77af9a721fb6a7d46dc6172e626bc5`.
+The candidate artifact SHA-256 is
+`c0b51331b20f1d15f51de8f0b6a9c4efd8d2a9801fa617686a933b4d07e45163`.
 
 ## AgriMet target
 
@@ -53,10 +55,10 @@ promotion disabled. The candidate SHA-256 is
 - Station history: `data/outlook/agrimet_station_history_boii.json`
 - Station history evidence manifest: `data/outlook/agrimet_station_history_boii_evidence.json`
 - Feasibility receipt: `data/outlook/agrimet_boii_feasibility.json`
-- Schema-v2 target: `data/outlook/eto_feasibility_targets/targets/issue-20190703-station-BOII-season-JJA-fold-4.json`
+- Schema-v2 target: `data/outlook/eto_feasibility_targets/targets/issue-20190703-station-BOII-season-JJA-fold-2.json`
 - Schema-v4 evidence: `data/outlook/eto_feasibility_archive/evidence.json`
-- Target SHA-256: `7aabbf02699745d7051bc09d7c00bd59e969abbcf639d391728086fd817d9751`
-- Evidence SHA-256: `890555ea6e0f912655fbdcbb7cd1291c019ce9545e21407f3a9432f1582bba38`
+- Target SHA-256: `1d5570ab9baf7a4bb978be2069dbff8c89b0f88546442884556f37eb481eb43f`
+- Evidence SHA-256: `3e1f022ea7e0e6f280f9854adae7080f4c308b57da70a578ce9d6c10ae95b075`
 
 The station history uses five dated map snapshots with identical BOII
 coordinates and one archived station page with elevation. It is bracketed
@@ -64,6 +66,9 @@ archival location evidence. It is not a complete USBR relocation ledger. The
 source-normalized target artifact remains schema version 1. The derived target
 artifact is schema version 2 and binds the forecast run and source receipt.
 The evidence bundle is schema version 4 and remains evaluation pending.
+The target timing record uses schema version 2. Its temporal role is
+`retrospective_reforecast`. The source issue is `2019-07-03T00:00:00Z`.
+Archive availability is `2026-08-04T20:37:53.995950Z`.
 
 ## Full-plan gate
 
@@ -88,7 +93,8 @@ season checks for one real station case. The scientific evaluation remains
 incomplete because it lacks the other folds and seasons. No full ETo
 performance result is committed.
 
-The GEFS source receipt uses the reforecast issue timestamp as `available_at`.
-The local 2026 retrieval timestamp remains in the forecast manifest and raw
-receipt. The AgriMet target receipt uses its later archive retrieval timestamp.
-The target is an evaluation outcome, not an issue-time forecast input.
+The GEFS source receipt records `source_issue_at` as
+`2019-07-03T00:00:00Z` and `archive_available_at` as
+`2026-08-04T18:08:54.243122Z`. The AgriMet target receipt records
+`archive_available_at=2026-08-04T20:37:53.995950Z`. These are later archive
+retrievals. They do not claim operational issue-time availability.

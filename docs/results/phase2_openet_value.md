@@ -20,3 +20,4 @@ Station count: 85
 Best OpenET-free model: B2_WeatherRidge
 MAE reduction: 43.4%
 MAE delta: 0.658 mm/day; 95% CI [0.399, 0.911] mm/day.
+M2 OpenETRecal has the lowest MAE among B1, B2, and M1 through M3 on 7,923 common fitted-model rows. B0 remains a separate oracle-like diagnostic on 1,555 consecutive-day pairs.

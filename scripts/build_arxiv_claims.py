@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -19,13 +20,13 @@ PHASE2_RECEIPT = (
     / "results"
     / "phase2_openet_independent_reproduction_receipt.json"
 )
+PHASE2_REPORT = REPO_ROOT / "docs" / "results" / "phase2_openet_value.md"
 FIGURE_DATA = REPO_ROOT / "manuscript" / "arxiv" / "figures" / "figure_data.json"
 GEFS_FEASIBILITY = REPO_ROOT / "data" / "outlook" / "gefs_reforecast_20190703_feasibility.json"
 AGRIMET_ACQUISITION = REPO_ROOT / "data" / "outlook" / "agrimet_historical_acquisition.json"
 AGRIMET_REGISTRY = REPO_ROOT / "data" / "outlook" / "agrimet_station_registry.json"
 ETO_EVIDENCE = REPO_ROOT / "data" / "outlook" / "eto_feasibility_archive" / "evidence.json"
 
-COMMON_SAMPLE_COUNT = 7_923
 COMMON_MODEL_NAMES = (
     "B1_CropCoefficient",
     "B2_WeatherRidge",
@@ -34,7 +35,6 @@ COMMON_MODEL_NAMES = (
     "M3_OpenETRidge",
 )
 B0_MODEL_NAME = "B0_Persistence"
-B0_SAMPLE_COUNT = 1_555
 H2_SCOPE_LABEL = "H2: preregistered comparison"
 PHASE2_SCOPE_LABEL = "station-held-out 10-fold evaluation"
 GRID_SCOPE_LABEL = "common 0.5-degree GEFS grid-point subset"
@@ -58,6 +58,28 @@ def _phase2_station_count(payload: dict[str, object]) -> int:
     if type(value) is not int or value < 1:
         raise ValueError("The Phase 2 record lacks a positive station_count")
     return value
+
+
+def _phase2_bootstrap_replicates(payload: dict[str, object]) -> int:
+    """Return the Phase 2 replicate count from schema 2."""
+    value = payload.get("bootstrap_replicates")
+    if type(value) is not int or value < 1:
+        raise ValueError("The Phase 2 record lacks a positive bootstrap_replicates")
+    return value
+
+
+def _phase2_common_sample_count(models: dict[str, dict[str, object]]) -> int:
+    """Return the common fitted-model sample count from the result rows."""
+    counts: set[int] = set()
+    for name in COMMON_MODEL_NAMES:
+        value = models[name].get("sample_count")
+        if type(value) is not int or value < 1:
+            raise ValueError(f"The common-sample model {name} lacks a positive row count")
+        counts.add(value)
+    if len(counts) != 1:
+        raise ValueError("The common-sample models must share one sample count")
+    count = counts.pop()
+    return count
 
 
 def _model_by_name(payload: dict[str, object]) -> dict[str, dict[str, object]]:
@@ -86,18 +108,10 @@ def _validate_phase2_models(models: dict[str, dict[str, object]]) -> None:
     missing = [name for name in (*COMMON_MODEL_NAMES, B0_MODEL_NAME) if name not in models]
     if missing:
         raise ValueError(f"The Phase 2 result lacks model records: {', '.join(missing)}")
-    b0_count = int(models[B0_MODEL_NAME]["sample_count"])
-    if b0_count != B0_SAMPLE_COUNT:
-        raise ValueError(
-            f"B0 must use {B0_SAMPLE_COUNT:,} consecutive-day pairs, got {b0_count:,}"
-        )
-    for name in COMMON_MODEL_NAMES:
-        sample_count = int(models[name]["sample_count"])
-        if sample_count != COMMON_SAMPLE_COUNT:
-            raise ValueError(
-                f"The common-sample model {name} must use "
-                f"{COMMON_SAMPLE_COUNT:,} rows, got {sample_count:,}"
-            )
+    b0_count = models[B0_MODEL_NAME].get("sample_count")
+    if type(b0_count) is not int or b0_count < 1:
+        raise ValueError("B0 must use a positive consecutive-day-pair count")
+    _phase2_common_sample_count(models)
     m2_mae = float(models["M2_OpenETRecal"]["mae_mm"])
     common_mae = {
         name: float(models[name]["mae_mm"])
@@ -112,6 +126,28 @@ def _validate_phase2_models(models: dict[str, dict[str, object]]) -> None:
 def _b0_scope_label(models: dict[str, dict[str, object]]) -> str:
     """Format the B0 scope label from the validated machine record."""
     return f"B0: {int(models[B0_MODEL_NAME]['sample_count']):,} consecutive-day pairs"
+
+
+def _phase2_scope_label(models: dict[str, dict[str, object]]) -> str:
+    """Format the fitted-model evaluation scope from serialized rows."""
+    return f"{PHASE2_SCOPE_LABEL} on {_phase2_common_sample_count(models):,} rows"
+
+
+def _verify_phase2_receipt(phase2: dict[str, object], receipt: dict[str, object]) -> None:
+    """Require the reproduction receipt to bind the current result bytes."""
+    if receipt.get("schema_version") != 2:
+        raise ValueError("The Phase 2 reproduction receipt must use schema version 2")
+    if receipt.get("result") != phase2:
+        raise ValueError("The Phase 2 receipt result does not equal the result record")
+    output = receipt.get("output_sha256")
+    if not isinstance(output, dict):
+        raise ValueError("The Phase 2 receipt lacks output digests")
+    result_digest = output.get("result_json")
+    if result_digest != hashlib.sha256(PHASE2_RESULT.read_bytes()).hexdigest():
+        raise ValueError("The Phase 2 receipt result digest is stale")
+    report_digest = output.get("report_markdown")
+    if report_digest != hashlib.sha256(PHASE2_REPORT.read_bytes()).hexdigest():
+        raise ValueError("The Phase 2 receipt report digest is stale")
 
 
 def _macro(name: str, value: str) -> str:
@@ -129,7 +165,10 @@ def _build_claims() -> list[str]:
     registry = _object(AGRIMET_REGISTRY)
     models = _model_by_name(phase2)
     _validate_phase2_models(models)
+    _verify_phase2_receipt(phase2, receipt)
     phase2_station_count = _phase2_station_count(phase2)
+    phase2_bootstrap_replicates = _phase2_bootstrap_replicates(phase2)
+    common_sample_count = _phase2_common_sample_count(models)
     b0_scope_label = _b0_scope_label(models)
     h2 = phase2.get("h2")
     if not isinstance(h2, dict):
@@ -192,7 +231,7 @@ def _build_claims() -> list[str]:
         _macro("JoinedRows", f"{int(build_stats['rows_written']):,}"),
         _macro("JoinedLabels", f"{int(build_stats['labeled_rows']):,}"),
         _macro("JoinedStations", f"{int(build_stats['stations']):,}"),
-        _macro("PhaseTwoN", f"{int(b2['sample_count']):,}"),
+        _macro("PhaseTwoN", f"{common_sample_count:,}"),
         _macro("PhaseTwoStations", f"{phase2_station_count:,}"),
         _macro("PersistenceN", f"{int(models['B0_Persistence']['sample_count']):,}"),
         _macro("BZeroMAE", f"{float(models['B0_Persistence']['mae_mm']):.3f}"),
@@ -217,9 +256,9 @@ def _build_claims() -> list[str]:
         _macro("HtwoReduction", f"{100.0 * reduction:.1f}"),
         _macro("HtwoCILow", f"{float(ci95[0]):.3f}"),
         _macro("HtwoCIHigh", f"{float(ci95[1]):.3f}"),
-        _macro("BootstrapPhaseTwo", "2,000"),
-        _macro("BootstrapETo", "1,000"),
-        _macro("PhaseTwoScope", PHASE2_SCOPE_LABEL),
+        _macro("BootstrapPhaseTwo", f"{phase2_bootstrap_replicates:,}"),
+        _macro("BootstrapETo", f"{report.bootstrap_replicates:,}"),
+        _macro("PhaseTwoScope", _phase2_scope_label(models)),
         _macro("BZeroScope", b0_scope_label),
         _macro("HtwoScope", H2_SCOPE_LABEL),
         _macro("GridSubsetLabel", GRID_SCOPE_LABEL),
@@ -252,11 +291,14 @@ def _build_claims() -> list[str]:
         _macro("FeasibilityWidth", f"{metric.mean_interval_width_mm:.3f}"),
         _macro("FeasibilityPinball", f"{metric.mean_pinball_loss_mm:.3f}"),
         _macro("FeasibilityClusters", f"{metric.bootstrap_cluster_count:,}"),
-        _macro("SupportCells", "400"),
-        _macro("SupportMinimum", "30"),
-        _macro("SupportMinimumTotal", "12,000"),
-        _macro("PhaseTwoSeed", "20260713"),
-        _macro("EToSeed", "20260731"),
+        _macro("SupportCells", f"{int(report.support['cell_count']):,}"),
+        _macro("SupportMinimum", f"{int(report.support['minimum_paired_targets']):,}"),
+        _macro(
+            "SupportMinimumTotal",
+            f"{int(report.support['cell_count']) * int(report.support['minimum_paired_targets']):,}",
+        ),
+        _macro("PhaseTwoSeed", f"{int(phase2['provenance']['seed'])}"),
+        _macro("EToSeed", f"{int(report.bootstrap_seed)}"),
     ]
     return macros
 

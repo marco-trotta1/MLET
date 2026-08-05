@@ -7,8 +7,10 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 
 try:
@@ -29,7 +31,10 @@ except ModuleNotFoundError as error:
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PHASE2_RESULT = REPO_ROOT / "docs" / "results" / "phase2_openet_value.json"
+PHASE2_RECEIPT = REPO_ROOT / "docs" / "results" / "phase2_openet_independent_reproduction_receipt.json"
+PHASE2_REPORT = REPO_ROOT / "docs" / "results" / "phase2_openet_value.md"
 FIGURE_DATA = REPO_ROOT / "manuscript" / "arxiv" / "figures" / "figure_data.json"
+FIGURE_ROOT = FIGURE_DATA.parent
 CLAIMS_TEX = REPO_ROOT / "manuscript" / "arxiv" / "generated_claims.tex"
 MANUSCRIPT_TEX = REPO_ROOT / "manuscript" / "arxiv" / "mlet_preprint.tex"
 COMPILE_LOG = REPO_ROOT / "output" / "pdf" / "mlet_preprint.log"
@@ -44,6 +49,9 @@ RETIRED_PHRASES = (
     "non-serving FAO-56 dual water-balance",
     "prior-year day-of-year mean",
     "station_day_of_year_mean_prior_to_issue_year",
+    "issue-time-valid",
+    "lowest descriptive mae",
+    "lowest descriptive point mae",
 )
 
 
@@ -122,10 +130,74 @@ def _verify_phase2(macros: dict[str, str]) -> None:
         "HtwoCIHigh": f"{float(ci95[1]):.3f}",
         "PhaseTwoN": f"{int(b2['sample_count']):,}",
         "PhaseTwoStations": f"{phase2_station_count:,}",
+        "BootstrapPhaseTwo": f"{int(payload.get('bootstrap_replicates', 0)):,}",
     }
+    if type(payload.get("bootstrap_replicates")) is not int or payload["bootstrap_replicates"] < 1:
+        raise ValueError("The Phase 2 result lacks bootstrap_replicates")
     for name, value in expected.items():
         if macros.get(name) != value:
             raise ValueError(f"The {name} macro is {macros.get(name)!r}, expected {value!r}")
+
+
+def _verify_phase2_receipt() -> None:
+    """Verify the independent receipt binds the current result and report bytes."""
+    result = _object(PHASE2_RESULT)
+    receipt = _object(PHASE2_RECEIPT)
+    if receipt.get("schema_version") != 2:
+        raise ValueError("The Phase 2 receipt must use schema version 2")
+    if receipt.get("result") != result:
+        raise ValueError("The Phase 2 receipt embeds a different result")
+    output = receipt.get("output_sha256")
+    if not isinstance(output, dict):
+        raise ValueError("The Phase 2 receipt lacks output digests")
+    expected = {
+        "result_json": _sha256(PHASE2_RESULT),
+        "report_markdown": _sha256(PHASE2_REPORT),
+    }
+    for name, digest in expected.items():
+        if output.get(name) != digest:
+            raise ValueError(f"The Phase 2 receipt digest is stale: {name}")
+
+
+def _verify_generated_artifacts() -> None:
+    """Regenerate claims and figures, then reject stale publication artifacts."""
+    with tempfile.TemporaryDirectory(prefix="mlet-arxiv-generated-") as directory:
+        root = Path(directory)
+        generated_claims = root / "generated_claims.tex"
+        generated_figures = root / "figures"
+        environment = {"PYTHONPATH": str(REPO_ROOT / "src")}
+        subprocess.run(
+            ["python3", str(REPO_ROOT / "scripts" / "build_arxiv_claims.py"), "--out", str(generated_claims)],
+            check=True,
+            cwd=REPO_ROOT,
+            env={**dict(os.environ), **environment},
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            ["python3", str(REPO_ROOT / "scripts" / "build_arxiv_figures.py"), "--out", str(generated_figures)],
+            check=True,
+            cwd=REPO_ROOT,
+            env={**dict(os.environ), **environment},
+            capture_output=True,
+            text=True,
+        )
+        if generated_claims.read_bytes() != CLAIMS_TEX.read_bytes():
+            raise ValueError("The generated claim file is stale or replaced")
+        expected_names = (
+            "figure_1_evidence_paths",
+            "figure_2_phase2_models",
+            "figure_3_boii_feasibility",
+            "figure_4_native_grid",
+            "figure_5_support_tensor",
+        )
+        for name in (*expected_names, "figure_data"):
+            suffixes = ("json",) if name == "figure_data" else ("pdf", "png")
+            for suffix in suffixes:
+                generated = generated_figures / f"{name}.{suffix}"
+                committed = FIGURE_ROOT / f"{name}.{suffix}"
+                if not generated.is_file() or generated.read_bytes() != committed.read_bytes():
+                    raise ValueError(f"The generated figure artifact is stale or replaced: {committed}")
 
 
 def _verify_figure_sources() -> None:
@@ -159,6 +231,50 @@ def _verify_figure_sources() -> None:
             path = figure_root / f"figure_{index}_{stem}.{suffix}"
             if not path.is_file() or path.stat().st_size == 0:
                 raise ValueError(f"The manuscript figure is missing: {path}")
+
+
+def _verify_outlook_provenance() -> None:
+    """Verify the BOII provenance records bind the current fold-2 evidence."""
+    acquisition_path = REPO_ROOT / "data" / "outlook" / "agrimet_historical_acquisition.json"
+    acquisition = _object(acquisition_path)
+    target_build = acquisition.get("target_build")
+    if not isinstance(target_build, dict):
+        raise ValueError("The AgriMet acquisition record lacks target-build provenance")
+    target_index = REPO_ROOT / "data" / "outlook" / "eto_feasibility_agrimet_index.json"
+    target_path = REPO_ROOT / "data" / "outlook" / "eto_feasibility_targets" / "targets" / "issue-20190703-station-BOII-season-JJA-fold-2.json"
+    evidence_path = REPO_ROOT / "data" / "outlook" / "eto_feasibility_archive" / "evidence.json"
+    expected_hashes = {
+        "target_index_sha256": target_index,
+        "target_artifact_sha256": target_path,
+        "evidence_sha256": evidence_path,
+    }
+    for field, path in expected_hashes.items():
+        if target_build.get(field) != _sha256(path):
+            raise ValueError(f"The AgriMet provenance digest is stale: {field}")
+    timing = target_build.get("timing")
+    if not isinstance(timing, dict) or timing.get("schema_version") != 2:
+        raise ValueError("The AgriMet target timing record must use schema version 2")
+    if timing.get("temporal_role") != "retrospective_reforecast":
+        raise ValueError("The AgriMet target timing role is invalid")
+    if timing.get("source_issue_at") != "2019-07-03T00:00:00Z":
+        raise ValueError("The AgriMet target source issue time is invalid")
+    expected_target_timing = _object(target_path).get("receipt")
+    if not isinstance(expected_target_timing, dict):
+        raise ValueError("The AgriMet target lacks its receipt")
+    if timing.get("archive_available_at") != expected_target_timing.get("available_at"):
+        raise ValueError("The AgriMet target archive availability is stale")
+
+    evidence_text = (REPO_ROOT / "docs" / "data" / "2019-07-03_FEASIBILITY_EVIDENCE.md").read_text(encoding="utf-8")
+    target_digest_match = re.search(r"Target SHA-256: `([0-9a-f]{64})`", evidence_text)
+    evidence_digest_match = re.search(r"Evidence SHA-256: `([0-9a-f]{64})`", evidence_text)
+    if target_digest_match is None or target_digest_match.group(1) != _sha256(target_path):
+        raise ValueError("The BOII evidence target digest is stale")
+    if evidence_digest_match is None or evidence_digest_match.group(1) != _sha256(evidence_path):
+        raise ValueError("The BOII evidence bundle digest is stale")
+    if "season-JJA-fold-4" in evidence_text or "reforecast issue timestamp as `available_at`" in evidence_text:
+        raise ValueError("The BOII evidence prose contains retired fold or timing wording")
+    if "season-JJA-fold-2" not in evidence_text or "archive_available_at" not in evidence_text:
+        raise ValueError("The BOII evidence prose lacks current fold-2 timing provenance")
 
 
 def _verify_citations() -> None:
@@ -305,7 +421,10 @@ def main() -> int:
     parser.add_argument("--pdf", type=Path, required=True)
     args = parser.parse_args()
     macros = _macros()
+    _verify_phase2_receipt()
     _verify_phase2(macros)
+    _verify_outlook_provenance()
+    _verify_generated_artifacts()
     _verify_figure_sources()
     _verify_citations()
     _verify_source_text()

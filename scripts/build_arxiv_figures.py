@@ -32,6 +32,7 @@ try:
         PHASE2_SCOPE_LABEL,
         QUANTILE_BAND_LABEL,
         _model_by_name,
+        _phase2_common_sample_count,
         _phase2_station_count,
         _validate_phase2_models,
     )
@@ -46,6 +47,7 @@ except ModuleNotFoundError as error:
         PHASE2_SCOPE_LABEL,
         QUANTILE_BAND_LABEL,
         _model_by_name,
+        _phase2_common_sample_count,
         _phase2_station_count,
         _validate_phase2_models,
     )
@@ -194,7 +196,14 @@ def _configure_plot_style() -> None:
 
 def _save_figure(figure: plt.Figure, output_dir: Path, name: str) -> None:
     """Write one vector figure and one review image."""
-    figure.savefig(output_dir / f"{name}.pdf")
+    metadata = {
+        "Creator": "MLET deterministic figure generator",
+        "Producer": "MLET deterministic figure generator",
+        "Title": name,
+        "CreationDate": None,
+        "ModDate": None,
+    }
+    figure.savefig(output_dir / f"{name}.pdf", metadata=metadata)
     figure.savefig(output_dir / f"{name}.png", dpi=220)
     plt.close(figure)
 
@@ -308,12 +317,18 @@ def _figure_evidence_paths(output_dir: Path) -> None:
             0.08,
             0.48,
             "Station-held-out 10-fold evaluation",
-            f"{phase2_station_count:,} stations; 7,923 common rows",
+            f"{phase2_station_count:,} stations; "
+            f"{_phase2_common_sample_count(_model_by_name(_load_json(PHASE2_RESULT))):,} common rows",
         ),
         (0.08, 0.25, "Preregistered M3 comparison", "station-blocked bootstrap"),
     ]
     right_boxes = [
-        (0.58, 0.71, "GEFSv12 reforecast", "issue-time-valid ensemble weather"),
+        (
+            0.58,
+            0.71,
+            "GEFSv12 reforecast",
+            "source-issue-aligned retrospective reforecast",
+        ),
         (0.58, 0.48, "ASCE short-reference ETo", "p10, p50, p90; leads 1 to 20"),
         (0.58, 0.25, "USBR AgriMet ETos", "independent station target"),
     ]
@@ -363,7 +378,8 @@ def _figure_evidence_paths(output_dir: Path) -> None:
     axis.text(
         0.75,
         0.12,
-        "One real issue and one station\npass the source checks\nThe 400-cell gate remains incomplete",
+        "One real issue and one station\npass the source checks\n"
+        "The 400-cell gate remains incomplete",
         ha="center",
         va="center",
         color=MUTED,
@@ -476,8 +492,11 @@ def _figure_phase2_models(output_dir: Path) -> None:
         fontsize=7.4,
         color=RED,
     )
+    by_name = {str(model["name"]): model for model in models}
+    common_count = int(by_name["B1_CropCoefficient"]["sample_count"])
     axis.annotate(
-        "Lowest descriptive MAE among common fitted models; H2 is a preregistered comparison",
+        f"Lowest MAE among B1, B2, and M1-M3 on {common_count:,} common rows; "
+        "H2 is a preregistered comparison",
         xy=(float(models[m2_y]["mae_mm"]), m2_y),
         xytext=(1.08, 3.65),
         arrowprops={
@@ -494,9 +513,7 @@ def _figure_phase2_models(output_dir: Path) -> None:
         fontsize=7.2,
         color=MUTED,
     )
-    by_name = {str(model["name"]): model for model in models}
     b0_count = int(by_name["B0_Persistence"]["sample_count"])
-    common_count = int(by_name["B1_CropCoefficient"]["sample_count"])
     axis.text(
         0.0,
         1.01,
@@ -633,7 +650,8 @@ def _figure_feasibility_trajectory(output_dir: Path) -> None:
             f"{EMPIRICAL_COVERAGE_LABEL} {coverage['empirical']:.2f}; "
             f"{NOMINAL_COVERAGE_LABEL} {coverage['nominal']:.2f}; "
             f"p10 to p90 mean width {metric.mean_interval_width_mm:.3f} mm/day. "
-            "Support 20 < 30 and one bootstrap cluster, so no skill interval is identified."
+            f"Support 20 < {int(report.support['minimum_paired_targets'])} and one "
+            "bootstrap cluster, so no skill interval is identified."
         ),
         ha="left",
         va="bottom",
@@ -842,8 +860,9 @@ def _figure_support_tensor(output_dir: Path) -> None:
         row = season_index[season] * 5 + int(fold_text)
         matrix[row, int(lead_text) - 1] = metric.sample_count
     states = np.zeros_like(matrix)
-    states[(matrix > 0) & (matrix < 30)] = 1
-    states[matrix >= 30] = 2
+    minimum = int(report.support["minimum_paired_targets"])
+    states[(matrix > 0) & (matrix < minimum)] = 1
+    states[matrix >= minimum] = 2
     support_map = ListedColormap(["#eeeeee", RED, BLUE])
     figure, axis = plt.subplots(figsize=(7.0, 3.75))
     axis.imshow(states, aspect="auto", cmap=support_map, vmin=0, vmax=2, interpolation="nearest")
@@ -862,8 +881,8 @@ def _figure_support_tensor(output_dir: Path) -> None:
     axis.legend(
         handles=[
             Patch(facecolor="#eeeeee", label="n=0"),
-            Patch(facecolor=RED, label="0<n<30"),
-            Patch(facecolor=BLUE, label="n>=30"),
+            Patch(facecolor=RED, label=f"0<n<{minimum}"),
+            Patch(facecolor=BLUE, label=f"n>={minimum}"),
         ],
         loc="upper center",
         bbox_to_anchor=(0.5, -0.16),
@@ -875,8 +894,9 @@ def _figure_support_tensor(output_dir: Path) -> None:
         0.01,
         0.01,
         (
-            f"{annotation} The frozen minimum is 12,000 cell observations "
-            "(400 cells x 30)."
+            f"{annotation} The frozen minimum is "
+            f"{int(report.support['cell_count']) * minimum:,} cell observations "
+            f"({int(report.support['cell_count'])} cells x {minimum})."
         ),
         ha="left",
         va="bottom",
@@ -894,6 +914,7 @@ def _write_figure_data(output_dir: Path) -> None:
     phase2_station_count = _phase2_station_count(_load_json(PHASE2_RESULT))
     rows = _feasibility_rows()
     report = evaluate_eto_hindcast_evidence(FEASIBILITY_EVIDENCE)
+    minimum = int(report.support["minimum_paired_targets"])
     _case_id, outlook_path, target_path = _resolve_feasibility_case_paths()
     _scope_text, feasibility_cell_observations = _support_tensor_scope(report)
     season_metric = next(
@@ -947,9 +968,9 @@ def _write_figure_data(output_dir: Path) -> None:
             "completion_blocker_count": len(report.completion_blockers),
         },
         "support": {
-            "cell_count": 400,
-            "minimum_per_cell": 30,
-            "minimum_cell_observations": 12_000,
+            "cell_count": int(report.support["cell_count"]),
+            "minimum_per_cell": minimum,
+            "minimum_cell_observations": int(report.support["cell_count"]) * minimum,
             "feasibility_cell_observations": feasibility_cell_observations,
         },
     }
