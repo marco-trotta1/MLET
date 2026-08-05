@@ -1,5 +1,8 @@
 # Code availability
 
+The public repository is https://github.com/marco-trotta1/MLET. The immutable
+scientific code revision used by this manuscript is `d8feb34`.
+
 The MLET source repository contains the target adapters, ETo candidate builder,
 hindcast evaluator, and deterministic manuscript artifact generator.
 

@@ -82,6 +82,15 @@ planned objects available: 11 members, 2 segments, 9 components, and
 `data/outlook/gefs_reforecast_20190703_availability.json`. It is an
 availability result, not a downloaded or decoded hindcast.
 
+The ETo GEFS case index uses schema version 2. Each case records
+`temporal_role: "retrospective_reforecast"`, the historical `source_issue_at`,
+and the verified `archive_available_at`. The source issue is the candidate
+issue time. The archive availability is the source manifest `retrieved_at`,
+which is `2026-08-04T18:08:54.243122Z` for the BOII diagnostic. A source receipt
+uses schema version 2 with these three timing fields. It does not use a generic
+`available_at` field. This record is a retrospective diagnostic, not an
+operational issue-time forecast claim.
+
 The raw archive stores GRIB fields separately. A decoder must select the
 documented 2 m maximum and minimum temperature, 2 m humidity, surface pressure,
 10 m wind components, downwelling shortwave radiation, and precipitation. It
@@ -111,6 +120,12 @@ precipitation use six-hour intervals.
 Select 2 m messages for maximum temperature, minimum temperature, and specific
 humidity. Select 10 m messages for both wind components. The wind GRIB files
 also contain 100 m messages. Do not use them.
+
+The decoder stores `wind_m_s` as the daily vector magnitude from the 10 m
+`u10_m_s` and `v10_m_s` components. The ETo routine passes this speed to
+pyfao56 with `wndht=10.0`. pyfao56 performs the standard internal adjustment
+from 10 m to its 2 m reference height. Do not pre-adjust the speed in the
+artifact.
 
 The acquisition plan is fixed by
 `gefs_reforecast_object_uri()`. For each scheduled issue, request the two

@@ -13,15 +13,17 @@ The GEFS index uses this shape:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "kind": "mlet.eto.gefs-index",
   "issues": [
     {
-      "case_id": "issue-2019-07-01",
-      "issue_time": "2019-07-01T00:00:00Z",
-      "forecast_directory": "forecasts/issue-2019-07-01",
-      "source_available_at": {"gefs": "2019-07-01T00:00:00Z"},
-      "held_out_fold": 0,
+      "case_id": "issue-20190703-station-BOII-season-JJA-fold-2",
+      "issue_time": "2019-07-03T00:00:00Z",
+      "forecast_directory": "candidate/gefs_reforecast_20190703_candidate",
+      "temporal_role": "retrospective_reforecast",
+      "source_issue_at": "2019-07-03T00:00:00Z",
+      "archive_available_at": "2026-08-04T18:08:54.243122Z",
+      "held_out_fold": 2,
       "held_out_season": "JJA"
     }
   ]
@@ -50,8 +52,11 @@ Each input issue must already contain:
 The repository target builder uses case IDs in the form
 `issue-YYYYMMDD-station-STATION-season-SEASON-fold-F`. It creates one target
 artifact per station case so each artifact retains one USBR URI and version.
-The builder uses prior-year same-station day-of-year climatology for the
-recorded baseline.
+The builder uses same-station, target-day climatology from strictly prior
+calendar years for the recorded baseline. A target valid date sets the year
+cutoff, including when a lead crosses New Year. The target receipt records the
+schema-2 timing fields `temporal_role`, `source_issue_at`, and
+`archive_available_at`.
 
 Use `scripts/build_eto_gefs_index.py` to expand completed candidate issues into
 these station-season cases. The script omits cases without target or baseline

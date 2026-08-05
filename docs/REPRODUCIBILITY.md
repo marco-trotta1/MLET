@@ -80,7 +80,8 @@ python3 scripts/build_eto_target_index.py \
 ```
 
 The builder preserves one USBR source identity per target artifact. It uses
-prior-year station day-of-year climatology and records the baseline rule.
+same-station, target-day climatology from strictly prior calendar years. The
+target valid date sets the year cutoff and the receipt records this rule.
 
 Build the GEFS case index from completed candidate issues before building target
 artifacts:

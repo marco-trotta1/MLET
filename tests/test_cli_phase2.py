@@ -176,5 +176,6 @@ def test_phase2_run_serializes_directly_to_the_manuscript_result_contract(tmp_pa
     build_phase2_artifacts(source, output)
 
     assert record["evidence_status"] == "reproduced"
+    assert record["station_count"] == 2
     assert len(record["field_withheld"]["models"]) == 6
     assert (output / "phase2_openet_value.md").is_file()

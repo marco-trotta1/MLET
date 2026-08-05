@@ -11,15 +11,18 @@ from pathlib import Path
 import tempfile
 
 from mlet.outlook.eto_archive import (
+    SourceTiming,
     assemble_eto_hindcast_evidence,
     combine_eto_hindcast_evidence,
 )
 from mlet.outlook.eto_hindcast import evaluate_eto_hindcast_evidence
+from mlet.outlook.manifest import RunManifest
 
 
 _GEFS_INDEX_KIND = "mlet.eto.gefs-index"
 _AGRIMET_INDEX_KIND = "mlet.eto.agrimet-index"
-_INDEX_SCHEMA_VERSION = 1
+_GEFS_INDEX_SCHEMA_VERSION = 2
+_AGRIMET_INDEX_SCHEMA_VERSION = 1
 
 
 def build_eto_hindcast_archive(
@@ -51,13 +54,20 @@ def build_eto_hindcast_archive(
             target = agrimet_cases[case_id]
             case_root = staging_root / case_id
             case_root.mkdir()
+            manifest = RunManifest.from_json(
+                (forecast.forecast_directory / "manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
             evidence_paths.append(
                 assemble_eto_hindcast_evidence(
                     case_id=case_id,
                     issue_time=forecast.issue_time,
                     forecast_directory=forecast.forecast_directory,
                     target_path=target.target_path,
-                    source_available_at=forecast.source_available_at,
+                    source_timing={
+                        source.name: forecast.timing for source in manifest.sources
+                    },
                     held_out_fold=forecast.held_out_fold,
                     held_out_season=forecast.held_out_season,
                     destination=case_root,
@@ -90,7 +100,7 @@ def bundle_eto_hindcast_evidence(
 class _GefsCase:
     issue_time: datetime
     forecast_directory: Path
-    source_available_at: dict[str, datetime]
+    timing: SourceTiming
     held_out_fold: int
     held_out_season: str
 
@@ -101,7 +111,7 @@ class _AgriMetCase:
 
 
 def _load_gefs_index(path: Path) -> dict[str, _GefsCase]:
-    payload, root = _load_index(path, _GEFS_INDEX_KIND)
+    payload, root = _load_index(path, _GEFS_INDEX_KIND, _GEFS_INDEX_SCHEMA_VERSION)
     _require_exact_keys(payload, {"schema_version", "kind", "issues"}, "GEFS index")
     raw_issues = payload["issues"]
     if not isinstance(raw_issues, list) or not raw_issues:
@@ -114,7 +124,9 @@ def _load_gefs_index(path: Path) -> dict[str, _GefsCase]:
                 "case_id",
                 "issue_time",
                 "forecast_directory",
-                "source_available_at",
+                "temporal_role",
+                "source_issue_at",
+                "archive_available_at",
                 "held_out_fold",
                 "held_out_season",
             },
@@ -125,10 +137,18 @@ def _load_gefs_index(path: Path) -> dict[str, _GefsCase]:
         if case_id in cases:
             raise ValueError("GEFS index case IDs must be unique")
         issue_time = _parse_utc(raw["issue_time"], "GEFS issue_time")
+        timing = SourceTiming(
+            temporal_role=_require_text(raw["temporal_role"], "GEFS temporal_role"),
+            source_issue_at=_parse_utc(raw["source_issue_at"], "GEFS source_issue_at"),
+            archive_available_at=_parse_utc(
+                raw["archive_available_at"], "GEFS archive_available_at"
+            ),
+        )
+        if timing.source_issue_at != issue_time:
+            raise ValueError("GEFS source_issue_at must match issue_time")
         forecast_directory = _resolve_directory(
             root, raw["forecast_directory"], "GEFS forecast_directory"
         )
-        source_available_at = _source_availability(raw["source_available_at"])
         held_out_fold = raw["held_out_fold"]
         if type(held_out_fold) is not int or held_out_fold not in range(5):
             raise ValueError("GEFS held_out_fold must be an integer from 0 through 4")
@@ -138,7 +158,7 @@ def _load_gefs_index(path: Path) -> dict[str, _GefsCase]:
         cases[case_id] = _GefsCase(
             issue_time,
             forecast_directory,
-            source_available_at,
+            timing,
             held_out_fold,
             held_out_season,
         )
@@ -146,7 +166,7 @@ def _load_gefs_index(path: Path) -> dict[str, _GefsCase]:
 
 
 def _load_agrimet_index(path: Path) -> dict[str, _AgriMetCase]:
-    payload, root = _load_index(path, _AGRIMET_INDEX_KIND)
+    payload, root = _load_index(path, _AGRIMET_INDEX_KIND, _AGRIMET_INDEX_SCHEMA_VERSION)
     _require_exact_keys(payload, {"schema_version", "kind", "targets"}, "AgriMet index")
     raw_targets = payload["targets"]
     if not isinstance(raw_targets, list) or not raw_targets:
@@ -164,7 +184,9 @@ def _load_agrimet_index(path: Path) -> dict[str, _AgriMetCase]:
     return cases
 
 
-def _load_index(path: Path, expected_kind: str) -> tuple[dict[str, object], Path]:
+def _load_index(
+    path: Path, expected_kind: str, expected_schema_version: int
+) -> tuple[dict[str, object], Path]:
     supplied = Path(path)
     if supplied.is_symlink():
         raise ValueError("source index must not be a symlink")
@@ -179,18 +201,14 @@ def _load_index(path: Path, expected_kind: str) -> tuple[dict[str, object], Path
         raise ValueError("source index must be duplicate-key-free UTF-8 JSON") from error
     if not isinstance(payload, dict):
         raise ValueError("source index must be a JSON object")
-    if payload.get("schema_version") != _INDEX_SCHEMA_VERSION or payload.get("kind") != expected_kind:
-        raise ValueError(f"source index must use kind {expected_kind}")
+    if (
+        payload.get("schema_version") != expected_schema_version
+        or payload.get("kind") != expected_kind
+    ):
+        raise ValueError(
+            f"source index must use schema_version {expected_schema_version} and kind {expected_kind}"
+        )
     return payload, resolved.parent
-
-
-def _source_availability(value: object) -> dict[str, datetime]:
-    if not isinstance(value, dict) or not value:
-        raise ValueError("source_available_at must be a non-empty object")
-    return {
-        _require_text(name, "source name"): _parse_utc(timestamp, "source availability")
-        for name, timestamp in value.items()
-    }
 
 
 def _resolve_directory(root: Path, value: object, label: str) -> Path:

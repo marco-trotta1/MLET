@@ -1,16 +1,1 @@
-{
-  "schema_version": 1,
-  "kind": "mlet.eto.gefs-index",
-  "issues": [
-    {
-      "case_id": "issue-20190703-station-BOII-season-JJA-fold-4",
-      "issue_time": "2019-07-03T00:00:00Z",
-      "forecast_directory": "gefs_reforecast_20190703_candidate",
-      "source_available_at": {
-        "gefs": "2019-07-03T00:00:00Z"
-      },
-      "held_out_fold": 4,
-      "held_out_season": "JJA"
-    }
-  ]
-}
+{"issues":[{"archive_available_at":"2026-08-04T18:08:54.243122Z","case_id":"issue-20190703-station-BOII-season-JJA-fold-2","forecast_directory":"gefs_reforecast_20190703_candidate","held_out_fold":2,"held_out_season":"JJA","issue_time":"2019-07-03T00:00:00Z","source_issue_at":"2019-07-03T00:00:00Z","temporal_role":"retrospective_reforecast"}],"kind":"mlet.eto.gefs-index","schema_version":2}

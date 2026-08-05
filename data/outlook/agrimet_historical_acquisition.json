@@ -25,9 +25,15 @@
   },
   "target_build": {
     "feasibility_case_count": 1,
-    "target_index_sha256": "8551c56c26fee195adc72796c46ffcb5b1bf74d188cb4a170739f9cae56f8169",
-    "target_artifact_sha256": "7aabbf02699745d7051bc09d7c00bd59e969abbcf639d391728086fd817d9751",
-    "evidence_sha256": "890555ea6e0f912655fbdcbb7cd1291c019ce9545e21407f3a9432f1582bba38"
+    "target_index_sha256": "58bd76bf39aaa6719496d03620d2e993aa6800dfd8f6ede84fa11f6b7fd8df1f",
+    "target_artifact_sha256": "1d5570ab9baf7a4bb978be2069dbff8c89b0f88546442884556f37eb481eb43f",
+    "evidence_sha256": "3e1f022ea7e0e6f280f9854adae7080f4c308b57da70a578ce9d6c10ae95b075",
+    "timing": {
+      "schema_version": 2,
+      "temporal_role": "retrospective_reforecast",
+      "source_issue_at": "2019-07-03T00:00:00Z",
+      "archive_available_at": "2026-08-04T20:37:53.995950Z"
+    }
   },
   "status": "eligible_records_acquired_history_bound_mapping_complete_one_v4_feasibility_case_full_forecast_cases_pending"
 }

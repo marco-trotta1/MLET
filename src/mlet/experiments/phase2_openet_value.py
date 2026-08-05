@@ -13,6 +13,7 @@ from mlet.loader import load_site_series
 SEED = 20260713
 K_FOLDS = 10
 TIME_CUTOFF = "2019-01-01"
+BOOTSTRAP_REPLICATES = 2_000
 
 
 @dataclass(frozen=True)
@@ -143,7 +144,9 @@ def _h2(
     }
     if not paired:
         return None
-    delta, lower, upper = evaluate.blocked_bootstrap_mae_delta(paired, seed=seed)
+    delta, lower, upper = evaluate.blocked_bootstrap_mae_delta(
+        paired, seed=seed, iters=BOOTSTRAP_REPLICATES
+    )
     baseline_mae = float(metrics[best_free]["mae"])
     reduction = delta / baseline_mae if baseline_mae else 0.0
     passes = reduction >= 0.10 and lower > 0.0
@@ -223,6 +226,9 @@ def build_phase2_result_record(
     field_withheld = result.get("field_withheld")
     if not isinstance(field_withheld, dict):
         raise ValueError("Phase 2 result must contain field_withheld metrics")
+    station_count = result.get("n_stations")
+    if type(station_count) is not int or station_count < 1:
+        raise ValueError("Phase 2 result must contain a positive n_stations")
     raw_models = field_withheld.get("models")
     if not isinstance(raw_models, dict) or not raw_models:
         raise ValueError("Phase 2 field_withheld models must be non-empty")
@@ -246,9 +252,11 @@ def build_phase2_result_record(
     if not isinstance(ci95, list) or len(ci95) != 2:
         raise ValueError("Phase 2 H2 must contain a two-value confidence interval")
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "kind": "mlet.phase2-openet-value-result",
         "evidence_status": "reproduced",
+        "station_count": station_count,
+        "bootstrap_replicates": BOOTSTRAP_REPLICATES,
         "provenance": {
             "data_manifest_sha256": data_manifest_sha256,
             "git_revision": git_revision,

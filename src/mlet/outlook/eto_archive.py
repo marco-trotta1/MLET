@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 import hashlib
 import json
@@ -13,6 +14,24 @@ from mlet.sources.agrimet import AgriMetEtosObservation, AgriMetGridMatch
 
 
 _TARGET_KIND = "independent_asce_short_reference_eto"
+_RETROSPECTIVE_REFORECAST = "retrospective_reforecast"
+
+
+@dataclass(frozen=True)
+class SourceTiming:
+    """Record source issue time and later archive availability explicitly."""
+
+    temporal_role: str
+    source_issue_at: datetime
+    archive_available_at: datetime
+
+    def __post_init__(self) -> None:
+        if self.temporal_role != _RETROSPECTIVE_REFORECAST:
+            raise ValueError("source timing temporal_role must be retrospective_reforecast")
+        _require_utc(self.source_issue_at, "source_issue_at")
+        _require_utc(self.archive_available_at, "archive_available_at")
+        if self.archive_available_at < self.source_issue_at:
+            raise ValueError("archive_available_at must not precede source_issue_at")
 
 
 def build_eto_target_artifact(
@@ -28,9 +47,9 @@ def build_eto_target_artifact(
 ) -> Path:
     """Write one strict v2 target artifact for one forecast issue.
 
-    The caller must provide a baseline that excludes this case's held-out
-    station-year/fold data. This function records that precomputed value. It
-    does not estimate a baseline from target observations.
+    The caller must provide a fixed station and day-of-year baseline built from
+    strictly prior calendar years. This function records that precomputed
+    value. It does not estimate a baseline from target observations.
     """
     issue = _require_utc(issue_time, "issue_time")
     _require_text(case_id, "case_id")
@@ -160,7 +179,7 @@ def assemble_eto_hindcast_evidence(
     issue_time: datetime,
     forecast_directory: Path,
     target_path: Path,
-    source_available_at: Mapping[str, datetime],
+    source_timing: Mapping[str, SourceTiming],
     held_out_fold: int,
     held_out_season: str,
     destination: Path,
@@ -219,17 +238,21 @@ def assemble_eto_hindcast_evidence(
     )
 
     expected_source_names = {source.name for source in manifest.sources}
-    if set(source_available_at) != expected_source_names:
-        raise ValueError("source_available_at must name every manifest source exactly once")
+    if set(source_timing) != expected_source_names:
+        raise ValueError("source_timing must name every manifest source exactly once")
     source_receipts: list[tuple[str, bytes]] = []
+    source_archive_times: list[datetime] = []
     for source in manifest.sources:
-        available_at = _require_utc(
-            source_available_at[source.name], "source availability"
-        )
-        if available_at > issue:
-            raise ValueError("source availability must not be after issue_time")
+        timing = source_timing[source.name]
+        if not isinstance(timing, SourceTiming):
+            raise ValueError("source_timing values must be SourceTiming records")
+        if timing.source_issue_at != issue:
+            raise ValueError("source_issue_at must match issue_time")
+        if timing.archive_available_at != source.retrieved_at:
+            raise ValueError("archive_available_at must match manifest source retrieved_at")
+        source_archive_times.append(timing.archive_available_at)
         receipt = {
-            "schema_version": 1,
+            "schema_version": 2,
             "kind": "idaho_outlook_hindcast_source_receipt",
             "case_id": case_id,
             "run_id": manifest.run_id,
@@ -237,7 +260,9 @@ def assemble_eto_hindcast_evidence(
             "uri": source.uri,
             "source_version": "manifest-source-record-v1",
             "sha256": source.sha256,
-            "available_at": _format_utc(available_at),
+            "temporal_role": timing.temporal_role,
+            "source_issue_at": _format_utc(timing.source_issue_at),
+            "archive_available_at": _format_utc(timing.archive_available_at),
         }
         source_receipts.append((source.name, _canonical_json_bytes(receipt)))
 
@@ -294,7 +319,9 @@ def assemble_eto_hindcast_evidence(
             "uri": root.resolve().as_uri(),
             "version": "mlet-eto-evidence-assembler-v1",
             "sha256": _sha256(manifest_bytes + target_bytes),
-            "available_at": _format_utc(issue),
+            "available_at": _format_utc(
+                max([*source_archive_times, target_available])
+            ),
         },
         "cases": [
             {
@@ -346,7 +373,7 @@ def combine_eto_hindcast_evidence(
     cases = []
     case_ids: set[str] = set()
     input_bytes = []
-    availability: list[str] = []
+    availability: list[datetime] = []
     for evidence_path in evidence_paths:
         supplied_path = Path(evidence_path)
         if supplied_path.is_symlink():
@@ -366,7 +393,7 @@ def combine_eto_hindcast_evidence(
         available_at = provenance.get("available_at")
         if not isinstance(available_at, str):
             raise ValueError("ETo input evidence provenance must have available_at")
-        availability.append(available_at)
+        availability.append(_require_utc_text(available_at, "ETo input evidence provenance available_at"))
         for raw_case in raw_cases:
             if not isinstance(raw_case, dict):
                 raise ValueError("ETo input evidence case must be an object")
@@ -387,7 +414,7 @@ def combine_eto_hindcast_evidence(
             "uri": root.resolve().as_uri(),
             "version": "mlet-eto-evidence-bundle-v1",
             "sha256": _sha256(b"".join(input_bytes)),
-            "available_at": max(availability),
+            "available_at": _format_utc(max(availability)),
         },
         "cases": cases,
     }

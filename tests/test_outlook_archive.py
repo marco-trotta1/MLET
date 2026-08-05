@@ -33,14 +33,16 @@ def test_index_archive_assembler_creates_cases_and_index_receipt(tmp_path: Path)
     (source_root / "gefs-index.json").write_text(
         json.dumps(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "kind": "mlet.eto.gefs-index",
                 "issues": [
                     {
                         "case_id": "eto-only-case",
                         "issue_time": "2026-07-01T18:00:00Z",
                         "forecast_directory": ".",
-                        "source_available_at": {"weather": "2026-07-01T18:00:00Z"},
+                        "temporal_role": "retrospective_reforecast",
+                        "source_issue_at": "2026-07-01T18:00:00Z",
+                        "archive_available_at": "2026-07-01T18:00:00Z",
                         "held_out_fold": 4,
                         "held_out_season": "JJA",
                     }

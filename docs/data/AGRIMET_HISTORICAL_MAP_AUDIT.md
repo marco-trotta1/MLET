@@ -59,8 +59,10 @@ The target builder creates one schema-v2 target artifact per station, issue,
 season, and frozen spatial fold. This keeps each target receipt bound to one
 USBR request URI and source version.
 
-The baseline is the arithmetic mean for the same station and day of year from
-years before the issue year. It excludes the evaluated year and future years.
+The baseline is the arithmetic mean for the same station and target day of
+year from calendar years before the target valid date's year. It excludes the
+evaluated target year and future years. A target date, not its issue date, sets
+the year cutoff.
 The case holdout applies to the forecast evaluation. It does not remove the
 target station's own historical observations from this station baseline.
 

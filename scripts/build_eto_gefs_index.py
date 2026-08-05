@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import date, datetime, timezone
 import hashlib
 import json
@@ -13,6 +13,7 @@ from typing import cast
 
 from mlet.outlook.dates import outlook_valid_date
 from mlet.outlook.manifest import RunManifest
+from mlet.outlook.spatial import spatial_fold_for_grid_id
 from mlet.sources.agrimet import AgriMetEtosObservation, normalize_agrimet_etos_rows
 
 
@@ -39,9 +40,15 @@ def build_gefs_case_index(
     rows_path: Path,
     mapping_path: Path,
     destination: Path,
+    station_ids: Sequence[str] | None = None,
 ) -> Path:
     """Build one GEFS index entry for every eligible station-season case."""
-    stream_bytes = Path(stream_index).read_bytes()
+    output = Path(destination)
+    output_root = output.parent.resolve(strict=True)
+    resolved_stream_index, stream_index_relative = _resolve_stream_index_path(
+        Path(stream_index), output_root
+    )
+    stream_bytes = resolved_stream_index.read_bytes()
     stream = _read_json_object(stream_bytes, "GEFS stream index")
     if stream.get("schema_version") != 1 or stream.get("kind") != "mlet.gefs.reforecast-stream-index":
         raise ValueError("GEFS stream index has an unsupported schema")
@@ -59,8 +66,7 @@ def build_gefs_case_index(
     }
     baselines = _prior_year_baselines(observations)
     mappings = _load_mappings(mapping_bytes)
-    output = Path(destination)
-    output_root = output.parent.resolve(strict=True)
+    selected_station_ids = _select_station_ids(mappings, station_ids)
     candidate_directory = Path(candidate_root).resolve(strict=True)
     try:
         candidate_relative = candidate_directory.relative_to(output_root)
@@ -92,10 +98,14 @@ def build_gefs_case_index(
         )
         if manifest.issued_at != issue_time:
             raise ValueError("candidate manifest issued_at must match stream issue_time")
+        archive_available_at = _verified_source_retrieved_at(manifest)
+        if archive_available_at < issue_time:
+            raise ValueError("candidate archive availability must not precede source issue")
+        archive_available_text = _format_utc(archive_available_at)
         cases = []
-        for station_id in sorted(mappings):
+        for station_id in selected_station_ids:
             mapping = mappings[station_id]
-            fold = _fold_for_coordinates(mapping["latitude"], mapping["longitude"])
+            fold = spatial_fold_for_grid_id(mapping["grid_id"])
             for season in ("DJF", "MAM", "JJA", "SON"):
                 if not _has_target_support(
                     station_id=station_id,
@@ -114,7 +124,9 @@ def build_gefs_case_index(
                         "case_id": case_id,
                         "issue_time": issue_text,
                         "forecast_directory": (candidate_relative / candidate_name).as_posix(),
-                        "source_available_at": {"gefs": issue_text},
+                        "temporal_role": "retrospective_reforecast",
+                        "source_issue_at": issue_text,
+                        "archive_available_at": archive_available_text,
                         "held_out_fold": fold,
                         "held_out_season": season,
                     }
@@ -124,18 +136,21 @@ def build_gefs_case_index(
     if not issues:
         raise ValueError("GEFS case index has no eligible station-season cases")
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "kind": "mlet.eto.gefs-index",
         "issues": sorted(issues, key=lambda item: item["case_id"]),
     }
     _write_new(output, _canonical_json_bytes(payload))
     receipt = {
-        "schema_version": 1,
+        "schema_version": 2,
         "kind": "mlet.eto.gefs-case-index-receipt",
         "issue_count": len(issue_seen),
         "case_count": case_count,
-        "station_count": len(mappings),
-        "stream_index_sha256": _sha256(stream_bytes),
+        "station_count": len(selected_station_ids),
+        "stream_index": {
+            "path": stream_index_relative.as_posix(),
+            "sha256": _sha256(stream_bytes),
+        },
         "rows_sha256": _sha256(rows_bytes),
         "mapping_sha256": _sha256(mapping_bytes),
         "gefs_index_sha256": _sha256(output.read_bytes()),
@@ -143,6 +158,43 @@ def build_gefs_case_index(
     receipt_path = output.with_name(f"{output.stem}-receipt.json")
     _write_new(receipt_path, _canonical_json_bytes(receipt))
     return output
+
+
+def _resolve_stream_index_path(
+    stream_index: Path, output_root: Path
+) -> tuple[Path, Path]:
+    """Resolve the stream index and its portable path from the receipt directory."""
+    root = Path(output_root).resolve(strict=True)
+    if not root.is_dir() or root.is_symlink():
+        raise ValueError("GEFS index output directory must be a real directory")
+    try:
+        resolved = Path(stream_index).resolve(strict=True)
+    except OSError as error:
+        raise ValueError("stream index must name an existing file") from error
+    try:
+        relative = resolved.relative_to(root)
+    except ValueError as error:
+        raise ValueError("stream index must remain below the GEFS index output directory") from error
+    if not resolved.is_file() or resolved.is_symlink():
+        raise ValueError("stream index must name a real file")
+    return resolved, relative
+
+
+def _select_station_ids(
+    mappings: Mapping[str, object], station_ids: Sequence[str] | None
+) -> tuple[str, ...]:
+    """Validate and sort the optional station selector."""
+    if station_ids is None:
+        return tuple(sorted(mappings))
+    requested = tuple(station_ids)
+    if not requested:
+        raise ValueError("station selector must name at least one station")
+    if any(not isinstance(station_id, str) or not station_id.strip() for station_id in requested):
+        raise ValueError("station selector IDs must be non-empty text")
+    unknown = sorted(set(requested) - set(mappings))
+    if unknown:
+        raise ValueError(f"unknown station ID(s): {', '.join(unknown)}")
+    return tuple(sorted(set(requested)))
 
 
 def _has_target_support(
@@ -206,12 +258,14 @@ def _load_mappings(contents: bytes) -> dict[str, dict[str, float | str]]:
     return result
 
 
-def _fold_for_coordinates(latitude: float | str, longitude: float | str) -> int:
-    if not isinstance(latitude, (int, float)) or not isinstance(longitude, (int, float)):
-        raise ValueError("mapping coordinates must be numeric")
-    block = f"{int(latitude // 1)}:{int(longitude // 1)}"
-    digest = hashlib.sha256(f"idaho-outlook-v1:{block}".encode("utf-8")).hexdigest()
-    return int(digest[:16], 16) % 5
+def _verified_source_retrieved_at(manifest: RunManifest) -> datetime:
+    sources = tuple(source for source in manifest.sources if source.name == "gefs")
+    if len(sources) != 1:
+        raise ValueError("candidate manifest must contain one gefs source")
+    source = sources[0]
+    if source.retrieved_at != manifest.retrieved_at:
+        raise ValueError("candidate manifest retrieved_at must match the gefs source")
+    return source.retrieved_at
 
 
 def _read_json_object(contents: bytes, label: str) -> dict[str, object]:
@@ -285,6 +339,13 @@ def main() -> int:
     parser.add_argument("--rows", required=True, type=Path)
     parser.add_argument("--mapping", required=True, type=Path)
     parser.add_argument("--gefs-index", required=True, type=Path)
+    parser.add_argument(
+        "--station-id",
+        dest="station_ids",
+        action="append",
+        metavar="STATION_ID",
+        help="Restrict generation to one mapped station. Repeat the option to select more.",
+    )
     args = parser.parse_args()
     build_gefs_case_index(
         stream_index=args.stream_index,
@@ -292,6 +353,7 @@ def main() -> int:
         rows_path=args.rows,
         mapping_path=args.mapping,
         destination=args.gefs_index,
+        station_ids=args.station_ids,
     )
     return 0
 

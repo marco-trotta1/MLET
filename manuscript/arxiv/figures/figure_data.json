@@ -1,0 +1,349 @@
+{
+  "boii_feasibility": {
+    "baseline_mae_mm": 0.5048250000000002,
+    "bootstrap_cluster_count": 1,
+    "case_count": 1,
+    "completion_blocker_count": 424,
+    "coverage": 0.25,
+    "empirical_coverage": 0.25,
+    "mae_mm": 1.1328102850182773,
+    "mean_interval_width_mm": 1.452599383884176,
+    "mean_pinball_loss_mm": 0.3873446216207699,
+    "nominal_coverage": 0.8,
+    "rows": [
+      {
+        "baseline_mm": 4.8895,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 1,
+        "longitude": -116.17694,
+        "p10": 5.546496296337453,
+        "p50": 5.75559667434042,
+        "p90": 5.920946177435071,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-03"
+      },
+      {
+        "baseline_mm": 4.8895,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 2,
+        "longitude": -116.17694,
+        "p10": 5.341472116724894,
+        "p50": 5.554329078098376,
+        "p90": 5.7330192972556935,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-04"
+      },
+      {
+        "baseline_mm": 4.191,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 3,
+        "longitude": -116.17694,
+        "p10": 5.560700226307993,
+        "p50": 6.001762879505236,
+        "p90": 6.398905455848698,
+        "target_mm": 5.334,
+        "valid_date": "2019-07-05"
+      },
+      {
+        "baseline_mm": 4.699,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 4,
+        "longitude": -116.17694,
+        "p10": 5.58801873530849,
+        "p50": 6.206315867483694,
+        "p90": 6.962338079302857,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-06"
+      },
+      {
+        "baseline_mm": 4.762499999999999,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 5,
+        "longitude": -116.17694,
+        "p10": 5.246270318920718,
+        "p50": 5.54054843310112,
+        "p90": 5.79434780400853,
+        "target_mm": 4.571999999999999,
+        "valid_date": "2019-07-07"
+      },
+      {
+        "baseline_mm": 4.699,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 6,
+        "longitude": -116.17694,
+        "p10": 5.1864199672486775,
+        "p50": 5.933098058717399,
+        "p90": 6.277222611125836,
+        "target_mm": 3.8099999999999996,
+        "valid_date": "2019-07-08"
+      },
+      {
+        "baseline_mm": 4.699,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 7,
+        "longitude": -116.17694,
+        "p10": 5.240404581618006,
+        "p50": 6.0531618345922515,
+        "p90": 6.152608600306181,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-09"
+      },
+      {
+        "baseline_mm": 4.191,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 8,
+        "longitude": -116.17694,
+        "p10": 5.261803490918783,
+        "p50": 6.276328063570666,
+        "p90": 6.797683882447645,
+        "target_mm": 3.8099999999999996,
+        "valid_date": "2019-07-10"
+      },
+      {
+        "baseline_mm": 4.064,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 9,
+        "longitude": -116.17694,
+        "p10": 5.878783847060893,
+        "p50": 6.353088251683935,
+        "p90": 7.041875751795829,
+        "target_mm": 5.588,
+        "valid_date": "2019-07-11"
+      },
+      {
+        "baseline_mm": 4.699,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 10,
+        "longitude": -116.17694,
+        "p10": 5.300682410685074,
+        "p50": 5.88961398108178,
+        "p90": 7.175481073051252,
+        "target_mm": 5.588,
+        "valid_date": "2019-07-12"
+      },
+      {
+        "baseline_mm": 4.6354999999999995,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 11,
+        "longitude": -116.17694,
+        "p10": 5.03241769169942,
+        "p50": 6.533867497196986,
+        "p90": 7.382698926733204,
+        "target_mm": 5.334,
+        "valid_date": "2019-07-13"
+      },
+      {
+        "baseline_mm": 4.699,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 12,
+        "longitude": -116.17694,
+        "p10": 5.236181131014937,
+        "p50": 5.817641908381758,
+        "p90": 6.76616032996205,
+        "target_mm": 5.588,
+        "valid_date": "2019-07-14"
+      },
+      {
+        "baseline_mm": 4.762499999999999,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 13,
+        "longitude": -116.17694,
+        "p10": 5.50597849001837,
+        "p50": 6.168681295537244,
+        "p90": 7.48816825631801,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-15"
+      },
+      {
+        "baseline_mm": 5.0165,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 14,
+        "longitude": -116.17694,
+        "p10": 5.555881885583203,
+        "p50": 6.226430170929468,
+        "p90": 7.099578514839516,
+        "target_mm": 4.571999999999999,
+        "valid_date": "2019-07-16"
+      },
+      {
+        "baseline_mm": 4.5085,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 15,
+        "longitude": -116.17694,
+        "p10": 4.664148833825856,
+        "p50": 6.025366082740332,
+        "p90": 7.106347991927972,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-17"
+      },
+      {
+        "baseline_mm": 4.952999999999999,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 16,
+        "longitude": -116.17694,
+        "p10": 5.48433671931381,
+        "p50": 5.705441754982268,
+        "p90": 7.07659081865009,
+        "target_mm": 5.334,
+        "valid_date": "2019-07-18"
+      },
+      {
+        "baseline_mm": 5.0165,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 17,
+        "longitude": -116.17694,
+        "p10": 5.653834855746717,
+        "p50": 6.367754134104908,
+        "p90": 6.975363011540648,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-19"
+      },
+      {
+        "baseline_mm": 4.8895,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 18,
+        "longitude": -116.17694,
+        "p10": 5.01169592674683,
+        "p50": 6.541694085649204,
+        "p90": 7.531710684586335,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-20"
+      },
+      {
+        "baseline_mm": 4.8895,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 19,
+        "longitude": -116.17694,
+        "p10": 5.774401847631378,
+        "p50": 7.352192091785058,
+        "p90": 7.6850009826761445,
+        "target_mm": 5.08,
+        "valid_date": "2019-07-21"
+      },
+      {
+        "baseline_mm": 4.762499999999999,
+        "grid_id": "43.50:-116.00",
+        "latitude": 43.60027,
+        "lead_day": 20,
+        "longitude": -116.17694,
+        "p10": 5.33457230055568,
+        "p50": 6.175293556883442,
+        "p90": 7.090441101139141,
+        "target_mm": 4.571999999999999,
+        "valid_date": "2019-07-22"
+      }
+    ],
+    "station_count": 1,
+    "target_count": 20
+  },
+  "kind": "mlet.arxiv-figure-data",
+  "phase2": {
+    "h2": {
+      "best_openet_free_model": "B2_WeatherRidge",
+      "ci95_mm": [
+        0.39940040090677065,
+        0.9114997667489539
+      ],
+      "mae_delta_mm": 0.6579318561302683,
+      "mae_reduction_fraction": 0.43449722771732197
+    },
+    "models": [
+      {
+        "bias_mm": 0.05848543790417327,
+        "mae_mm": 0.3495935161205248,
+        "name": "B0_Persistence",
+        "rmse_mm": 0.5717634968470112,
+        "sample_count": 1555
+      },
+      {
+        "bias_mm": 0.1492750566190032,
+        "mae_mm": 1.5324851095502567,
+        "name": "B1_CropCoefficient",
+        "rmse_mm": 2.005050436017603,
+        "sample_count": 7923
+      },
+      {
+        "bias_mm": -0.09780005740217465,
+        "mae_mm": 1.5142371784206408,
+        "name": "B2_WeatherRidge",
+        "rmse_mm": 2.687441854711977,
+        "sample_count": 7923
+      },
+      {
+        "bias_mm": 0.1541044357780231,
+        "mae_mm": 0.7841375071094303,
+        "name": "M1_OpenETDirect",
+        "rmse_mm": 1.0662810280153165,
+        "sample_count": 7923
+      },
+      {
+        "bias_mm": 0.00487922297634197,
+        "mae_mm": 0.7812075909524736,
+        "name": "M2_OpenETRecal",
+        "rmse_mm": 1.0600038739076456,
+        "sample_count": 7923
+      },
+      {
+        "bias_mm": -0.012951423143982961,
+        "mae_mm": 0.8563053222903725,
+        "name": "M3_OpenETRidge",
+        "rmse_mm": 1.386460041892388,
+        "sample_count": 7923
+      }
+    ],
+    "station_count": 85
+  },
+  "schema_version": 1,
+  "scope_labels": {
+    "coverage": "empirical p10 to p90 coverage",
+    "empirical_coverage": "empirical p10 to p90 coverage",
+    "grid": "common 0.5-degree GEFS grid-point subset",
+    "nominal_coverage": "nominal p10 to p90 coverage target",
+    "phase2": "station-held-out 10-fold evaluation",
+    "quantile_band": "uncalibrated ensemble p10 to p90 quantile band"
+  },
+  "sources": {
+    "feasibility_evidence": {
+      "evaluation_sha256": "b2ab81b0463d8a01285c05604c32e26dd43335e35052584674ce3413014729c7",
+      "path": "data/outlook/eto_feasibility_archive/evidence.json",
+      "sha256": "3e1f022ea7e0e6f280f9854adae7080f4c308b57da70a578ce9d6c10ae95b075"
+    },
+    "feasibility_outlook": {
+      "path": "data/outlook/eto_feasibility_archive/cases/issue-20190703-station-BOII-season-JJA-fold-2/outlook.json",
+      "sha256": "c0b51331b20f1d15f51de8f0b6a9c4efd8d2a9801fa617686a933b4d07e45163"
+    },
+    "feasibility_target": {
+      "path": "data/outlook/eto_feasibility_archive/cases/issue-20190703-station-BOII-season-JJA-fold-2/target.json",
+      "sha256": "1d5570ab9baf7a4bb978be2069dbff8c89b0f88546442884556f37eb481eb43f"
+    },
+    "phase2_result": {
+      "path": "docs/results/phase2_openet_value.json",
+      "sha256": "a74c86b4f6d351e9d3c560bd95d722cc2d4394a2843fc9e4c02a9b8c427df42e"
+    }
+  },
+  "support": {
+    "cell_count": 400,
+    "feasibility_cell_observations": 20,
+    "minimum_cell_observations": 12000,
+    "minimum_per_cell": 30
+  }
+}

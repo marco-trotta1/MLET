@@ -7,9 +7,9 @@
     "survey_sha256": "9977c34b7cf4634fe77bd72fa7da1dde5687d5395d29de49bcb6a9cd70462197"
   },
   "candidate": {
-    "manifest_sha256": "4acc1e7e2a32f4ee897e96ae4d5f9753186dcac7fcc565dbb5af072677683030",
-    "outlook_sha256": "9476bab0be5cd879d1912a40c73ff5d694d9ae95502d67e8f6d82ee2426adb3b",
-    "run_id": "66c883b65a5b0f6e",
+    "manifest_sha256": "90e5f9b49bf731c272b65bad629bd98a6b77af9a721fb6a7d46dc6172e626bc5",
+    "outlook_sha256": "c0b51331b20f1d15f51de8f0b6a9c4efd8d2a9801fa617686a933b4d07e45163",
+    "run_id": "6624b54881f71661",
     "status": "research_candidate_validation_pending"
   },
   "decode": {
@@ -37,7 +37,7 @@
   },
   "issue_plan": {
     "object_count": 187,
-    "path": "MLET Evidence/gefs-v12-20190703-plan.json",
+    "path": "data/outlook/gefs_reforecast_20190703_plan.json",
     "sha256": "ded7ebb2d449b1d9163368c679961eccccc4c6b0c0c9deb8b8a8f37d79a2a914"
   },
   "issue_time": "2019-07-03T00:00:00Z",

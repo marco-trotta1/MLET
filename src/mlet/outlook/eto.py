@@ -15,7 +15,11 @@ GridDay = tuple[str, date]
 
 
 def eto_for_member(member: WeatherMember) -> float:
-    """Compute daily ASCE short-reference ETo (mm) for one weather member."""
+    """Compute daily ASCE short-reference ETo (mm) for one weather member.
+
+    GEFS wind speed is the vector magnitude at 10 m. pyfao56 performs the
+    standard internal adjustment to the 2 m reference height.
+    """
     eto_mm = float(
         refet.ascedaily(
             "S",
@@ -27,7 +31,7 @@ def eto_for_member(member: WeatherMember) -> float:
             member.tmin_c,
             vapr=member.vapor_pressure_kpa,
             wndsp=member.wind_m_s,
-            wndht=2.0,
+            wndht=10.0,
         )
     )
     if not math.isfinite(eto_mm) or eto_mm < 0:
