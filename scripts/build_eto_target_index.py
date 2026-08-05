@@ -42,6 +42,8 @@ _SEASONS = {
     11: "SON",
 }
 _TARGET_KIND = "mlet.agrimet.historical-target-build-receipt"
+_GEFS_INDEX_SCHEMA_VERSION = 2
+_AGRIMET_INDEX_SCHEMA_VERSION = 1
 
 
 def build_target_index(
@@ -86,6 +88,17 @@ def build_target_index(
         case_id = _require_text(raw_case.get("case_id"), "case_id")
         station_id, declared_season, declared_fold = _case_identity(case_id)
         issue_time = _parse_utc(raw_case.get("issue_time"), "issue_time")
+        temporal_role = raw_case.get("temporal_role")
+        if temporal_role != "retrospective_reforecast":
+            raise ValueError("GEFS temporal_role must be retrospective_reforecast")
+        source_issue_at = _parse_utc(raw_case.get("source_issue_at"), "source_issue_at")
+        archive_available_at = _parse_utc(
+            raw_case.get("archive_available_at"), "archive_available_at"
+        )
+        if source_issue_at != issue_time:
+            raise ValueError("GEFS source_issue_at must match issue_time")
+        if archive_available_at < source_issue_at:
+            raise ValueError("GEFS archive_available_at must not precede source_issue_at")
         if issue_time.strftime("%Y%m%d") != _case_issue_text(case_id):
             raise ValueError("case_id issue date does not match issue_time")
         mapping = mappings.get(station_id)
@@ -150,7 +163,7 @@ def build_target_index(
             "method": "station_day_of_year_mean_prior_to_issue_year",
             "evaluated_year_excluded": True,
             "future_years_excluded": True,
-            "spatial_holdout": "forecast_case_holdout_only",
+            "spatial_holdout": "not_applied_to_fixed_benchmark",
         },
         "case_count": len(target_descriptors),
         "rows_sha256": _sha256(rows_bytes),
@@ -268,8 +281,18 @@ def _load_index(path: Path, expected_kind: str) -> tuple[dict[str, object], Path
         raise ValueError("source index must not be a symlink")
     resolved = supplied.resolve(strict=True)
     payload = _read_json_object(resolved.read_bytes(), "GEFS index")
-    if payload.get("schema_version") != 1 or payload.get("kind") != expected_kind:
-        raise ValueError(f"source index must use kind {expected_kind}")
+    expected_schema_version = (
+        _GEFS_INDEX_SCHEMA_VERSION
+        if expected_kind == "mlet.eto.gefs-index"
+        else _AGRIMET_INDEX_SCHEMA_VERSION
+    )
+    if (
+        payload.get("schema_version") != expected_schema_version
+        or payload.get("kind") != expected_kind
+    ):
+        raise ValueError(
+            f"source index must use schema_version {expected_schema_version} and kind {expected_kind}"
+        )
     if not isinstance(payload.get("issues"), list) or not payload["issues"]:
         raise ValueError("GEFS index issues must be a non-empty list")
     return payload, resolved.parent

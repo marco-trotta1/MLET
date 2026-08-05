@@ -22,8 +22,11 @@ value. The source value is in inches per day. MLET converts it to millimeters
 with the exact factor 25.4. MLET does not recompute this target from forecast
 weather inputs.
 
-The primary baseline is station-specific, day-of-year ETo climatology. Build
-each baseline without the evaluated year or held-out fold. Report p50 MAE,
+The primary baseline is a fixed station-specific, day-of-year ETo climatology.
+For each evaluated target, use every strictly prior calendar year for that
+station and day of year. The evaluated year is absent. Do not remove the
+station because its target grid cell is held out. Spatial fold exclusion
+applies only to learned or tuned components. Report p50 MAE,
 RMSE, and bias; p10-p90 coverage and width; and mean pinball loss over p10,
 p50, and p90. Report paired comparison with the baseline. Use a paired
 bootstrap that clusters by issue date and station.
@@ -62,16 +65,19 @@ recorded assumptions; neither is treated as a generic future actual-ET target.
 
 ## Issue-time cutoff and forecast range
 
-For every historical issue, the input cutoff is the recorded `issued_at_utc`.
-An input is eligible only when immutable source metadata demonstrates that the
-input was issued or observed at or before that cutoff. A weather forecast may
-have a valid date after the cutoff, but its forecast issue must be no later than
-the cutoff. The run receipt stores source issue/observation/valid times, the
-source revision, an input checksum, and the local retrieval timestamp. An
-archived file may be retrieved after the historical issue; that later retrieval
-does not make its content eligible. A later reanalysis, later crop map, or
-satellite value may not be substituted into a historical issue unless it was
-demonstrably available then.
+For an operational historical issue, the input cutoff is the recorded
+`issued_at_utc`. An input is eligible only when immutable source metadata shows
+that it was issued or observed at or before that cutoff. The run receipt stores
+source issue, observation, and valid times, the source revision, an input
+checksum, and the local retrieval timestamp. A later archive retrieval does
+not make an operational input eligible.
+
+The BOII GEFSv12 result is a retrospective reforecast diagnostic. Its receipt
+records the historical `source_issue_at` and the later `archive_available_at`
+separately. The archive availability is `2026-08-04T18:08:54.243122Z`, so this
+case does not claim operational issue-time availability. The retrospective
+chronology checks the source issue against the candidate issue and does not
+reject the case only because the archive was retrieved later.
 
 For OpenET, each selected immutable model/version row records a strict-UTC
 `source_available_at` no later than `issued_at`; the observation date must be a
@@ -136,8 +142,8 @@ actual-ET prediction.
 A hindcast fails when any of the following occurs:
 
 - an input lacks a source version, checksum, or eligible issue-time record;
-- a future value, a late OpenET analysis, or a later annual crop layer crosses
-  the issue-time cutoff;
+- an operational input, a late OpenET analysis, or a later annual crop layer
+  crosses the issue-time cutoff;
 - a lead day, quantile, grid reference, or scenario assumption is missing;
 - the `p10`–`p90` intervals cannot be evaluated for empirical coverage; or
 - a held-out spatial block or season is used by a fitted or tuned component.

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from mlet.outlook.contracts import WeatherMember
 from mlet.outlook.eto_archive import (
+    SourceTiming,
     assemble_eto_hindcast_evidence,
     build_eto_target_artifact,
 )
@@ -91,7 +92,7 @@ def test_eto_evidence_assembler_writes_v4_without_scenario_receipts(
         "2019-07-01T18:00:00Z",
         {"weather": source},
         "test-revision",
-        "2019-07-01T18:00:00Z",
+        "2026-08-04T18:08:54.243122Z",
     )
     forecast_directory = tmp_path / "forecast"
     forecast_directory.mkdir()
@@ -148,7 +149,15 @@ def test_eto_evidence_assembler_writes_v4_without_scenario_receipts(
         issue_time=issue_time,
         forecast_directory=forecast_directory,
         target_path=target_path,
-        source_available_at={"weather": issue_time},
+        source_timing={
+            "weather": SourceTiming(
+                temporal_role="retrospective_reforecast",
+                source_issue_at=issue_time,
+                archive_available_at=datetime(
+                    2026, 8, 4, 18, 8, 54, 243122, tzinfo=timezone.utc
+                ),
+            )
+        },
         held_out_fold=4,
         held_out_season="JJA",
         destination=destination,
@@ -157,4 +166,11 @@ def test_eto_evidence_assembler_writes_v4_without_scenario_receipts(
     evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
     assert evidence["schema_version"] == 4
     assert "scenario_receipt_artifacts" not in evidence["cases"][0]
+    source_receipt_path = destination / "receipts" / "source-weather.json"
+    source_receipt = json.loads(source_receipt_path.read_text(encoding="utf-8"))
+    assert source_receipt["schema_version"] == 2
+    assert source_receipt["temporal_role"] == "retrospective_reforecast"
+    assert source_receipt["source_issue_at"] == "2019-07-01T18:00:00Z"
+    assert source_receipt["archive_available_at"] == "2026-08-04T18:08:54.243122Z"
+    assert "available_at" not in source_receipt
     assert evaluate_eto_hindcast_evidence(evidence_path).case_count == 1

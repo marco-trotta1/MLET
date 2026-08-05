@@ -22,7 +22,7 @@ def test_gefs_case_index_keeps_only_station_season_support(tmp_path: Path) -> No
         "2019-07-03T00:00:00Z",
         {"gefs": source},
         "test-revision",
-        "2019-07-03T00:00:00Z",
+        "2026-08-04T18:08:54.243122Z",
     )
     members = tuple(
         WeatherMember(
@@ -111,7 +111,15 @@ def test_gefs_case_index_keeps_only_station_season_support(tmp_path: Path) -> No
     )
 
     payload = json.loads(index_path.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 2
     assert len(payload["issues"]) == 1
+    assert payload["issues"][0]["temporal_role"] == "retrospective_reforecast"
+    assert payload["issues"][0]["source_issue_at"] == "2019-07-03T00:00:00Z"
+    assert payload["issues"][0]["archive_available_at"] == (
+        "2026-08-04T18:08:54.243122Z"
+    )
+    assert "available_at" not in payload["issues"][0]
+    assert "source_available_at" not in payload["issues"][0]
     assert payload["issues"][0]["case_id"] == (
         "issue-20190703-station-BOII-season-JJA-fold-2"
     )

@@ -93,6 +93,10 @@ def build_gefs_case_index(
         )
         if manifest.issued_at != issue_time:
             raise ValueError("candidate manifest issued_at must match stream issue_time")
+        archive_available_at = _verified_source_retrieved_at(manifest)
+        if archive_available_at < issue_time:
+            raise ValueError("candidate archive availability must not precede source issue")
+        archive_available_text = _format_utc(archive_available_at)
         cases = []
         for station_id in sorted(mappings):
             mapping = mappings[station_id]
@@ -115,7 +119,9 @@ def build_gefs_case_index(
                         "case_id": case_id,
                         "issue_time": issue_text,
                         "forecast_directory": (candidate_relative / candidate_name).as_posix(),
-                        "source_available_at": {"gefs": issue_text},
+                        "temporal_role": "retrospective_reforecast",
+                        "source_issue_at": issue_text,
+                        "archive_available_at": archive_available_text,
                         "held_out_fold": fold,
                         "held_out_season": season,
                     }
@@ -125,7 +131,7 @@ def build_gefs_case_index(
     if not issues:
         raise ValueError("GEFS case index has no eligible station-season cases")
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "kind": "mlet.eto.gefs-index",
         "issues": sorted(issues, key=lambda item: item["case_id"]),
     }
@@ -205,6 +211,16 @@ def _load_mappings(contents: bytes) -> dict[str, dict[str, float | str]]:
             "distance_km": _require_number(raw.get("distance_km"), "mapping distance_km"),
         }
     return result
+
+
+def _verified_source_retrieved_at(manifest: RunManifest) -> datetime:
+    sources = tuple(source for source in manifest.sources if source.name == "gefs")
+    if len(sources) != 1:
+        raise ValueError("candidate manifest must contain one gefs source")
+    source = sources[0]
+    if source.retrieved_at != manifest.retrieved_at:
+        raise ValueError("candidate manifest retrieved_at must match the gefs source")
+    return source.retrieved_at
 
 
 def _read_json_object(contents: bytes, label: str) -> dict[str, object]:

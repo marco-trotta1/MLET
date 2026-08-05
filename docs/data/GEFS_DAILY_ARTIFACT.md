@@ -82,6 +82,15 @@ planned objects available: 11 members, 2 segments, 9 components, and
 `data/outlook/gefs_reforecast_20190703_availability.json`. It is an
 availability result, not a downloaded or decoded hindcast.
 
+The ETo GEFS case index uses schema version 2. Each case records
+`temporal_role: "retrospective_reforecast"`, the historical `source_issue_at`,
+and the verified `archive_available_at`. The source issue is the candidate
+issue time. The archive availability is the source manifest `retrieved_at`,
+which is `2026-08-04T18:08:54.243122Z` for the BOII diagnostic. A source receipt
+uses schema version 2 with these three timing fields. It does not use a generic
+`available_at` field. This record is a retrospective diagnostic, not an
+operational issue-time forecast claim.
+
 The raw archive stores GRIB fields separately. A decoder must select the
 documented 2 m maximum and minimum temperature, 2 m humidity, surface pressure,
 10 m wind components, downwelling shortwave radiation, and precipitation. It

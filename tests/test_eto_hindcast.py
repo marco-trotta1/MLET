@@ -133,7 +133,7 @@ def _write_eto_evidence(tmp_path: Path) -> Path:
     source_receipt_path.write_text(
         json.dumps(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "kind": "idaho_outlook_hindcast_source_receipt",
                 "case_id": case_id,
                 "run_id": manifest.run_id,
@@ -141,7 +141,9 @@ def _write_eto_evidence(tmp_path: Path) -> Path:
                 "uri": source.resolve().as_uri(),
                 "source_version": "test-revision",
                 "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
-                "available_at": issue,
+                "temporal_role": "retrospective_reforecast",
+                "source_issue_at": issue,
+                "archive_available_at": issue,
             }
         ),
         encoding="utf-8",
@@ -179,7 +181,7 @@ def _write_eto_evidence(tmp_path: Path) -> Path:
                     "uri": "https://archive.example.org/idaho",
                     "version": "archive-v1",
                     "sha256": "b" * 64,
-                    "available_at": issue,
+                    "available_at": target_available,
                 },
                 "cases": [
                     {
@@ -345,6 +347,38 @@ def test_eto_hindcast_rejects_a_target_descriptor_with_a_different_source(
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
 
     with pytest.raises(ValueError, match="target artifact receipt URI"):
+        evaluate_eto_hindcast_evidence(evidence_path)
+
+
+def test_eto_hindcast_rejects_issue_time_provenance_for_late_archive(
+    tmp_path: Path,
+) -> None:
+    evidence_path = _write_eto_evidence(tmp_path)
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence["provenance"]["available_at"] = _ISSUE_TIME.strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="latest real source or target availability"):
+        evaluate_eto_hindcast_evidence(evidence_path)
+
+
+def test_eto_hindcast_rejects_legacy_generic_source_availability(
+    tmp_path: Path,
+) -> None:
+    evidence_path = _write_eto_evidence(tmp_path)
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    receipt_path = tmp_path / "weather-receipt.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt["available_at"] = receipt.pop("archive_available_at")
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    evidence["cases"][0]["source_receipt_artifacts"][0]["sha256"] = hashlib.sha256(
+        receipt_path.read_bytes()
+    ).hexdigest()
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="source receipt fields must match the schema exactly"):
         evaluate_eto_hindcast_evidence(evidence_path)
 
 

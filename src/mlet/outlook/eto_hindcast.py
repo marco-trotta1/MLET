@@ -20,6 +20,7 @@ from urllib.parse import urlparse
 
 from mlet.outlook.dates import idaho_local_date, idaho_local_day_end_utc, outlook_valid_date
 from mlet.outlook.eto_contract import validate_eto_candidate_payload
+from mlet.outlook.eto_archive import SourceTiming
 from mlet.outlook.manifest import RunManifest
 from mlet.outlook.spatial import spatial_block_for_grid_id, spatial_fold_for_grid_id
 
@@ -214,6 +215,7 @@ def evaluate_eto_hindcast_evidence(path: Path) -> EtoHindcastReport:
     forecast_revisions: set[str] = set()
     exclusions: list[EtoExclusion] = []
     blockers: list[str] = []
+    case_availability: list[datetime] = []
     for index, raw_case in enumerate(raw_cases):
         (
             case_rows,
@@ -222,6 +224,7 @@ def evaluate_eto_hindcast_evidence(path: Path) -> EtoHindcastReport:
             case_blockers,
             forecast_revision,
             case_exclusions,
+            case_available_at,
         ) = _parse_case(
             raw_case, root, index
         )
@@ -231,10 +234,23 @@ def evaluate_eto_hindcast_evidence(path: Path) -> EtoHindcastReport:
         blockers.extend(case_blockers)
         forecast_revisions.add(forecast_revision)
         exclusions.extend(case_exclusions)
+        case_availability.append(case_available_at)
         assert isinstance(raw_case, dict)
         target = raw_case["target"]
         assert isinstance(target, dict)
         target_sources.add((target["uri"], target["source_version"]))  # type: ignore[arg-type]
+
+    provenance = evidence["provenance"]
+    assert isinstance(provenance, dict)
+    if case_availability:
+        expected_available_at = max(case_availability)
+        supplied_available_at = _parse_utc(
+            provenance["available_at"], "evidence provenance available_at"
+        )
+        if supplied_available_at != expected_available_at:
+            raise ValueError(
+                "evidence provenance available_at must equal the latest real source or target availability"
+            )
 
     if not rows:
         blockers.append("no historical ETo targets were supplied")
@@ -331,7 +347,8 @@ def write_eto_hindcast_markdown(report: EtoHindcastReport, destination: Path) ->
     lines.extend(
         [
             "",
-            "The baseline is leakage-safe station and day-of-year climatology.",
+            "The fixed baseline uses every strictly prior year for the same station and day of year.",
+            "Spatial fold exclusion applies to learned or tuned components, not this fixed benchmark.",
             f"Excluded target dates: {len(report.exclusions)}.",
             f"Paired bootstrap clusters: {report.bootstrap_cluster_definition}; "
             f"seed {report.bootstrap_seed}; replicates {report.bootstrap_replicates}.",
@@ -414,7 +431,15 @@ def write_eto_hindcast_json(report: EtoHindcastReport, destination: Path) -> Pat
 
 def _parse_case(
     value: object, root: Path, case_index: int
-) -> tuple[list[_EtoRow], int, str, list[str], str, tuple[EtoExclusion, ...]]:
+) -> tuple[
+    list[_EtoRow],
+    int,
+    str,
+    list[str],
+    str,
+    tuple[EtoExclusion, ...],
+    datetime,
+]:
     _require_exact_keys(
         value,
         {"case_id", "issue_time", "forecast", "target", "source_receipt_artifacts", "holdout_receipt"},
@@ -448,7 +473,7 @@ def _parse_case(
         raise ValueError("forecast artifact hash does not match verified manifest outlook.json")
     forecast_payload = _read_json(forecast_bytes, "forecast artifact")
     _validate_forecast(forecast_payload, manifest.run_id, issue_time)
-    _validate_source_receipts(
+    source_archive_available_at = _validate_source_receipts(
         value["source_receipt_artifacts"], root, manifest, issue_time, case_id
     )
 
@@ -482,7 +507,15 @@ def _parse_case(
     held_fold, held_season, blockers = _validate_holdout(
         holdout, rows, issue_time, case_index
     )
-    return rows, held_fold, held_season, blockers, manifest.git_revision, exclusions
+    return (
+        rows,
+        held_fold,
+        held_season,
+        blockers,
+        manifest.git_revision,
+        exclusions,
+        max(source_archive_available_at, target_available),
+    )
 
 
 def _validate_forecast(payload: object, run_id: str, issue_time: datetime) -> None:
@@ -499,7 +532,7 @@ def _validate_source_receipts(
     manifest: RunManifest,
     issue_time: datetime,
     case_id: str,
-) -> None:
+) -> datetime:
     if not isinstance(descriptors, list):
         raise ValueError("source_receipt_artifacts must be a list")
     manifest_sources = {source.name: source for source in manifest.sources}
@@ -512,11 +545,23 @@ def _validate_source_receipts(
         receipt = _read_json(content, "source receipt")
         _require_exact_keys(
             receipt,
-            {"schema_version", "kind", "case_id", "run_id", "name", "uri", "source_version", "sha256", "available_at"},
+            {
+                "schema_version",
+                "kind",
+                "case_id",
+                "run_id",
+                "name",
+                "uri",
+                "source_version",
+                "sha256",
+                "temporal_role",
+                "source_issue_at",
+                "archive_available_at",
+            },
             "source receipt",
         )
         assert isinstance(receipt, dict)
-        if receipt.get("schema_version") != 1 or receipt.get("kind") != "idaho_outlook_hindcast_source_receipt":
+        if receipt.get("schema_version") != 2 or receipt.get("kind") != "idaho_outlook_hindcast_source_receipt":
             raise ValueError("source receipt has an unsupported schema")
         if receipt.get("case_id") != case_id or receipt.get("run_id") != manifest.run_id:
             raise ValueError("source receipt does not bind its case and run")
@@ -526,12 +571,31 @@ def _validate_source_receipts(
         receipts[name] = receipt
     if set(receipts) != set(manifest_sources):
         raise ValueError("source receipts must bind every manifest source exactly once")
+    archive_times: list[datetime] = []
     for name, receipt in receipts.items():
         source = manifest_sources[name]
         if receipt["uri"] != source.uri or receipt["sha256"] != source.sha256:
             raise ValueError("source receipt identity does not match verified manifest")
-        if _parse_utc(receipt["available_at"], "source receipt available_at") > issue_time:
-            raise ValueError("source receipt was available after case issue_time")
+        timing = SourceTiming(
+            temporal_role=_require_text(
+                receipt["temporal_role"], "source receipt temporal_role"
+            ),
+            source_issue_at=_parse_utc(
+                receipt["source_issue_at"], "source receipt source_issue_at"
+            ),
+            archive_available_at=_parse_utc(
+                receipt["archive_available_at"],
+                "source receipt archive_available_at",
+            ),
+        )
+        if timing.source_issue_at != issue_time:
+            raise ValueError("source receipt source_issue_at must match case issue_time")
+        if timing.archive_available_at != source.retrieved_at:
+            raise ValueError(
+                "source receipt archive_available_at must match manifest source retrieved_at"
+            )
+        archive_times.append(timing.archive_available_at)
+    return max(archive_times)
 
 
 def _parse_targets(
