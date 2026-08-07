@@ -306,6 +306,125 @@ def _text(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
+# The chrome carries no colour: viridis belongs to the data, and the grid is
+# the only place data appears. Hierarchy comes from rules, size, and case.
+# Nothing on either page is a bordered box, and no webfont is requested, so
+# the viewer stays self-contained and offline.
+_CSS = """
+:root{color-scheme:light dark;
+--paper:#fff;--ink:#0e100f;--ink-2:#565a58;--ink-3:#8b908d;
+--line:#e7e8e5;--line-2:#c6c9c5;--amber:#a06a0c;
+--sans:"Söhne","Sohne","Inter",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+--mono:"Söhne Mono","Berkeley Mono","IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--paper:#0b0d0c;--ink:#edeeeb;--ink-2:#9ba09d;
+--ink-3:#6c716e;--line:#1c1f1d;--line-2:#343836;--amber:#d8a54a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+font-size:13px;line-height:1.5;font-variant-numeric:tabular-nums;
+-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--line-2);
+text-underline-offset:2px}
+a:hover{text-decoration-color:var(--ink)}
+h1{margin:0;font-size:clamp(20px,2.1vw,26px);font-weight:600;letter-spacing:-.017em;
+line-height:1.2;max-width:36ch}
+h2{margin:0 0 10px;font-size:10px;font-weight:600;letter-spacing:.11em;
+text-transform:uppercase;color:var(--ink-3)}
+h2 .sn{margin-right:10px;font-family:var(--mono);opacity:.5}
+h3{margin:17px 0 6px;font-size:12px;font-weight:600}
+p{margin:0 0 9px;max-width:78ch}
+.bar{display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+padding:9px 0 8px;border-bottom:1px solid var(--line)}
+.wm{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.14em;
+text-transform:uppercase;text-decoration:none}
+.bar-meta{font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--ink-3)}
+.kicker{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+color:var(--ink-3);margin:0 0 7px}
+.lede{margin:11px 0 0;max-width:74ch;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.sub{color:var(--ink-2)}
+.fine{font-size:11.5px;line-height:1.5;color:var(--ink-3);max-width:86ch}
+.status{margin:16px 0 0;padding-left:11px;border-left:2px solid var(--amber);max-width:84ch}
+.status b{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.1em;
+text-transform:uppercase;color:var(--amber);margin-right:9px}
+.status span{font-size:12px;color:var(--ink-2)}
+.spec{display:grid;grid-template-columns:repeat(6,1fr);margin:22px 0 0;
+border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.spec>div{padding:8px 14px;border-left:1px solid var(--line)}
+.spec>div:first-child{padding-left:0;border-left:0}
+.spec dt{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+color:var(--ink-3);white-space:nowrap}
+.spec dd{margin:3px 0 0;font-family:var(--mono);font-size:13.5px;color:var(--ink)}
+section{margin-top:28px;padding-top:11px;border-top:1px solid var(--line)}
+table{width:100%;border-collapse:collapse}
+caption{text-align:left;color:var(--ink-3);font-size:11px;padding-bottom:6px}
+th{text-align:left;font-size:9.5px;font-weight:600;letter-spacing:.09em;
+text-transform:uppercase;color:var(--ink-3);padding:0 14px 5px 0;
+border-bottom:1px solid var(--line-2);white-space:nowrap}
+td{padding:5px 14px 5px 0;border-bottom:1px solid var(--line);font-family:var(--mono);
+font-size:11.5px;color:var(--ink-2);vertical-align:baseline}
+td.k{font-family:var(--sans);font-size:12px;color:var(--ink);white-space:nowrap}
+th:last-child,td:last-child{padding-right:0}
+.num{text-align:right}
+.dot{display:inline-block;width:5px;height:5px;margin-right:7px;border-radius:50%;
+background:var(--amber);vertical-align:middle}
+/* Bars are data marks, not chrome: they put the effect size on the same row as
+   the number so the gap to the baselines is legible without a second figure. */
+td.bar{width:112px;padding-right:0}
+td.bar i{display:block;height:5px;background:var(--ink-2)}
+tr.base td.bar i{background:var(--line-2)}
+.meter{position:relative;display:block;width:150px;height:5px;margin-top:5px;
+background:var(--line)}
+.meter i{display:block;height:100%;background:var(--ink-2)}
+.meter b{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--amber)}
+.ledger th{width:186px;font-family:var(--sans);font-size:11.5px;font-weight:400;
+letter-spacing:0;text-transform:none;color:var(--ink-3);padding:5px 18px 5px 0;
+border-bottom:1px solid var(--line);vertical-align:baseline}
+.ledger td{overflow-wrap:anywhere}
+.run{margin:0;padding:1px 0 1px 11px;border-left:2px solid var(--line-2);
+font-family:var(--mono);font-size:11.5px;line-height:1.72;color:var(--ink-2);
+overflow-x:auto}
+footer{margin-top:32px;padding-top:10px;border-top:1px solid var(--line);display:flex;
+flex-wrap:wrap;gap:18px;font-size:11.5px;color:var(--ink-3)}
+@media (max-width:720px){
+h1{max-width:none}
+.bar{flex-direction:column;align-items:flex-start;gap:5px}
+.spec{grid-template-columns:1fr 1fr;border-bottom:0}
+.spec>div{padding:8px 12px;border-left:1px solid var(--line);
+border-bottom:1px solid var(--line)}
+.spec>div:nth-child(odd){padding-left:0;border-left:0}
+td.bar{display:none}
+}
+"""
+
+_ROOT_CSS = """
+main{max-width:1080px;margin:0 auto;padding:0 24px 52px}
+.hero{padding:26px 0 0}
+.jump{margin:16px 0 0;font-size:13px}
+.pair{display:grid;grid-template-columns:1fr 1fr}
+.pair>div{padding-right:28px}
+.pair>div+div{padding:0 0 0 28px;border-left:1px solid var(--line)}
+.pair h3{margin:0 0 5px}
+.pair p{margin:0;font-size:12px;color:var(--ink-2)}
+.lim{margin:0;padding:0;list-style:none}
+.lim li{padding:4px 0;border-bottom:1px solid var(--line);font-size:11.5px;
+line-height:1.45;color:var(--ink-3)}
+.lim li:last-child{border-bottom:0}
+.two{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:0}
+.two.even{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.two>div+div{padding-left:30px;margin-left:30px;border-left:1px solid var(--line)}
+@media (max-width:900px){
+.two{grid-template-columns:1fr}
+.two>div+div{margin:22px 0 0;padding:18px 0 0;border-left:0;border-top:1px solid var(--line)}
+}
+@media (max-width:720px){
+main{padding:0 16px 40px}
+.hero{padding:20px 0 0}
+.pair{grid-template-columns:1fr}
+.pair>div{padding:0}
+.pair>div+div{margin-top:16px;padding:16px 0 0;border-left:0;border-top:1px solid var(--line)}
+}
+"""
+
+
 def _root_html(
     viewer_data: dict[str, object], candidate_sha256: str, source_manifest_sha256: str
 ) -> str:
@@ -315,108 +434,641 @@ def _root_html(
     assert isinstance(provenance, dict)
     days = viewer_data["days"]
     assert isinstance(days, list)
-    fields = (
-        ("run ID", run["run_id"]),
-        ("issued at", run["issued_at"]),
+    layer = viewer_data["layer"]
+    assert isinstance(layer, dict)
+    issued_at = str(run["issued_at"])
+    issue_short = f"{issued_at[:10]} {issued_at[11:13]}Z"
+    first_cells = days[0]["cells"] if days else []
+    assert isinstance(first_cells, list)
+    latitudes = sorted({float(cell["latitude"]) for cell in first_cells})
+    spacing = (
+        min(upper - lower for lower, upper in zip(latitudes, latitudes[1:]))
+        if len(latitudes) > 1
+        else 0.0
+    )
+    ledger = (
+        ("Run ID", run["run_id"]),
+        ("Issue time", issued_at),
+        ("Retrieved at", provenance["retrieved_at"]),
         ("Git revision", provenance["git_revision"]),
-        ("candidate SHA-256", candidate_sha256),
-        ("source manifest SHA-256", source_manifest_sha256),
+        ("Candidate SHA-256", candidate_sha256),
+        ("Source manifest SHA-256", source_manifest_sha256),
         ("GEFS artifact SHA-256", provenance["upstream_sha256"]),
+        ("Upstream source", provenance["upstream_uri"]),
     )
-    rows = "".join(
-        f"<tr><th scope=\"row\">{html.escape(str(label))}</th><td>{html.escape(str(value))}</td></tr>"
-        for label, value in fields
+    def _ledger_rows(entries: tuple[tuple[str, object], ...]) -> str:
+        return "".join(
+            f'<tr><th scope="row">{html.escape(str(label))}</th>'
+            f"<td>{html.escape(str(value))}</td></tr>"
+            for label, value in entries
+        )
+
+    split = (len(ledger) + 1) // 2
+    ledger_rows_left = _ledger_rows(ledger[:split])
+    ledger_rows_right = _ledger_rows(ledger[split:])
+    # Phase 2 station-held-out figures mirror docs/results/phase2_openet_value.md.
+    # The BOII figures mirror manuscript/manuscript.md. Both are frozen results.
+    phase2 = (
+        ("M2_OpenETRecal", 0.781, "1.060", "0.005", False),
+        ("M1_OpenETDirect", 0.784, "1.066", "0.154", False),
+        ("M3_OpenETRidge", 0.856, "1.386", "-0.013", False),
+        ("B2_WeatherRidge", 1.514, "2.687", "-0.098", True),
+        ("B1_CropCoefficient", 1.532, "2.005", "0.149", True),
     )
+    worst_mae = max(row[1] for row in phase2)
+    phase2_rows = "".join(
+        ('<tr class="base">' if baseline else "<tr>")
+        + (
+            f'<td class="k">{name}</td><td class="num">{mae:.3f}</td>'
+            f'<td class="num">{rmse}</td><td class="num">{bias}</td>'
+            f'<td class="num">7923</td><td class="bar">'
+            f'<i style="width:{mae / worst_mae * 100:.1f}%"></i></td></tr>'
+        )
+        for name, mae, rmse, bias, baseline in phase2
+    )
+    coverage_meter = (
+        '<span class="meter" aria-hidden="true"><i style="width:25%"></i>'
+        '<b style="left:80%"></b></span>'
+    )
+    boii = (
+        ("GEFS ETo forecast, MAE", "1.133 mm/day"),
+        ("Prior-year climatology, MAE", "0.505 mm/day"),
+        ("Baseline minus forecast", "-0.628 mm/day, forecast worse"),
+        ("p10 to p90 coverage", f"0.25, nominal 0.80{coverage_meter}"),
+        ("Mean band width", "1.453 mm/day"),
+        ("Support", "1 issue, 1 station, 20 targets"),
+        ("Paired interval", "not identified, 1 bootstrap cluster"),
+    )
+    boii_rows = "".join(
+        f'<tr><th scope="row">{label}</th><td>{value}</td></tr>'
+        for label, value in boii
+    )
+    # Verbatim from the manuscript limitations section.
+    limitations = (
+        "The full 365-issue GEFS and AgriMet outcome archive is absent.",
+        "Full-archive reference-ETo skill remains pending.",
+        "Historical location evidence covers 19 stations.",
+        "The weather artifact has grid points, not field boundaries or area weights.",
+        "The Phase 2 result does not measure future forecast performance.",
+        "The BOII uncertainty is not estimable with one bootstrap cluster.",
+    )
+    limitation_items = "".join(f"<li>{item}</li>" for item in limitations)
     return f"""<!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MLET ETo research candidate</title>
-<style>
-:root {{ color-scheme: light dark; --paper:#f1ecdf; --panel:#fcfbf7; --ink:#17252e; --muted:#5d6870; --line:#c9c1b3; --navy:#173f54; --rust:#b45132; --gold:#d7a43e; --warn:#704918; --warn-bg:#f7e8c9; }}
-@media (prefers-color-scheme: dark) {{ :root {{ --paper:#121a1e; --panel:#1a252a; --ink:#edf1ed; --muted:#aeb9bc; --line:#425058; --navy:#8ec7d8; --rust:#e48a67; --gold:#ebc56f; --warn:#f0c889; --warn-bg:#302719; }} }}
-* {{ box-sizing:border-box; }} body {{ margin:0; background:var(--paper); color:var(--ink); font:16px/1.55 system-ui,sans-serif; }} main {{ max-width:980px; margin:auto; padding:28px 20px 68px; }} .eyebrow {{ color:var(--rust); font:700 12px/1.2 ui-monospace,monospace; letter-spacing:.14em; text-transform:uppercase; }} h1 {{ margin:8px 0 10px; max-width:18ch; font:700 clamp(2.3rem,6vw,4.8rem)/.98 Georgia,serif; letter-spacing:-.04em; }} h2 {{ margin:34px 0 10px; font-size:1.05rem; }} a {{ color:var(--navy); }} .dek {{ max-width:62ch; color:var(--muted); font-size:1.08rem; }} .banner {{ padding:15px 17px; border-left:5px solid var(--rust); background:var(--warn-bg); }} .status {{ display:flex; gap:8px; flex-wrap:wrap; margin:20px 0 24px; }} .chip {{ border:1px solid var(--line); border-radius:3px; padding:5px 9px; font:12px ui-monospace,monospace; }} .stats {{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:25px 0; }} .stat {{ padding:14px; border-top:3px solid var(--navy); background:var(--panel); }} .stat strong {{ display:block; font:700 1.7rem/1.1 Georgia,serif; }} .stat span {{ display:block; margin-top:5px; color:var(--muted); font-size:.88rem; }} .ledger {{ border-top:1px solid var(--line); border-bottom:1px solid var(--line); }} table {{ border-collapse:collapse; width:100%; }} th,td {{ border-bottom:1px solid var(--line); padding:10px; text-align:left; vertical-align:top; }} th {{ width:220px; color:var(--muted); font-weight:600; }} code {{ overflow-wrap:anywhere; font:12px ui-monospace,monospace; }} pre {{ overflow:auto; padding:14px 16px; border:1px solid var(--line); background:var(--panel); color:var(--ink); font:13px/1.6 ui-monospace,monospace; }} .note {{ color:var(--muted); font-size:.9rem; }} .button {{ display:inline-block; margin-top:12px; padding:10px 15px; border:1px solid var(--navy); background:var(--navy); color:var(--paper); text-decoration:none; }} .boundary {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }} .boundary div {{ padding:14px; border:1px solid var(--line); background:var(--panel); }} .boundary strong {{ display:block; margin-bottom:5px; color:var(--rust); }} @media (max-width:680px) {{ main {{ padding:22px 14px 52px; }} .stats,.boundary {{ grid-template-columns:1fr; }} }}
-</style></head>
+<title>MLET reference evapotranspiration outlook</title>
+<style>{_CSS}{_ROOT_CSS}</style></head>
 <body><main>
-<p class="eyebrow">MLET / research artifact</p>
-<h1>One archived issue. One clear evidence boundary.</h1>
-<p class="dek">A static viewer for the 2019-07-03 GEFSv12 ETo candidate. Read it as a reproducibility record, not as a live forecast product.</p>
-<p class="banner"><strong>Research candidate.</strong> This artifact is not validated, promoted, or an operational irrigation recommendation.</p>
-<div class="status"><span class="chip">research_candidate</span><span class="chip">evaluation_pending</span><span class="chip">not_promoted</span></div>
-<section class="stats" aria-label="Artifact summary"><div class="stat"><strong>{html.escape(str(run["issued_at"]))}</strong><span>GEFS issue time</span></div><div class="stat"><strong>{len(days)}</strong><span>lead dates, each in mm/day</span></div><div class="stat"><strong>{html.escape(str(viewer_data["grid_count"]))}</strong><span>native weather-grid cells</span></div></section>
-<div class="boundary"><div><strong>Use this page to</strong>inspect ETo quantiles, source identity, issue time, and file checksums.</div><div><strong>Do not use this page to</strong>claim forecast skill, define field boundaries, or make irrigation decisions.</div></div>
-<a class="button" href="outlook/">Open the ETo viewer</a>
-<h2>Evidence ledger</h2><div class="ledger"><table><tbody>{rows}</tbody></table></div>
-<p><a href="outlook/source/outlook.json">Candidate JSON</a> · <a href="outlook/source/manifest.json">Source manifest</a> · <a href="outlook/viewer-data.json">Viewer data</a></p>
-<h2>Run locally</h2><p>Run these commands from the repository root. The builder checks the candidate and writes a self-contained static site.</p><pre><code>python3 scripts/build_eto_site.py --source-dir data/outlook/gefs_reforecast_20190703_candidate --out /tmp/mlet-eto-site
-python3 -m http.server 8000 --directory /tmp/mlet-eto-site
-open http://localhost:8000/</code></pre><p class="note">The site reads local JSON files. Serve it over HTTP because browsers block local fetch requests from a file path.</p>
+<header class="bar"><span class="wm">MLET</span>
+<span class="bar-meta">Idaho reference evapotranspiration</span></header>
+
+<div class="hero">
+<p class="kicker">Reference ETo candidate</p>
+<h1>Twenty lead days of reference ET, from one archived weather issue.</h1>
+<p class="lede">One ASCE standardized short-reference ETo candidate on the native GEFS
+grid. Every cell carries p10, p50, and p90 from the weather ensemble. Every file
+carries a checksum.</p>
+<p class="status"><b>Validation status</b><span>Evaluation pending. This candidate is
+not validated, not promoted, and not an irrigation recommendation. The reference-ETo
+skill question stays open until the full archive hindcast runs.</span></p>
+<dl class="spec">
+<div><dt>GEFS issue</dt><dd>{html.escape(issue_short)}</dd></div>
+<div><dt>Lead days</dt><dd>{len(days)}</dd></div>
+<div><dt>Grid cells</dt><dd>{html.escape(str(viewer_data["grid_count"]))}</dd></div>
+<div><dt>Spacing</dt><dd>{spacing:g} deg</dd></div>
+<div><dt>Layer</dt><dd>{html.escape(str(layer["id"]))}</dd></div>
+<div><dt>Units</dt><dd>{html.escape(str(layer["units"]))}</dd></div>
+</dl>
+<p class="jump"><a href="outlook/">Open the grid viewer</a></p>
+</div>
+
+<section>
+<h2><span class="sn">01</span>Layer boundary</h2>
+<div class="pair">
+<div><h3>What eto_mm reports</h3>
+<p>{html.escape(str(layer["definition"]))} Millimeters per day at common
+{spacing:g} degree GEFS grid points, from empirical quantiles over the sorted
+ensemble members.</p></div>
+<div><h3>What eto_mm does not report</h3>
+<p>It is not observed ET, crop ET, soil water, or field condition. A grid point is a
+weather reference. It is not a field boundary, and the band is uncalibrated.</p></div>
+</div>
+</section>
+
+<section>
+<h2><span class="sn">02</span>Retrospective daily actual ET</h2>
+<p class="fine">85 stations, station-held-out 10-fold evaluation on the
+weather-complete public subset. All rows share the same 7,923 common fitted-model
+station-days. Baselines are shown in the lighter tone. This is daily-ET evidence
+only, and it is not validation of the outlook below.</p>
+<table>
+<thead><tr><th>Model</th><th class="num">MAE</th><th class="num">RMSE</th>
+<th class="num">Bias</th><th class="num">n</th><th class="bar"></th></tr></thead>
+<tbody>{phase2_rows}</tbody>
+</table>
+<p class="fine" style="margin-top:9px">Preregistered comparison: M3 OpenETRidge against
+B2 WeatherRidge, the better OpenET-free baseline. MAE is 43.4% lower, a difference of
+0.658 mm/day, station-blocked 95% CI 0.399 to 0.911 mm/day. B0 persistence reaches MAE
+0.350 mm/day on 1,555 consecutive-day pairs, but it reads the previous observed day and
+stays an oracle-like diagnostic, not a comparable model.</p>
+</section>
+
+<section>
+<h2><span class="sn">03</span>Reference ETo outlook, BOII diagnostic</h2>
+<div class="two">
+<div>
+<p class="fine">One retrospective reforecast case against published AgriMet ETos. The
+signed result is negative: the forecast loses to fixed station and target-day
+climatology from strictly prior calendar years.</p>
+<table class="ledger"><tbody>{boii_rows}</tbody></table>
+<p class="fine" style="margin-top:9px">The case sits below the 30-target support rule,
+so it supports no skill claim in either direction.</p>
+</div>
+<div><h3 style="margin-top:0">Limitations</h3>
+<ul class="lim">{limitation_items}</ul></div>
+</div>
+</section>
+
+<section>
+<h2><span class="sn">04</span>Artifact ledger</h2>
+<div class="two even">
+<div><table class="ledger"><tbody>{ledger_rows_left}</tbody></table></div>
+<div><table class="ledger"><tbody>{ledger_rows_right}</tbody></table></div>
+</div>
+<p class="fine" style="margin-top:9px">Files:
+<a href="outlook/source/outlook.json">candidate JSON</a> ·
+<a href="outlook/source/manifest.json">source manifest</a> ·
+<a href="outlook/viewer-data.json">viewer data</a> ·
+<a href="manifest.json">site manifest</a></p>
+</section>
+
+<section>
+<h2><span class="sn">05</span>Run locally</h2>
+<pre class="run">python3 scripts/build_eto_site.py \\
+  --source-dir data/outlook/gefs_reforecast_20190703_candidate \\
+  --out /tmp/mlet-eto-site
+python3 -m http.server 8000 --directory /tmp/mlet-eto-site</pre>
+<p class="fine" style="margin-top:9px">The builder verifies the candidate against its
+manifest and writes a self-contained static site. Serve the output over HTTP: the pages
+read local JSON, and browsers block those reads from a file path.</p>
+</section>
+
+<footer>
+<span>MLET · open-source machine learning evapotranspiration</span>
+<a href="https://github.com/marco-trotta1/MLET/blob/main/docs/outlook/PRODUCT_CONTRACT.md">Product contract</a>
+<a href="https://github.com/marco-trotta1/MLET/blob/main/docs/evaluation/OUTLOOK_PREREGISTRATION.md">Preregistration</a>
+<a href="https://github.com/marco-trotta1/MLET/blob/main/docs/data/DATA_CARD.md">Data card</a>
+<a href="https://github.com/marco-trotta1/MLET">Repository</a>
+</footer>
 </main></body></html>
 """
 
 
-def _viewer_html() -> str:
-    return """<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MLET ETo viewer</title>
-<style>
-:root { color-scheme: light dark; --paper:#f1ecdf; --panel:#fcfbf7; --ink:#17252e; --muted:#5d6870; --line:#c9c1b3; --navy:#173f54; --rust:#b45132; --gold:#d7a43e; --no-data:#66737a; --warn:#704918; --warn-bg:#f7e8c9; }
-@media (prefers-color-scheme: dark) { :root { --paper:#121a1e; --panel:#1a252a; --ink:#edf1ed; --muted:#aeb9bc; --line:#425058; --navy:#8ec7d8; --rust:#e48a67; --gold:#ebc56f; --no-data:#aeb9bc; --warn:#f0c889; --warn-bg:#302719; } }
-* { box-sizing:border-box; } body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.5 system-ui,sans-serif; } main { max-width:1220px; margin:auto; padding:24px 18px 60px; } .eyebrow { color:var(--rust); font:700 12px/1.2 ui-monospace,monospace; letter-spacing:.14em; text-transform:uppercase; } h1 { margin:8px 0; font:700 clamp(2.1rem,5vw,4.2rem)/.98 Georgia,serif; letter-spacing:-.04em; } h2 { font-size:1.05rem; margin:30px 0 10px; } a { color:var(--navy); } button,select { font:inherit; } .dek { max-width:70ch; color:var(--muted); font-size:1.04rem; } .banner { border-left:5px solid var(--rust); background:var(--warn-bg); padding:13px 15px; margin:18px 0; } .chips { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 22px; } .chip { border:1px solid var(--line); border-radius:3px; padding:5px 9px; font:12px ui-monospace,monospace; } .boundary { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0 22px; } .boundary div { padding:13px 15px; border:1px solid var(--line); background:var(--panel); } .boundary strong { display:block; margin-bottom:4px; color:var(--rust); } .controls { display:grid; grid-template-columns:repeat(3,minmax(140px,1fr)); gap:13px; align-items:end; padding:15px; border:1px solid var(--line); background:var(--panel); } label,legend { color:var(--muted); font-weight:600; } select { display:block; width:100%; min-width:0; margin-top:5px; padding:8px 9px; color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:3px; } fieldset { border:0; padding:0; margin:0; min-width:0; } fieldset label { display:inline-flex; gap:6px; margin:9px 13px 0 0; color:var(--ink); font-weight:400; } input:focus-visible,select:focus-visible { outline:3px solid var(--gold); outline-offset:2px; } .check { align-self:center; color:var(--ink); font-weight:400; } .summary { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; } .card { border:1px solid var(--line); padding:15px; background:var(--panel); } .value { font:700 1.8rem/1.1 Georgia,serif; } .subtle { color:var(--muted); } .state { min-height:1.6em; margin:12px 0; color:var(--muted); } .map-wrap { overflow:auto; border:1px solid var(--line); background:var(--panel); } svg { display:block; width:100%; min-width:640px; height:430px; } .dot { cursor:pointer; stroke:var(--panel); stroke-width:1.2; } .dot:hover,.dot:focus { stroke:var(--rust); stroke-width:2.5; outline:none; } .dot.selected { stroke:var(--gold); stroke-width:3; } .legend { display:flex; align-items:center; gap:9px; margin-top:9px; color:var(--muted); font:12px ui-monospace,monospace; } .legend-bar { width:180px; height:10px; background:linear-gradient(90deg,#440154,#365c8d,#21918c,#7ad151,#fde725); } .table-wrap { overflow:auto; max-height:430px; border:1px solid var(--line); background:var(--panel); } table { border-collapse:collapse; width:100%; min-width:760px; } th,td { border-bottom:1px solid var(--line); padding:8px 9px; text-align:left; white-space:nowrap; } th { position:sticky; top:0; background:var(--panel); color:var(--muted); font-size:12px; } td { font-variant-numeric:tabular-nums; } .provenance { overflow-wrap:anywhere; } .provenance code { font:12px ui-monospace,monospace; } .interval { height:10px; margin-top:9px; border:1px solid var(--line); position:relative; background:var(--paper); } .interval span { position:absolute; top:0; bottom:0; background:var(--navy); } pre { overflow:auto; padding:14px 16px; border:1px solid var(--line); background:var(--panel); font:13px/1.6 ui-monospace,monospace; } .hidden { display:none; } @media (prefers-reduced-motion: reduce) { * { scroll-behavior:auto !important; } } @media (max-width:720px) { main { padding:21px 12px 48px; } .boundary,.summary { grid-template-columns:1fr; } .controls { grid-template-columns:1fr; } svg { height:340px; } }
-</style></head>
+_VIEWER_CSS = """
+main{max-width:1240px;margin:0 auto;padding:0 24px 72px}
+.head{padding:20px 0 0}
+.head h1{font-size:clamp(19px,2vw,25px);max-width:44ch}
+.head .lede{margin-top:8px;font-size:13px;max-width:88ch}
+.toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:11px 30px;margin-top:18px;
+padding:10px 0 9px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.tool .lbl{display:block;margin-bottom:5px;font-size:9.5px;font-weight:600;
+letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.ticks{display:flex;flex-wrap:wrap}
+.ticks button,.seg button{font-family:var(--mono);font-size:11.5px;line-height:1.3;
+color:var(--ink-3);background:none;border:0;border-bottom:2px solid transparent;
+padding:1px 7px 3px;cursor:pointer}
+.ticks button:first-child,.seg button:first-child{padding-left:0}
+.ticks button:hover,.seg button:hover{color:var(--ink)}
+.ticks button[aria-pressed="true"],.seg button[aria-pressed="true"]{color:var(--ink);
+border-bottom-color:var(--ink)}
+select{font-family:var(--mono);font-size:11.5px;color:var(--ink);background:none;
+border:0;border-bottom:1px solid var(--line-2);padding:1px 4px 3px 0;cursor:pointer;
+max-width:176px}
+select:hover{border-bottom-color:var(--ink)}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.valid{font-family:var(--mono);font-size:11.5px;color:var(--ink)}
+.state{margin:9px 0 0;min-height:1.4em;font-size:11.5px;color:var(--ink-3)}
+.work{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);margin-top:14px;
+padding-top:16px;border-top:1px solid var(--line)}
+.work .left{padding-right:30px}
+.work .right{padding-left:30px;border-left:1px solid var(--line)}
+.work .right h2{margin-top:26px}
+.work .right h2:first-child{margin-top:0}
+svg{display:block;width:100%;height:auto}
+.cell{cursor:pointer;stroke:none}
+.cell:hover{stroke:var(--ink-2);stroke-width:1.2}
+.cell.sel{stroke:var(--ink);stroke-width:1.6}
+.grat line{stroke:var(--line-2);stroke-width:.5}
+.axis{font-family:var(--mono);font-size:9px;fill:var(--ink-3)}
+#fan{max-width:520px}
+.ramp{height:6px;margin-top:13px;
+background:linear-gradient(90deg,#440154,#414487,#2a788e,#22a884,#7ad151,#fde725)}
+.rampkey{display:flex;justify-content:space-between;margin-top:5px;font-family:var(--mono);
+font-size:10px;color:var(--ink-3)}
+.big{font-family:var(--mono);font-size:30px;line-height:1.05;letter-spacing:-.02em;
+margin-top:1px}
+.big .unit{font-size:12px;color:var(--ink-3);margin-left:6px;letter-spacing:0}
+.where{margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.trip{display:flex;gap:28px;margin:14px 0 0;padding:0}
+.trip div{margin:0}
+.trip dt{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+color:var(--ink-3)}
+.trip dd{margin:3px 0 0;font-family:var(--mono);font-size:13.5px}
+.band{fill:currentColor;opacity:.11}
+.p50line{fill:none;stroke:currentColor;stroke-width:1.5}
+.mark{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:2 3}
+.markdot{fill:var(--paper);stroke:currentColor;stroke-width:1.75}
+.layerid{margin:0 0 4px;font-family:var(--mono);font-size:12px;color:var(--ink)}
+.cells{border-collapse:separate;border-spacing:0}
+.cells th{position:sticky;top:0;z-index:1;background:var(--paper);padding-top:7px}
+.cells td{padding-top:4px;padding-bottom:4px}
+.tblwrap{max-height:460px;overflow:auto}
+@media (max-width:720px){
+main{padding:0 16px 40px}
+.head{padding:16px 0 0}
+.work{grid-template-columns:1fr}
+.work .left{padding-right:0}
+.work .right{margin-top:20px;padding:18px 0 0;border-left:0;border-top:1px solid var(--line)}
+}
+"""
+
+_VIEWER_BODY = """
 <body><main>
-<p class="eyebrow"><a href="../">MLET</a> / research artifact</p>
-<h1>Inspect the archived weather grid</h1>
-<p class="dek">This page shows one ETo candidate from one archived issue. Use the controls to inspect a lead date, quantile, and grid cell.</p>
-<p class="banner"><strong>Research candidate.</strong> Values are not validated or promoted. The grid is a weather reference. It is not a field boundary, a field measurement, or an irrigation recommendation.</p>
-<div class="chips" aria-label="Candidate status"><span class="chip">production_status: research_candidate</span><span class="chip">validation_status: evaluation_pending</span><span class="chip">promotion_status: not_promoted</span></div>
-<div class="boundary"><div><strong>What the values mean</strong>ASCE short-reference ETo quantiles in millimeters per day on the native GEFS grid.</div><div><strong>What the values do not mean</strong>They do not report observed ET, crop ET, field conditions, or forecast skill.</div></div>
-<section class="controls" aria-label="Viewer controls">
-<label for="lead">Lead day<select id="lead" aria-describedby="selection-state"></select></label>
-<label for="date">Valid date<select id="date" aria-describedby="selection-state"></select></label>
-<label for="grid">Grid cell<select id="grid" aria-describedby="selection-state"></select></label>
-<fieldset><legend>Displayed quantile</legend><label><input type="radio" name="quantile" value="p10"> p10</label><label><input type="radio" name="quantile" value="p50" checked> p50</label><label><input type="radio" name="quantile" value="p90"> p90</label></fieldset>
-<label class="check"><input id="show-interval" type="checkbox" checked> Show selected-cell interval</label>
+<header class="bar"><a class="wm" href="../">MLET</a>
+<span class="bar-meta"><span class="dot" aria-hidden="true"></span>research candidate ·
+evaluation pending · not promoted</span></header>
+
+<div class="head">
+<p class="kicker">Grid viewer</p>
+<h1>ASCE short-reference ETo on the native GEFS grid.</h1>
+<p class="lede">One archived issue, 20 lead days. Pick a lead day, a quantile, and a
+grid cell. The band is an uncalibrated ensemble quantile range, and a grid point is a
+weather reference, not a field boundary.</p>
+</div>
+
+<div class="toolbar">
+<div class="tool"><span class="lbl" id="lead-label">Lead day</span>
+<div class="ticks" id="lead" role="group" aria-labelledby="lead-label"></div></div>
+<div class="tool"><span class="lbl" id="quant-label">Quantile</span>
+<div class="seg" id="quantile" role="group" aria-labelledby="quant-label">
+<button type="button" data-q="p10" aria-pressed="false">p10</button>
+<button type="button" data-q="p50" aria-pressed="true">p50</button>
+<button type="button" data-q="p90" aria-pressed="false">p90</button></div></div>
+<div class="tool"><span class="lbl"><label for="grid">Grid cell</label></span>
+<select id="grid" aria-describedby="selection-state"></select></div>
+<div class="tool"><span class="lbl">Valid date</span>
+<span class="valid" id="valid-date">Loading</span></div>
+</div>
+<p id="selection-state" class="state" role="status" aria-live="polite">Loading the
+verified candidate data.</p>
+
+<div class="work">
+<div class="left">
+<svg id="map" viewBox="0 0 476 746" role="img" aria-label="Reference ETo on the native
+weather grid. Each cell is 0.5 degrees."></svg>
+<div class="ramp" aria-hidden="true"></div>
+<div class="rampkey"><span id="ramp-lo">0.00</span>
+<span>mm/day, fixed across lead days</span><span id="ramp-hi">0.00</span></div>
+</div>
+<div class="right">
+<h2 style="margin-bottom:0">Selected cell</h2>
+<div class="big"><span id="big-value">n/a</span><span class="unit">mm/day</span></div>
+<p class="where" id="where">No selection</p>
+<dl class="trip">
+<div><dt>p10</dt><dd id="t-p10">n/a</dd></div>
+<div><dt>p50</dt><dd id="t-p50">n/a</dd></div>
+<div><dt>p90</dt><dd id="t-p90">n/a</dd></div>
+</dl>
+<h2>Selected-cell interval across lead days</h2>
+<svg id="fan" viewBox="0 0 560 190" role="img" aria-label="p10 to p90 band and p50 line
+for the selected cell across all lead days."></svg>
+<p class="fine" style="margin-top:7px">Band is p10 to p90. Line is p50. The dashed
+rule marks the selected lead day.</p>
+<h2>Displayed layer</h2>
+<p class="layerid" id="layer-id">eto_mm</p>
+<p class="fine" id="layer-def">Loading the layer definition.</p>
+<h2>Evidence ledger</h2>
+<table class="ledger"><tbody id="ledger"><tr><th scope="row">Provenance</th>
+<td>Unavailable</td></tr></tbody></table>
+<p class="fine" style="margin-top:9px">Source files:
+<a href="source/outlook.json">candidate JSON</a> ·
+<a href="source/manifest.json">source manifest</a> ·
+<a href="viewer-data.json">viewer data</a></p>
+</div>
+</div>
+
+<section>
+<h2>All cells, selected lead day</h2>
+<div class="tblwrap"><table class="cells">
+<caption class="fine">Values are millimeters per day.</caption>
+<thead><tr><th scope="col">Grid</th><th scope="col" class="num">Latitude</th>
+<th scope="col" class="num">Longitude</th><th scope="col" class="num">p10</th>
+<th scope="col" class="num">p50</th><th scope="col" class="num">p90</th>
+<th scope="col" class="num">Displayed</th><th scope="col">State</th></tr></thead>
+<tbody id="cells"><tr><td colspan="8">Loading</td></tr></tbody>
+</table></div>
 </section>
-<p id="selection-state" class="state" role="status" aria-live="polite">Loading the verified candidate data.</p>
-<section class="summary" aria-label="Selected ETo summary"><div class="card"><div class="subtle">Selected grid cell</div><div id="selected-value" class="value">Unavailable</div><div id="selected-label" class="subtle">No selection</div></div><div id="interval-card" class="card"><div class="subtle">Selected-cell p10 to p90</div><div id="interval-text" class="value">Unavailable</div><div class="interval" aria-hidden="true"><span id="interval-bar"></span></div></div></section>
-<h2>Native grid view</h2><div class="map-wrap"><svg id="map" viewBox="0 0 900 430" role="img" aria-label="ETo values on the native weather grid"></svg></div><div class="legend" aria-label="Fixed color reference"><span>2 mm/day</span><span class="legend-bar" aria-hidden="true"></span><span>10 mm/day</span><span>fixed color reference</span></div>
-<h2>Accessible cell table</h2><div class="table-wrap"><table><caption class="subtle">All cells for the selected lead date. Values are millimeters per day.</caption><thead><tr><th scope="col">Grid</th><th scope="col">Latitude</th><th scope="col">Longitude</th><th scope="col">p10</th><th scope="col">p50</th><th scope="col">p90</th><th scope="col">Displayed</th><th scope="col">State</th></tr></thead><tbody id="cells"><tr><td colspan="8">Loading</td></tr></tbody></table></div>
-<h2>Evidence ledger</h2><div class="card provenance" id="provenance">Provenance unavailable.</div>
-<p class="subtle">Source files: <a href="source/outlook.json">candidate JSON</a> · <a href="source/manifest.json">source manifest</a> · <a href="viewer-data.json">viewer data</a></p>
-<h2>Run locally</h2><p>From the repository root, build the site and serve the output over HTTP.</p><pre><code>python3 scripts/build_eto_site.py --source-dir data/outlook/gefs_reforecast_20190703_candidate --out /tmp/mlet-eto-site
-python3 -m http.server 8000 --directory /tmp/mlet-eto-site
-open http://localhost:8000/</code></pre><p class="subtle">The builder verifies the candidate and writes the site manifest. The page reads local JSON files. It does not fetch a live forecast.</p>
+
+<section>
+<h2>Run locally</h2>
+<p class="fine">From the repository root. The builder verifies the candidate and writes
+the site manifest. This page reads local JSON. It never fetches a live forecast.</p>
+<pre class="run">python3 scripts/build_eto_site.py \\
+  --source-dir data/outlook/gefs_reforecast_20190703_candidate \\
+  --out /tmp/mlet-eto-site
+python3 -m http.server 8000 --directory /tmp/mlet-eto-site</pre>
+</section>
+
+<footer><span>MLET · reference evapotranspiration candidate</span>
+<a href="../">Candidate summary</a></footer>
 </main>
 <script>
 (function(){
-  const state=document.getElementById('selection-state');
-  const lead=document.getElementById('lead');
-  const date=document.getElementById('date');
-  const grid=document.getElementById('grid');
-  const map=document.getElementById('map');
-  const cells=document.getElementById('cells');
-  const selectedValue=document.getElementById('selected-value');
-  const selectedLabel=document.getElementById('selected-label');
-  const intervalText=document.getElementById('interval-text');
-  const intervalBar=document.getElementById('interval-bar');
-  const intervalCard=document.getElementById('interval-card');
-  const provenance=document.getElementById('provenance');
-  const showInterval=document.getElementById('show-interval');
-  const svg='http://www.w3.org/2000/svg';
-  const colors=[[68,1,84],[54,92,141],[33,145,140],[122,209,81],[253,231,37]];
-  function color(value){const t=Math.max(0,Math.min(1,(value-2)/8));const x=t*(colors.length-1),i=Math.min(colors.length-2,Math.floor(x)),f=x-i;return 'rgb('+colors[i].map((v,k)=>Math.round(v+(colors[i+1][k]-v)*f)).join(',')+')';}
-  function format(value){return typeof value==='number'&&Number.isFinite(value)?value.toFixed(2)+' mm/day':'Unavailable';}
-  function quantile(){const item=document.querySelector('input[name="quantile"]:checked');return item?item.value:'p50';}
-  function current(){return DATA.days.find(item=>item.lead_day===Number(lead.value)&&item.valid_date===date.value)||null;}
-  function populate(){const gridIds=new Set();DATA.days.forEach(item=>{const l=document.createElement('option');l.value=String(item.lead_day);l.textContent='Day '+item.lead_day;lead.append(l);const d=document.createElement('option');d.value=item.valid_date;d.textContent=item.valid_date;date.append(d);item.cells.forEach(cell=>gridIds.add(cell.grid_id));});Array.from(gridIds).sort().forEach(gridId=>{const option=document.createElement('option');option.value=gridId;option.textContent=gridId;grid.append(option);});if(DATA.days.length){lead.value=String(DATA.days[0].lead_day);date.value=DATA.days[0].valid_date;if(grid.options.length){grid.value=grid.options[0].value;}}}
-  function selectDayFromLead(){const item=DATA.days.find(value=>value.lead_day===Number(lead.value));if(item){date.value=item.valid_date;}}
-  function selectLeadFromDate(){const item=DATA.days.find(value=>value.valid_date===date.value);if(item){lead.value=String(item.lead_day);}}
-  function chooseGrid(gridId){grid.value=gridId;draw();}
-  function draw(){const day=current();map.replaceChildren();cells.replaceChildren();if(!day||!day.cells.length){state.textContent='No grid data for this selection.';selectedValue.textContent='Unavailable';selectedLabel.textContent='No data';intervalText.textContent='Unavailable';intervalBar.style.left='0%';intervalBar.style.width='0%';return;}const selected=quantile();const focusGrid=grid.value||day.cells[0].grid_id;const focusCell=day.cells.find(item=>item.grid_id===focusGrid)||day.cells[0];const minX=Math.min(...day.cells.map(item=>item.longitude),-117),maxX=Math.max(...day.cells.map(item=>item.longitude),-111),minY=Math.min(...day.cells.map(item=>item.latitude),42),maxY=Math.max(...day.cells.map(item=>item.latitude),49),xSpan=maxX-minX||1,ySpan=maxY-minY||1;day.cells.forEach(item=>{const value=item.value&&item.value[selected];const isSelected=item.grid_id===focusCell.grid_id;const circle=document.createElementNS(svg,'circle');circle.setAttribute('class',isSelected?'dot selected':'dot');circle.setAttribute('cx',String(45+(item.longitude-minX)/xSpan*810));circle.setAttribute('cy',String(390-(item.latitude-minY)/ySpan*350));circle.setAttribute('r',isSelected?'10':'8');circle.setAttribute('fill',typeof value==='number'?color(value):'var(--no-data)');circle.setAttribute('tabindex','0');circle.setAttribute('role','button');circle.setAttribute('aria-pressed',String(isSelected));circle.setAttribute('aria-label',item.grid_id+' '+format(value)+'. Select grid cell.');circle.addEventListener('click',function(){chooseGrid(item.grid_id);});circle.addEventListener('keydown',function(event){if(event.key==='Enter'||event.key===' '){event.preventDefault();chooseGrid(item.grid_id);}});const title=document.createElementNS(svg,'title');title.textContent=item.grid_id+': '+format(value);circle.append(title);map.append(circle);const row=document.createElement('tr');[item.grid_id,item.latitude.toFixed(2),item.longitude.toFixed(2),format(item.value&&item.value.p10),format(item.value&&item.value.p50),format(item.value&&item.value.p90),format(value),typeof value==='number'?'available':'missing'].forEach(text=>{const cell=document.createElement('td');cell.textContent=text;row.append(cell);});cells.append(row);});const focusValue=focusCell.value&&focusCell.value[selected];selectedValue.textContent=format(focusValue);selectedLabel.textContent='Grid '+focusCell.grid_id+' · '+focusCell.latitude.toFixed(2)+', '+focusCell.longitude.toFixed(2)+' · '+day.valid_date+' · '+selected;const interval=focusCell.value&&focusCell.value.p10!==undefined&&focusCell.value.p90!==undefined?[focusCell.value.p10,focusCell.value.p90]:null;if(interval&&typeof interval[0]==='number'&&typeof interval[1]==='number'){const lower=interval[0],upper=interval[1];intervalText.textContent=lower.toFixed(2)+' to '+upper.toFixed(2)+' mm/day';const scale=Math.max(upper,8);intervalBar.style.left=Math.max(0,lower/scale*100)+'%';intervalBar.style.width=Math.max(1,(upper-lower)/scale*100)+'%';}else{intervalText.textContent='Unavailable';intervalBar.style.left='0%';intervalBar.style.width='0%';}state.textContent='Showing '+day.cells.length+' grid cells for lead day '+day.lead_day+' on '+day.valid_date+'. Selected '+focusCell.grid_id+'.';}
-  function renderProvenance(){const p=DATA.provenance;provenance.replaceChildren();[['Run ID',DATA.run.run_id],['Issue time',DATA.run.issued_at],['Retrieved at',p.retrieved_at],['Git revision',p.git_revision],['Candidate SHA-256',p.candidate_sha256],['Source manifest SHA-256',p.source_manifest_sha256],['GEFS artifact SHA-256',p.upstream_sha256],['Upstream URI',p.upstream_uri]].forEach(pair=>{const paragraph=document.createElement('p');const strong=document.createElement('strong');strong.textContent=pair[0]+': ';const code=document.createElement('code');code.textContent=pair[1];paragraph.append(strong,code);provenance.append(paragraph);});}
-  function start(data){window.DATA=data;populate();renderProvenance();lead.addEventListener('change',function(){selectDayFromLead();draw();});date.addEventListener('change',function(){selectLeadFromDate();draw();});grid.addEventListener('change',draw);showInterval.addEventListener('change',function(){intervalCard.classList.toggle('hidden',!showInterval.checked);draw();});document.querySelectorAll('input[name="quantile"]').forEach(item=>item.addEventListener('change',draw));draw();intervalCard.classList.toggle('hidden',!showInterval.checked);}
-  fetch('viewer-data.json').then(response=>{if(!response.ok)throw new Error('viewer data unavailable');return response.json();}).then(start).catch(()=>{state.textContent='Viewer data unavailable. Serve this site over HTTP and reload the page.';});
+  const NS='http://www.w3.org/2000/svg';
+  // Viridis anchors at 0, .2, .4, .6, .8, 1. Colour appears here and nowhere else.
+  const STOPS=[[68,1,84],[65,68,135],[42,120,142],[34,168,132],[122,209,81],[253,231,37]];
+  const STEP=0.5;
+  const byId=id=>document.getElementById(id);
+  const state=byId('selection-state'),leadWrap=byId('lead'),quantWrap=byId('quantile');
+  const gridSelect=byId('grid'),map=byId('map'),fan=byId('fan'),rows=byId('cells');
+  const bigValue=byId('big-value'),where=byId('where'),validDate=byId('valid-date');
+  const ledger=byId('ledger'),rampLo=byId('ramp-lo'),rampHi=byId('ramp-hi');
+  const trip={p10:byId('t-p10'),p50:byId('t-p50'),p90:byId('t-p90')};
+  let DATA=null,lead=1,quant='p50',gridId=null,lo=0,hi=1;
+
+  const finite=v=>typeof v==='number'&&Number.isFinite(v);
+  const fmt=v=>finite(v)?v.toFixed(2):'n/a';
+  const withUnit=v=>finite(v)?v.toFixed(2)+' mm/day':'Unavailable';
+  function colour(value){
+    if(!finite(value))return 'var(--line-2)';
+    const t=hi>lo?Math.max(0,Math.min(1,(value-lo)/(hi-lo))):0;
+    const x=t*(STOPS.length-1),i=Math.min(STOPS.length-2,Math.floor(x)),f=x-i;
+    return 'rgb('+STOPS[i].map((c,k)=>Math.round(c+(STOPS[i+1][k]-c)*f)).join(',')+')';
+  }
+  const dayFor=n=>DATA.days.find(day=>day.lead_day===n)||null;
+  const cellIn=(day,id)=>day?day.cells.find(cell=>cell.grid_id===id)||null:null;
+  const shown=cell=>cell&&cell.value?cell.value[quant]:null;
+  function node(name,attrs,parent){
+    const created=document.createElementNS(NS,name);
+    Object.keys(attrs).forEach(key=>created.setAttribute(key,attrs[key]));
+    parent.append(created);
+    return created;
+  }
+
+  // One colour domain for the whole candidate keeps lead days and quantiles
+  // comparable: switching either control never rescales the map.
+  function computeDomain(){
+    let min=Infinity,max=-Infinity;
+    DATA.days.forEach(day=>day.cells.forEach(cell=>{
+      if(!cell.value)return;
+      ['p10','p50','p90'].forEach(key=>{
+        const value=cell.value[key];
+        if(finite(value)){min=Math.min(min,value);max=Math.max(max,value);}
+      });
+    }));
+    if(!finite(min)||!finite(max)||min===max){min=0;max=1;}
+    lo=min;hi=max;
+    rampLo.textContent=lo.toFixed(2);
+    rampHi.textContent=hi.toFixed(2);
+  }
+
+  function buildControls(){
+    DATA.days.forEach(day=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.textContent=String(day.lead_day);
+      button.dataset.lead=String(day.lead_day);
+      button.setAttribute('aria-pressed','false');
+      button.setAttribute('aria-label','Lead day '+day.lead_day+', valid '+day.valid_date);
+      button.addEventListener('click',()=>{lead=day.lead_day;render();});
+      leadWrap.append(button);
+    });
+    Array.from(quantWrap.children).forEach(button=>{
+      button.addEventListener('click',()=>{quant=button.dataset.q;render();});
+    });
+    const ids=new Set();
+    DATA.days.forEach(day=>day.cells.forEach(cell=>ids.add(cell.grid_id)));
+    Array.from(ids).sort().forEach(id=>{
+      const option=document.createElement('option');
+      option.value=id;
+      option.textContent=id;
+      gridSelect.append(option);
+    });
+    gridSelect.addEventListener('change',()=>{gridId=gridSelect.value;render();});
+  }
+
+  function renderMap(day){
+    map.replaceChildren();
+    const lats=Array.from(new Set(day.cells.map(cell=>cell.latitude))).sort((a,b)=>a-b);
+    const lons=Array.from(new Set(day.cells.map(cell=>cell.longitude))).sort((a,b)=>a-b);
+    const latMin=lats[0]-STEP/2,latMax=lats[lats.length-1]+STEP/2;
+    const lonMin=lons[0]-STEP/2,lonMax=lons[lons.length-1]+STEP/2;
+    // Longitude degrees are narrower than latitude degrees away from the equator.
+    const squeeze=Math.cos((latMin+latMax)/2*Math.PI/180);
+    const scale=96,left=32,top=4,right=6,bottom=20;
+    const width=(lonMax-lonMin)*squeeze*scale,height=(latMax-latMin)*scale;
+    map.setAttribute('viewBox','0 0 '+(left+width+right).toFixed(1)+' '+
+      (top+height+bottom).toFixed(1));
+    const x=lon=>left+(lon-lonMin)*squeeze*scale;
+    const y=lat=>top+(latMax-lat)*scale;
+    const field=node('g',{},map);
+    let selected=null;
+    day.cells.forEach(cell=>{
+      const value=shown(cell);
+      const isSelected=cell.grid_id===gridId;
+      const rect=node('rect',{
+        'class':isSelected?'cell sel':'cell',
+        x:x(cell.longitude-STEP/2).toFixed(2),
+        y:y(cell.latitude+STEP/2).toFixed(2),
+        width:(STEP*squeeze*scale).toFixed(2),
+        height:(STEP*scale).toFixed(2),
+        fill:colour(value),
+        'shape-rendering':'crispEdges',
+        tabindex:'0',
+        role:'button',
+        'aria-pressed':String(isSelected),
+        'aria-label':cell.grid_id+', '+withUnit(value)+'. Select this grid cell.'
+      },field);
+      node('title',{},rect).textContent=cell.grid_id+': '+withUnit(value);
+      const choose=()=>{gridId=cell.grid_id;render();};
+      rect.addEventListener('click',choose);
+      rect.addEventListener('keydown',event=>{
+        if(event.key==='Enter'||event.key===' '){event.preventDefault();choose();}
+      });
+      if(isSelected)selected=rect;
+    });
+    if(selected)field.append(selected);
+    const graticule=node('g',{'class':'grat'},map);
+    for(let lat=Math.ceil(latMin);lat<=Math.floor(latMax);lat+=1){
+      node('line',{x1:x(lonMin),y1:y(lat),x2:x(lonMax),y2:y(lat)},graticule);
+      node('text',{'class':'axis',x:left-7,y:(y(lat)+3).toFixed(1),
+        'text-anchor':'end'},map).textContent=lat.toFixed(0)+'N';
+    }
+    for(let lon=Math.ceil(lonMin);lon<=Math.floor(lonMax);lon+=1){
+      node('line',{x1:x(lon),y1:y(latMin),x2:x(lon),y2:y(latMax)},graticule);
+      node('text',{'class':'axis',x:x(lon).toFixed(1),y:(top+height+13).toFixed(1),
+        'text-anchor':'middle'},map).textContent=Math.abs(lon).toFixed(0)+'W';
+    }
+  }
+
+  function renderFan(){
+    fan.replaceChildren();
+    const series=DATA.days
+      .map(day=>({lead:day.lead_day,value:(cellIn(day,gridId)||{}).value}))
+      .filter(point=>point.value&&finite(point.value.p10)&&finite(point.value.p90));
+    if(series.length<2)return;
+    let min=Infinity,max=-Infinity;
+    series.forEach(point=>{
+      min=Math.min(min,point.value.p10);
+      max=Math.max(max,point.value.p90);
+    });
+    const pad=(max-min)*0.12||0.5;
+    min-=pad;max+=pad;
+    const width=560,height=190,left=40,right=10,top=10,bottom=26;
+    const first=series[0].lead,last=series[series.length-1].lead;
+    const x=value=>left+(last>first?(value-first)/(last-first):0)*(width-left-right);
+    const y=value=>top+(1-(value-min)/(max-min))*(height-top-bottom);
+    const point=(item,key)=>x(item.lead).toFixed(1)+','+y(item.value[key]).toFixed(1);
+    const upper=series.map(item=>point(item,'p90'));
+    const lower=series.slice().reverse().map(item=>point(item,'p10'));
+    node('path',{'class':'band',d:'M'+upper.concat(lower).join('L')+'Z'},fan);
+    node('polyline',{'class':'p50line',
+      points:series.map(item=>point(item,'p50')).join(' ')},fan);
+    [max-pad,min+pad].forEach(value=>{
+      node('text',{'class':'axis',x:left-7,y:(y(value)+3).toFixed(1),
+        'text-anchor':'end'},fan).textContent=value.toFixed(1);
+    });
+    [first,last].forEach(value=>{
+      node('text',{'class':'axis',x:x(value).toFixed(1),y:height-6,
+        'text-anchor':value===first?'start':'end'},fan).textContent='day '+value;
+    });
+    const active=series.find(item=>item.lead===lead);
+    if(active){
+      node('line',{'class':'mark',x1:x(active.lead).toFixed(1),y1:top,
+        x2:x(active.lead).toFixed(1),y2:height-bottom},fan);
+      node('circle',{'class':'markdot',cx:x(active.lead).toFixed(1),
+        cy:y(active.value.p50).toFixed(1),r:3.4},fan);
+    }
+  }
+
+  function renderTable(day){
+    rows.replaceChildren();
+    day.cells.forEach(cell=>{
+      const value=shown(cell);
+      const row=document.createElement('tr');
+      const columns=[
+        [cell.grid_id,''],
+        [cell.latitude.toFixed(2),'num'],
+        [cell.longitude.toFixed(2),'num'],
+        [fmt(cell.value&&cell.value.p10),'num'],
+        [fmt(cell.value&&cell.value.p50),'num'],
+        [fmt(cell.value&&cell.value.p90),'num'],
+        [fmt(value),'num'],
+        [finite(value)?'available':'missing','']
+      ];
+      columns.forEach(column=>{
+        const td=document.createElement('td');
+        td.textContent=column[0];
+        if(column[1])td.className=column[1];
+        row.append(td);
+      });
+      rows.append(row);
+    });
+  }
+
+  function renderLedger(){
+    const source=DATA.provenance;
+    ledger.replaceChildren();
+    [['Run ID',DATA.run.run_id],['Issue time',DATA.run.issued_at],
+     ['Retrieved at',source.retrieved_at],['Git revision',source.git_revision],
+     ['Candidate SHA-256',source.candidate_sha256],
+     ['Source manifest SHA-256',source.source_manifest_sha256],
+     ['GEFS artifact SHA-256',source.upstream_sha256],
+     ['Upstream source',source.upstream_uri]].forEach(pair=>{
+      const row=document.createElement('tr');
+      const label=document.createElement('th');
+      label.scope='row';
+      label.textContent=pair[0];
+      const value=document.createElement('td');
+      value.textContent=pair[1];
+      row.append(label,value);
+      ledger.append(row);
+    });
+  }
+
+  function clear(message){
+    state.textContent=message;
+    map.replaceChildren();
+    fan.replaceChildren();
+    rows.replaceChildren();
+    bigValue.textContent='n/a';
+    where.textContent='No selection';
+    ['p10','p50','p90'].forEach(key=>{trip[key].textContent='n/a';});
+  }
+
+  function render(){
+    const day=dayFor(lead);
+    Array.from(leadWrap.children).forEach(button=>{
+      button.setAttribute('aria-pressed',String(Number(button.dataset.lead)===lead));
+    });
+    Array.from(quantWrap.children).forEach(button=>{
+      button.setAttribute('aria-pressed',String(button.dataset.q===quant));
+    });
+    if(!day||!day.cells.length){
+      validDate.textContent='n/a';
+      clear('No grid data for this selection.');
+      return;
+    }
+    validDate.textContent=day.valid_date;
+    if(!gridId||!cellIn(day,gridId))gridId=day.cells[0].grid_id;
+    gridSelect.value=gridId;
+    const cell=cellIn(day,gridId);
+    renderMap(day);
+    renderFan();
+    renderTable(day);
+    bigValue.textContent=fmt(shown(cell));
+    where.textContent=cell.grid_id+' · '+cell.latitude.toFixed(2)+', '+
+      cell.longitude.toFixed(2)+' · '+day.valid_date+' · '+quant;
+    ['p10','p50','p90'].forEach(key=>{
+      trip[key].textContent=fmt(cell.value&&cell.value[key]);
+    });
+    state.textContent='Showing '+day.cells.length+' grid cells for lead day '+
+      day.lead_day+' on '+day.valid_date+'. Selected '+cell.grid_id+'.';
+  }
+
+  function start(data){
+    DATA=data;
+    if(DATA.days.length)lead=DATA.days[0].lead_day;
+    byId('layer-id').textContent=DATA.layer.id+' · '+DATA.layer.units;
+    byId('layer-def').textContent=DATA.layer.definition;
+    computeDomain();
+    buildControls();
+    renderLedger();
+    render();
+  }
+
+  fetch('viewer-data.json')
+    .then(response=>{
+      if(!response.ok)throw new Error('viewer data unavailable');
+      return response.json();
+    })
+    .then(start)
+    .catch(()=>{
+      state.textContent='Viewer data unavailable. Serve this site over HTTP and '+
+        'reload the page.';
+    });
 })();
 </script></body></html>
 """
+
+
+def _viewer_html() -> str:
+    return (
+        '<!doctype html>\n<html lang="en">\n<head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        "<title>MLET ETo grid viewer</title>\n<style>"
+        + _CSS
+        + _VIEWER_CSS
+        + "</style></head>"
+        + _VIEWER_BODY
+    )
