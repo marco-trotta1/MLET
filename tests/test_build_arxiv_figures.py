@@ -114,6 +114,71 @@ def test_phase2_render_uses_controlled_h2_records(
         assert output.stat().st_size > 0
 
 
+def test_evidence_path_labels_stay_inside_their_boxes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every evidence label must stay inside its rounded box."""
+    figures = []
+    monkeypatch.setattr(
+        build_arxiv_figures,
+        "_save_figure",
+        lambda figure, _output_dir, _name: figures.append(figure),
+    )
+
+    build_arxiv_figures._figure_evidence_paths(tmp_path)
+
+    assert len(figures) == 1
+    figure = figures[0]
+    try:
+        figure.canvas.draw()
+        renderer = figure.canvas.get_renderer()
+        axis = figure.axes[0]
+        boxes = axis.patches[:6]
+        labels = axis.texts[2:14]
+        assert len(boxes) == 6
+        assert len(labels) == 12
+        for index, box in enumerate(boxes):
+            box_bounds = box.get_window_extent(renderer)
+            for label in labels[2 * index : 2 * index + 2]:
+                label_bounds = label.get_window_extent(renderer)
+                assert label_bounds.x0 >= box_bounds.x0 + 2
+                assert label_bounds.x1 <= box_bounds.x1 - 2
+                assert label_bounds.y0 >= box_bounds.y0 + 2
+                assert label_bounds.y1 <= box_bounds.y1 - 2
+    finally:
+        build_arxiv_figures.plt.close(figure)
+
+
+def test_feasibility_legend_stays_above_the_data_panel(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The trajectory legend must not cover the plotted data."""
+    figures = []
+    monkeypatch.setattr(
+        build_arxiv_figures,
+        "_save_figure",
+        lambda figure, _output_dir, _name: figures.append(figure),
+    )
+
+    build_arxiv_figures._figure_feasibility_trajectory(tmp_path)
+
+    assert len(figures) == 1
+    figure = figures[0]
+    try:
+        figure.canvas.draw()
+        renderer = figure.canvas.get_renderer()
+        axis = figure.axes[0]
+        legend = axis.get_legend()
+        assert legend is not None
+        legend_bounds = legend.get_window_extent(renderer)
+        axis_bounds = axis.get_window_extent(renderer)
+        title_bounds = axis.title.get_window_extent(renderer)
+        assert legend_bounds.y0 >= axis_bounds.y1 + 2
+        assert legend_bounds.y1 <= title_bounds.y0 - 2
+    finally:
+        build_arxiv_figures.plt.close(figure)
+
+
 def test_feasibility_paths_follow_the_single_evidence_case() -> None:
     """Figure inputs must resolve from the tracked one-case evidence record."""
     case_id, outlook_path, target_path = (
