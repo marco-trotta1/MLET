@@ -151,6 +151,7 @@ validated 20-day forecasting product.
 Present contents:
 
 - top-level project README;
+- the [arXiv preprint PDF](output/pdf/mlet_arxiv_preprint.pdf);
 - vendored `pyfao56` source snapshot;
 - upstream provenance for the vendored dependency;
 - reproducible public OpenET/flux/gridMET ingestion and checksum verification;
