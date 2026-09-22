@@ -1,387 +1,222 @@
-# MLET
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/mlet-wordmark-static.svg">
+  <img src="docs/assets/mlet-wordmark.svg" alt="MLET: Machine Learning Evapotranspiration. Learn the correction. Test the transfer." width="1080">
+</picture>
 
-MLET studies selective neural residual correction for spatial evapotranspiration.
-The current paper asks when a neural correction should modify an existing OpenET estimate at an unseen station.
-It compares uncertainty, input support, and predicted benefit over the satellite fallback.
+# MLET: Selective Neural Residual Correction for Spatial Evapotranspiration
 
-Read the [current paper](output/pdf/mlet_arxiv_preprint.pdf),
-[LaTeX source](manuscript/arxiv/mlet_preprint.tex), and
-[reproduction instructions](manuscript/REPRODUCIBILITY.md).
-Marco Trotta is the sole author, with contact address **m@irrigant.xyz**.
-Meetpal S. Kukal appears in the acknowledgements.
+**[Paper](output/pdf/mlet_arxiv_preprint.pdf) · [Source package](output/arxiv/mlet_preprint_source.tar.gz) · [Reproduction](manuscript/REPRODUCIBILITY.md) · [Saved results](docs/results/ml_selective/) · [Static graphic](docs/assets/mlet-wordmark-static.svg)**
 
-The repository also retains the Idaho regional reference-ETo outlook and the longer-term soil-moisture research plan.
-The current ML results do not validate those forecasting systems or establish irrigation recommendations.
+**Marco Trotta · Irrigant · [m@irrigant.xyz](mailto:m@irrigant.xyz)**
 
-The [frozen Idaho outlook product contract](docs/outlook/PRODUCT_CONTRACT.md)
-defines exactly what each map layer means, including the distinction between
-forecast ETo, potential crop ET, delayed observed ETa analysis, and two
-conditional ETa scenarios. The
-[outlook preregistration](docs/evaluation/OUTLOOK_PREREGISTRATION.md) defines
-the issue-time cutoff and the gate required before any public validation claim.
+MLET studies when a neural residual model should modify an existing satellite evapotranspiration estimate at an unseen location.
+The repository contains the research manuscript, experiment code, fixed protocols, saved predictions, and verification scripts.
+The manuscript is a preprint draft. It has no assigned arXiv identifier or peer-reviewed acceptance.
 
-## Research questions
+## Research question
 
-The current paper asks whether selective neural residual correction improves an existing OpenET estimate at unseen spatial groups.
-It compares ensemble disagreement, training-support distance, learned relative benefit, uniform shrinkage, and input clipping.
-A separate later-year evaluation and paired input faults test transfer limits.
-The study reports every selector and its negative outcomes.
+**Can a selector identify when a neural correction improves OpenET, rather than only estimate the neural model's uncertainty?**
 
-The canonical paper is [the LaTeX manuscript](manuscript/arxiv/mlet_preprint.tex).
-Read [the reproduction instructions](manuscript/REPRODUCIBILITY.md) and [literature positioning](docs/evaluation/ML_LITERATURE_POSITIONING.md).
-The original five visuals and Irrigant logo remain in the paper.
+For satellite estimate $o$, neural correction $g(x)$, and binary selector $a(x)$, the complete prediction is
 
-The original product question concerns an auditable 20-day Idaho reference-ETo outlook.
-Its one-issue feasibility diagnostic remains incomplete and does not establish forecast skill.
-The earlier Phase 2 comparison establishes OpenET information value relative to weather ridge on its declared retrospective benchmark.
-It does not establish that a correction improves unchanged OpenET.
+$$\hat y(x) = o + a(x)g(x), \qquad a(x)\in\lbrace 0,1\rbrace.$$
 
-The earlier, longer-term soil-moisture research question remains:
+Rejecting a correction returns OpenET. Every test observation receives a prediction and contributes to the reported error.
+The selector's target is the realized absolute-error benefit,
 
-> Given weather data, recent soil-moisture observations, and a calibrated water
-> balance, does satellite evapotranspiration, specifically OpenET, measurably
-> improve short-horizon soil-moisture forecasts?
+$$D(x,y)=|y-o|-|y-o-g(x)|.$$
 
-These research questions do not authorize a generic future actual-ET label. Phase 2 is
-daily-ET evidence only; it does not validate a 20-day outlook, a soil-moisture
-forecast, or an irrigation decision.
+Positive benefit means that the correction helps relative to the satellite estimate.
+Low neural error and positive correction benefit are different objectives.
 
-OpenET earns its place only if, for irrigated fields in the two-to-seven-day
-forecast window, assimilation reduces root-zone deficit error by at least 10%
-relative to a forecast-driven calibrated balance, or shifts the predicted next
-irrigation timing by at least one full day toward the observed timing.
+This study contributes an empirical analysis of selector transfer under spatial withholding and controlled input corruption.
+It does not introduce a new deferral algorithm or establish a universally better ET estimator.
+The [literature comparison](docs/evaluation/ML_LITERATURE_POSITIONING.md) relates the study to regression with deferral, selective regression, and spatial applicability domains.
 
-If the result does not clear that threshold, the project should report the
-result as negative rather than treating a small accuracy gain as operationally
-meaningful.
+## Method
 
-## Longer-term soil-moisture research plan
+The predictor is an ensemble of three neural residual predictors, each with two 32-unit ReLU hidden layers.
+Training uses Adam, 120 epochs, and training-only input and target standardization.
+The fixed seeds are `20260713`, `20260714`, and `20260715`.
+All selectors within an outer configuration use the same fitted neural predictions.
 
-The following target, inputs, methods, and evaluation plan describe future soil-moisture work.
-They are separate from the executed selective-correction study.
+| Method | Rule for using the correction |
+| --- | --- |
+| OpenET | Always return the satellite estimate. |
+| Full | Always apply the ensemble mean correction. |
+| Spread95 | Accept below the calibrated ensemble-disagreement threshold. |
+| Support95 | Accept below the calibrated five-neighbor input-distance threshold. |
+| Gain | Accept when a boosted regressor predicts positive benefit over OpenET. |
+| SupportGain | Require both the support test and positive predicted benefit. |
+| Uniform | Apply one correction multiplier selected from `0, 0.25, 0.5, 0.75, 1`. |
+| Clip | Clip weather inputs to training percentiles before applying the full correction. |
 
-### Forecast Target
+Inner spatial cross-fitting supplies the selector targets and thresholds.
+Outer test labels do not fit the selector, scaler, predictor, or thresholds.
+The earlier benchmark also includes affine calibration, weather ridge, combined ridge, and matched direct and residual nonlinear models.
+See the [selective protocol](docs/evaluation/ML_SELECTIVE_RESIDUAL_PROTOCOL.md) and [earlier benchmark protocol](docs/evaluation/ML_TRANSFER_PROTOCOL.md) for complete specifications.
 
-MLET targets root-zone soil-water deficit: the fraction of plant-available water
-remaining before crop stress. Probe observations at discrete depths are intended
-to be converted into a depth-weighted root-zone integral bounded by documented
-field-capacity and wilting-point assumptions.
+## Data and evaluation
 
-### Design Principles
+The target is energy-balance-corrected **actual evapotranspiration**, in mm/day, from processed flux measurements.
+Reference evapotranspiration is an input, not the response.
+The archive contains sparse satellite validation dates from 2001 through 2020, rather than complete daily time series.
 
-- Beat strong baselines, not weak ones. Skill is measured against persistence
-  and a forecast-driven calibrated water balance.
-- Keep the water balance visible. Machine learning should adjust the uncertain
-  terms, not replace the physical scaffold with an opaque predictor.
-- Treat irrigation as a core input. Grower records are used where available;
-  otherwise irrigation must be inferred from soil-moisture increases that
-  precipitation cannot explain.
-- Use OpenET at true latency. Satellite ET is tested as a delayed state
-  assimilation signal, not as a clean real-time future driver.
-- Report uncertainty honestly. Forecasts should produce calibrated predictive
-  intervals, not only point estimates.
+| Evaluation population | Observations | Stations | Proximity groups |
+| --- | ---: | ---: | ---: |
+| Complete-weather cohort | 7,923 | 85 | 63 |
+| Matched input-fault probes | 7,873 | 84 | 62 |
+| Unseen groups and later years | 649 | 27 | 24 |
+| Later-year input-fault probes | 646 | 27 | 24 |
+| Cropland subset of the complete cohort | 2,670 | 32 | 18 |
 
-### Planned Inputs
+Sources: [OpenET validation archive](https://doi.org/10.5281/zenodo.10119477) and [processed flux archive](https://doi.org/10.5281/zenodo.7636781).
+The [data manifest](data/manifest.json), [cohort](docs/results/ml_transfer/cohort.csv), and [split assignments](docs/results/ml_transfer/splits.json) bind the evaluated data.
+The complete-weather cohort selects 85 of 152 joined stations.
+Cropland classification does not establish irrigation status.
 
-MLET is designed around daily, field-keyed records assembled from:
+The primary evaluation withholds proximity groups across ten outer folds.
+Groups are connected components of station pairs within 10 km; transitive connections remain together.
+The joint evaluation also restricts training to dates before 2019 and tests 2019 through 2020 at unseen groups.
+Three inner spatial folds supply selection data. The joint inner split also separates dates before 2016 from later validation dates.
 
-- recent in-situ soil-moisture observations;
-- tower evapotranspiration where available for ET ground truth;
-- reference evapotranspiration from gridded meteorology;
-- precipitation, temperature, humidity, vapor pressure deficit, solar radiation,
-  and wind;
-- vegetation indices;
-- OpenET actual evapotranspiration, included only at realistic latency;
-- numerical weather forecasts;
-- irrigation records or temporally valid inferred irrigation events;
-- static field attributes such as soil hydraulic limits, crop, and rooting
-  depth.
+The primary metric is **station-macro MAE**: average absolute error within each station, then average equally across stations.
+The paper also reports pooled MAE, RMSE, signed bias, cropland results, and correction acceptance rates.
+Paired intervals use 2,000 bootstrap draws over proximity groups, with seed `20260922`.
+They condition on fitted models and ranks, omit retraining uncertainty, and have no multiplicity adjustment.
 
-The field network size, date range, number of irrigated field-seasons, and tower
-coverage are load-bearing metadata and should be recorded before modeling
-claims are made.
+## Main result and its limits
 
-### Modeling Approach
+A learned benefit selector can fail under input corruption even when its training objective correctly compares against the fallback.
+However, returning OpenET more often can explain an apparent robustness advantage.
+The analysis therefore compares both fixed thresholds and equal acceptance budgets.
 
-The intended model is a differentiable version of the FAO-56 dual-coefficient
-water balance. The physical scaffold tracks the daily water balance while small
-learned functions estimate the terms that fixed coefficients handle poorly:
+After omitting vapor-pressure deficit (VPD), the paired wind probe multiplies the test wind input by ten.
+It holds labels, satellite estimates, and fitted models fixed.
+On 7,873 observations at 84 stations in 62 groups, Full changes from 0.829 to 1.415 mm/day station MAE.
+OpenET scores 0.853 mm/day on these same rows.
+Support95 scores 0.857 mm/day but accepts only 1.74% of the station-weighted population.
+These point estimates describe the fixed probe; they do not establish a general accuracy gain.
 
-- the water-stress coefficient that controls how a stressed crop throttles water
-  use;
-- the deep-percolation term that controls drainage past the root zone.
+The following **post hoc** comparison fixes acceptance at 50%.
+Each difference is the named method's expected station MAE minus Support's expected station MAE, in mm/day.
+Positive values favor Support.
 
-The model should condition on physical field attributes, not arbitrary field
-identifiers, so withheld-field evaluation remains meaningful.
+| Probe | Comparison | Difference | Paired 95% interval |
+| --- | --- | ---: | --- |
+| Spatial groups, wind input multiplied by 10 | Gain minus Support | 0.243 | [0.110, 0.412] |
+| Spatial groups, wind input multiplied by 10 | Spread minus Support | 0.023 | [-0.022, 0.066] |
+| Groups and later years, wind input multiplied by 10 | Gain minus Support | 0.032 | [-0.105, 0.194] |
 
-This repository currently vendors `pyfao56` as the FAO-56 implementation
-foundation. See `vendor/pyfao56/UPSTREAM.md` for the upstream source, version,
-commit, and local scope.
+The first two rows use 7,873 observations and 62 groups. The third uses 646 observations and 24 groups.
+The support-versus-disagreement comparison is inconclusive, and later years do not confirm the benefit-selector ordering.
+Equal-budget ranking uses label-free test scores and a randomized boundary decision. It does not establish a deployable threshold.
+Read the [analysis protocol](docs/evaluation/ML_MATCHED_SELECTION_ANALYSIS.md), [paired comparisons](docs/results/ml_selective/matched_comparisons.json), and [complete curves](docs/results/ml_selective/matched_coverage.csv).
 
-### Evaluation Plan
+Agricultural transfer also limits the conclusion.
+On 2,670 cropland observations from 32 stations in 18 groups, no-VPD Uniform scores 0.961 versus OpenET's 0.931 mm/day.
+Its paired improvement interval is [-0.074, 0.017] mm/day.
+Every no-VPD selective alternative has a higher cropland point error than OpenET in that spatial evaluation.
+The [complete results](docs/results/ml_selective/results.json) retain all methods, input specifications, faults, and subgroups.
 
-Evaluation should be pre-registered before running the OpenET comparison. The
-pre-registration should freeze:
+### Scope of inference
 
-- the OpenET hypothesis;
-- the 10% deficit-error and one-day irrigation-timing thresholds;
-- station-held-out and time-withheld splits;
-- baseline definitions;
-- leakage checks;
-- metrics and stratifications.
+- The archive was inspected before this study. The selective protocol preceded its new run; the matched-budget analysis followed the threshold results.
+- Synthetic faults test predictor corruption. They do not simulate weather interventions or estimate fault prevalence.
+- Three seeds measure initialization variation. They do not provide calibrated posterior uncertainty.
+- The study does not implement matched leading deferral surrogates, GeoQ, or graph neural processes.
+- Spatial withholding applies to the added MLET models. It does not establish independence from upstream OpenET development.
+- The evidence does not establish operational forecast skill, irrigation benefits, or water savings.
 
-Required comparisons:
+See [study limitations](manuscript/LIMITATIONS.md) for the full scope.
 
-- persistence baseline;
-- forecast-driven calibrated water balance;
-- full model with OpenET assimilation;
-- matching model without OpenET assimilation.
+## Reproduce the evidence
 
-Primary reporting should focus on:
-
-- two-to-seven-day root-zone deficit skill over the floor;
-- next-irrigation timing error in days;
-- predictive interval coverage;
-- continuous ranked probability score;
-- stratified OpenET value by irrigated versus rainfed fields and by crop.
-
-### Outputs
-
-The planned system should produce:
-
-- field-level soil-water status;
-- two-to-seven-day forecast trajectories with predictive intervals;
-- irrigation threshold and days-until-water estimates;
-- performance relative to the baseline floor;
-- data freshness timestamps;
-- machine-readable forecast outputs;
-- notebooks or scripts that reproduce published figures;
-- a frozen benchmark with station-held-out splits and a pre-registered analysis
-  plan.
-
-## Current Repository Status
-
-This repository contains the selective-correction manuscript, executed ML experiments, saved predictions, and verification code.
-It also retains the Phase 2 baseline and the Idaho outlook contracts.
-The outlook remains an unvalidated forecasting candidate.
-
-Present contents:
-
-- top-level project README;
-- the [current preprint PDF](output/pdf/mlet_arxiv_preprint.pdf);
-- the [arXiv source package](output/arxiv/mlet_preprint_source.tar.gz) and [submission metadata](output/arxiv/arxiv_metadata.txt);
-- the [selective protocol](docs/evaluation/ML_SELECTIVE_RESIDUAL_PROTOCOL.md) and [saved ML evidence](docs/results/ml_selective/);
-- vendored `pyfao56` source snapshot;
-- upstream provenance for the vendored dependency;
-- reproducible public OpenET/flux/gridMET ingestion and checksum verification;
-- a typed ET loader, transparent baselines, leakage-controlled evaluation, and
-  a pre-registered Phase 2 daily-ET comparison;
-- [data provenance and coverage notes](docs/data/DATA_CARD.md),
-  [the frozen evaluation design](docs/evaluation/PREREGISTRATION.md), and
-  [generated Phase 2 results](docs/results/phase2_openet_value.md);
-- the [Idaho outlook product contract](docs/outlook/PRODUCT_CONTRACT.md),
-  [outlook preregistration](docs/evaluation/OUTLOOK_PREREGISTRATION.md), and
-  [operational source registry](data/outlook/source_registry.json);
-- independent FAO-56 radiation and Priestley-Taylor reference implementations
-  with the three-way cross-check;
-- hindcast/forecast/static feature namespaces with provenance validation;
-- the forecast-overlap consistency diagnostic;
-- frozen train-only normalisation as a hashed JSON artifact;
-- probabilistic scoring (mean pinball loss, interval coverage, interval width);
-- the neuralhydrology GenericDataset exporter.
-
-The manuscript outlook claim is limited to the 20-day weather-driven ETo
-hindcast. Potential ETc and the ETa scenarios remain conditional projections.
-The historical ETa layer remains an analysis. They are not independently
-validated forecasts and they are not irrigation recommendations.
-
-The current public AgriMet station registry is recorded in
-[`data/outlook/agrimet_station_registry.json`](data/outlook/agrimet_station_registry.json).
-Historical evidence for 19 acquired stations is recorded in
-[`data/outlook/agrimet_station_history_historical_pages.json`](data/outlook/agrimet_station_history_historical_pages.json).
-The ETo target adapter remains fail-closed for stations without historical
-location evidence.
-
-The [manuscript overview](manuscript/manuscript.md) summarizes the selective-correction question and its limited empirical finding.
-The full paper retains the Phase 2 evidence and the separate ETo diagnostic.
-
-After an external process creates a verified GEFS daily artifact, build the
-ETo-only research candidate with `mlet build-eto`. The command never marks the
-candidate validated or promoted.
-
-Build an ETo archive from verified source indexes with
-`mlet outlook build-eto-hindcast-archive --gefs-index GEFS_INDEX.json
---agrimet-index AGRIMET_INDEX.json --destination ARCHIVE_ROOT`. The command
-copies only checksum-bound files below the archive root and leaves the
-scientific completion gate to the ETo evaluator.
-
-Evaluate it with `mlet outlook hindcast --evidence ARCHIVE_ROOT/evidence.json
---output docs/results/idaho_eto_hindcast.md`.
-
-The Phase 2 historical report states that, on the 85-station weather-complete
-public subset, the preregistered M3 OpenETRidge model reduced station-held-out
-daily-ET MAE by 43.4% relative to B2 WeatherRidge. The paired 95% confidence
-interval is 0.399 to 0.911 mm/day.
-The independent reproduction receipt is
-[`docs/results/phase2_openet_independent_reproduction_receipt.json`](docs/results/phase2_openet_independent_reproduction_receipt.json).
-This is daily-ET evidence only. It is not validation of the Idaho outlook,
-soil-moisture forecasts, or irrigation decisions.
-
-Not yet present:
-
-- a reproducible operational outlook build;
-- preregistered 20-day hindcast results;
-- a promoted or validated public forecast map;
-- a trained soil-moisture water balance with OpenET assimilation.
-
-## Non-serving residual-model experiment
-
-The [frozen residual-model protocol](docs/evaluation/OUTLOOK_RESIDUAL_MODEL_PROTOCOL.md)
-adds a deliberately isolated advanced-ML proving ground. It trains quantile
-residuals only beside the physical well-watered ETa scenario, using frozen
-geographic-and-seasonal holdouts, chronological train/gap/calibration/gap/test
-partitions, issue-time feature availability, finite-sample conformal intervals,
-and recorded package/seed/data hashes.
-It cannot change the outlook artifact, map, Helios, or Irrigant input, and it
-always writes `promotion: false` for separately trusted external review.
+Use Python **3.13.5** to match the recorded numerical environment.
+Run these commands from the repository root:
 
 ```bash
-python3 -m mlet evaluate-outlook-residual \
-  --cases examples/outlook/residual_model_evidence.json \
-  --out /private/tmp/idaho_outlook_residual.md
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-paper.lock
+PYTHONPATH=src python scripts/verify_ml_paper.py
+PYTHONPATH=src python scripts/verify_selective_results.py
+python -m pytest tests/test_ml_transfer_audit.py tests/test_ml_selective_residual.py -q
 ```
 
-That bundled input is a visibly non-scientific software fixture. Archive-local
-checksums for Task 8 cases, feature receipts, and target receipts are useful
-replay diagnostics, but are not independent provenance: an archive author can
-supply both the rows and receipts. Training/calibration target receipts must
-also prove availability by their frozen cutoffs; test targets may be later but
-remain bound. An external archive-reconstruction authority must rebuild the
-rows and target receipts from raw source artifacts before separate release
-review; this repository always emits `promotion: false` and
-`external_release_eligible: false`.
+These commands verify saved evidence without downloading raw archives or fitting new models.
+The audits check partitions, target alignment, source hashes, selector arithmetic, negative controls, and original figure preservation.
+The pandas compatibility patch copies two masks; the exact recorded runner remains available for provenance.
+All 90 recorded inner partitions remain identical under the patch.
 
-## Static research-candidate map
+For data acquisition, full refits, figure generation, and paper compilation, follow [the reproduction instructions](manuscript/REPRODUCIBILITY.md).
+Completed experiments refuse to overwrite recorded results.
+The [standalone reproduction package](output/arxiv/mlet_reproducibility.zip) includes code, protocols, tests, and saved predictions.
 
-The real GEFS issue candidate has a separate static ETo viewer. GitHub Pages
-builds it from the committed candidate directory:
+### Compute record
 
-```bash
-python3 scripts/build_eto_site.py \
-  --source-dir data/outlook/gefs_reforecast_20190703_candidate \
-  --out _site
-```
+The selective experiment runs 480 neural fits across 40 outer configurations and 120 inner partitions.
+Its recorded end-to-end wall time is **161.98 seconds**, on macOS ARM with one numerical thread, for one complete run.
+This timing has no repeated-run uncertainty estimate and is not a comparative speed claim.
+Paid training compute is USD 0; electricity cost is unmeasured.
+Per-model fit and prediction timings for the earlier baseline comparison appear in the paper's compute table.
+The [receipt](docs/results/ml_selective/receipt.json) records fit timings, seeds, and warnings; [software versions](docs/results/ml_selective/software_environment.json) record the environment.
 
-The viewer displays the 20 lead dates, ETo p10/p50/p90 controls, cell values,
-missing-data states, and checksum-bound provenance. It remains a research
-candidate with evaluation pending and promotion disabled.
+## Repository map
 
-`mlet publish-outlook` renders a standalone `index.html`, `outlook.geojson`,
-`summary.json`, and `serve-contract.json` from a verified immutable
-`OUTPUT_ROOT/RUN_ID` handle. It is intentionally useful for inspecting the
-native weather-grid quantities and their uncertainty without a web-service or
-package setup, but it always returns exit code `1`: the output is a **research
-candidate**, with `promotion: false` and `validation_status:
-"validation_pending"`.
+| Path | Content |
+| --- | --- |
+| [`scripts/ml_selective_residual.py`](scripts/ml_selective_residual.py) | Fixed selective-correction experiment. |
+| [`scripts/ml_transfer_audit.py`](scripts/ml_transfer_audit.py) | Earlier model benchmark and shared partition logic. |
+| [`docs/evaluation/`](docs/evaluation/) | Scientific protocols and literature positioning. |
+| [`docs/results/ml_selective/`](docs/results/ml_selective/) | Selectors, inner predictions, outer predictions, and robustness probes. |
+| [`docs/results/ml_transfer/`](docs/results/ml_transfer/) | Earlier benchmark, humidity audit, and sensitivity results. |
+| [`manuscript/arxiv/`](manuscript/arxiv/) | Canonical LaTeX, references, tables, and figures. |
+| [`output/arxiv/`](output/arxiv/) | Submission source, metadata, and reproduction package. |
+| [`tests/`](tests/) | Software, partition, loss, provenance, and manuscript checks. |
 
-```bash
-python3 -m mlet publish-outlook --run OUTPUT_ROOT/RUN_ID
-```
+## Development and related components
 
-The renderer reads input only through the descriptor-anchored run reader and
-does not alter the immutable generation. It stages candidate artifacts below a
-trusted output root and atomically exposes a new sibling candidate directory;
-it never overwrites one. Its map labels keep ETo outlook, potential
-crop ET, the dated ETa analysis, and the two conditional ETa scenarios
-separate. A weather-grid reference point, when included by the source contract,
-is not a field boundary. The candidate summary uses an explicitly labelled
-equal-cell descriptive mean—not a statewide area-weighted statistic—until
-source-grid cell areas are carried in the serving contract.
-
-Fixture input produces a conspicuous non-scientific software-fixture map. It is
-never a forecast claim or scientific evidence. For qualifying archived data,
-only the separately trusted external release authority described in the outlook
-preregistration may publish a promoted product; the MLET evaluator and map
-renderer have no local promotion or validation path.
-
-## Reference-ET cross-check
-
-MLET carries two independent implementations of reference evapotranspiration:
-the ASCE-PM short-reference path used by the outlook (via vendored `pyfao56`),
-and a Priestley-Taylor path in `src/mlet/reference/` ported from
-neuralhydrology. `qc-eto` compares them on a single weather member:
-
-```bash
-python3 -m mlet qc-eto --member-json examples/outlook/weather_member.json
-```
-
-The two ASCE paths must agree exactly; Priestley-Taylor is a different equation
-and is checked against a documented ratio band instead. Building this check
-found two defects in the upstream neuralhydrology implementation, both recorded
-in `src/mlet/reference/UPSTREAM.md`.
-
-## Relationship to neuralhydrology
-
-MLET adopts four design patterns from
-[neuralhydrology](https://github.com/neuralhydrology/neuralhydrology) 1.13.0
-(BSD-3-Clause) and ports its FAO-56 radiation equations as an independent
-cross-check on the vendored `pyfao56` reference-ET path. It is not a fork and
-does not depend on it at runtime.
-
-Building the cross-check found two defects in the upstream PET utilities: a
-double energy-to-depth conversion understating Priestley-Taylor PET by 2.451x,
-and an FAO-56 Eq. 37 elevation coefficient ten times the published value.
-Both are documented with regression tests in
-[neuralhydrology provenance](docs/methods/NEURALHYDROLOGY_PROVENANCE.md).
-
-The FAO-56 hybrid scaffold is an isolated, non-serving experiment described in
-[hybrid model scaffold](docs/methods/HYBRID_MODEL_SCAFFOLD.md). It supports no
-published result and no manuscript claim.
-
-## Development Notes
-
-Keep new work reproducible and auditable:
-
-- do not commit raw private field data;
-- prefer manifests, checksums, and scripts over manual data drops;
-- enforce temporal cutoffs before forecast generation;
-- keep negative results visible when thresholds are not met;
-- document assumptions before they enter the model.
-
-Run the full gate before every commit:
+For general package development, install the test extra and run the repository gate before a commit:
 
 ```bash
 python3 -m pip install -e ".[test]"
 ./scripts/verify.sh
 ```
 
-See [reproducibility notes](docs/REPRODUCIBILITY.md) for the environment
-contract and the test-count ledger.
+The gate runs the test suite, checks serving-path isolation, and builds the recorded ETo candidate site.
+See [software reproducibility](docs/REPRODUCIBILITY.md) for the general environment contract.
+The exact paper environment is pinned separately in `requirements-paper.lock`.
 
-## Source Brief
+The repository also retains earlier research components:
 
-This README summarizes the project direction from the "Forecasting Soil
-Moisture" project brief by Marco Trotta and aligns it with the repository's
-current scaffold.
+- [Idaho reference-ETo outlook](docs/outlook/PRODUCT_CONTRACT.md) and [its evaluation protocol](docs/evaluation/OUTLOOK_PREREGISTRATION.md).
+- [Historical OpenET information-value benchmark](docs/results/phase2_openet_value.md).
+- [FAO-56 soil-water scaffold](docs/methods/HYBRID_MODEL_SCAFFOLD.md) and [separate residual-model protocol](docs/evaluation/OUTLOOK_RESIDUAL_MODEL_PROTOCOL.md).
+- [NeuralHydrology provenance](docs/methods/NEURALHYDROLOGY_PROVENANCE.md) and [vendored pyfao56 provenance](vendor/pyfao56/UPSTREAM.md).
 
-## Phase 1: ET time-series validation
+The outlook remains a research candidate with incomplete validation. These components do not supply additional evidence for the selective-correction paper.
 
-The first MLET-owned component is a local, zero-dependency validator for daily,
-site-keyed evapotranspiration CSV files. It checks structure and types and
-reports contents honestly; it does not train, score, or make scientific claims.
+## Citation and attribution
 
-Install and run:
+Cite the current manuscript as an unpublished research preprint. No arXiv identifier is assigned.
 
-```bash
-python3 -m pip install -e .
-mlet validate-csv examples/et_timeseries_template.csv
-# or:
-python3 -m mlet validate-csv examples/et_timeseries_template.csv
+```bibtex
+@misc{trotta2026mlet,
+  author = {Trotta, Marco},
+  title = {MLET: Selective Neural Residual Correction for Spatial Evapotranspiration},
+  year = {2026},
+  howpublished = {Research manuscript and accompanying code},
+  url = {https://github.com/marco-trotta1/MLET}
+}
 ```
 
-The expected CSV columns are `date` (YYYY-MM-DD), `site_id`, `openet_et_mm`
-(required), and optional `eto_mm`, `ndvi`, `measured_et_mm`. A file with no
-measured ET validates structurally but reports `has_measured_labels: false`.
+Meetpal S. Kukal receives acknowledgement for research mentorship and earlier feedback.
+The paper cites the source data and discloses AI assistance in coding, analysis, figures, and drafting.
+New paper graphics adapt [figures4papers](https://github.com/ChenLiu-1996/figures4papers), with the [stated CC BY-NC 4.0 license](manuscript/licenses/figures4papers_CC-BY-NC-4.0.txt).
+The original MLET visuals and Irrigant logo remain separate existing assets.
+The README wordmark is an original decorative SVG; its animation is not a model result.
+No repository-wide license is currently declared. Vendored components retain their own licenses and provenance.
 
-See `docs/superpowers/specs/2026-06-28-mlet-phase1-et-csv-validator-design.md`
-for the full data contract and design.
+This README uses [Chronos](https://github.com/amazon-science/chronos-forecasting), [TimesFM](https://github.com/google-research/timesfm), and [NeuralHydrology](https://github.com/neuralhydrology/neuralhydrology) as structural precedents.
+Their paper links, concise usage paths, and citation sections inform the organization. Their models and results are not MLET baselines.
