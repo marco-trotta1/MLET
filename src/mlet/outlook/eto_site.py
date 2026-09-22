@@ -67,7 +67,7 @@ def build_eto_site(source_dir: Path, destination: Path) -> EtoSiteResult:
     _write_text(output_outlook / "index.html", _viewer_html())
     _write_text(
         output / "index.html",
-        _root_html(viewer_data, candidate_sha256, source_manifest_sha256),
+        _root_html(),
     )
     file_names = (
         "index.html",
@@ -396,233 +396,50 @@ td.bar{display:none}
 """
 
 _ROOT_CSS = """
-main{max-width:1080px;margin:0 auto;padding:0 24px 52px}
-.hero{padding:26px 0 0}
-.jump{margin:16px 0 0;font-size:13px}
-.pair{display:grid;grid-template-columns:1fr 1fr}
-.pair>div{padding-right:28px}
-.pair>div+div{padding:0 0 0 28px;border-left:1px solid var(--line)}
-.pair h3{margin:0 0 5px}
-.pair p{margin:0;font-size:12px;color:var(--ink-2)}
-.lim{margin:0;padding:0;list-style:none}
-.lim li{padding:4px 0;border-bottom:1px solid var(--line);font-size:11.5px;
-line-height:1.45;color:var(--ink-3)}
-.lim li:last-child{border-bottom:0}
-.two{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:0}
-.two.even{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-.two>div+div{padding-left:30px;margin-left:30px;border-left:1px solid var(--line)}
-@media (max-width:900px){
-.two{grid-template-columns:1fr}
-.two>div+div{margin:22px 0 0;padding:18px 0 0;border-left:0;border-top:1px solid var(--line)}
-}
-@media (max-width:720px){
-main{padding:0 16px 40px}
-.hero{padding:20px 0 0}
-.pair{grid-template-columns:1fr}
-.pair>div{padding:0}
-.pair>div+div{margin-top:16px;padding:16px 0 0;border-left:0;border-top:1px solid var(--line)}
-}
+main{max-width:820px;margin:0 auto;padding:0 24px 48px}
+.hero{padding:34px 0 0}
+.actions{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px}
+.actions a{font-size:13px}
+@media (max-width:720px){main{padding:0 16px 36px}.hero{padding-top:24px}}
 """
 
 
-def _root_html(
-    viewer_data: dict[str, object], candidate_sha256: str, source_manifest_sha256: str
-) -> str:
-    run = viewer_data["run"]
-    assert isinstance(run, dict)
-    provenance = viewer_data["provenance"]
-    assert isinstance(provenance, dict)
-    days = viewer_data["days"]
-    assert isinstance(days, list)
-    layer = viewer_data["layer"]
-    assert isinstance(layer, dict)
-    issued_at = str(run["issued_at"])
-    issue_short = f"{issued_at[:10]} {issued_at[11:13]}Z"
-    first_cells = days[0]["cells"] if days else []
-    assert isinstance(first_cells, list)
-    latitudes = sorted({float(cell["latitude"]) for cell in first_cells})
-    spacing = (
-        min(upper - lower for lower, upper in zip(latitudes, latitudes[1:]))
-        if len(latitudes) > 1
-        else 0.0
-    )
-    ledger = (
-        ("Run ID", run["run_id"]),
-        ("Issue time", issued_at),
-        ("Retrieved at", provenance["retrieved_at"]),
-        ("Git revision", provenance["git_revision"]),
-        ("Candidate SHA-256", candidate_sha256),
-        ("Source manifest SHA-256", source_manifest_sha256),
-        ("GEFS artifact SHA-256", provenance["upstream_sha256"]),
-        ("Upstream source", provenance["upstream_uri"]),
-    )
-    def _ledger_rows(entries: tuple[tuple[str, object], ...]) -> str:
-        return "".join(
-            f'<tr><th scope="row">{html.escape(str(label))}</th>'
-            f"<td>{html.escape(str(value))}</td></tr>"
-            for label, value in entries
-        )
-
-    split = (len(ledger) + 1) // 2
-    ledger_rows_left = _ledger_rows(ledger[:split])
-    ledger_rows_right = _ledger_rows(ledger[split:])
-    # Phase 2 station-held-out figures mirror docs/results/phase2_openet_value.md.
-    # The BOII figures mirror manuscript/manuscript.md. Both are frozen results.
-    phase2 = (
-        ("M2_OpenETRecal", 0.781, "1.060", "0.005", False),
-        ("M1_OpenETDirect", 0.784, "1.066", "0.154", False),
-        ("M3_OpenETRidge", 0.856, "1.386", "-0.013", False),
-        ("B2_WeatherRidge", 1.514, "2.687", "-0.098", True),
-        ("B1_CropCoefficient", 1.532, "2.005", "0.149", True),
-    )
-    worst_mae = max(row[1] for row in phase2)
-    phase2_rows = "".join(
-        ('<tr class="base">' if baseline else "<tr>")
-        + (
-            f'<td class="k">{name}</td><td class="num">{mae:.3f}</td>'
-            f'<td class="num">{rmse}</td><td class="num">{bias}</td>'
-            f'<td class="num">7923</td><td class="bar">'
-            f'<i style="width:{mae / worst_mae * 100:.1f}%"></i></td></tr>'
-        )
-        for name, mae, rmse, bias, baseline in phase2
-    )
-    coverage_meter = (
-        '<span class="meter" aria-hidden="true"><i style="width:25%"></i>'
-        '<b style="left:80%"></b></span>'
-    )
-    boii = (
-        ("GEFS ETo forecast, MAE", "1.133 mm/day"),
-        ("Prior-year climatology, MAE", "0.505 mm/day"),
-        ("Baseline minus forecast", "-0.628 mm/day, forecast worse"),
-        ("p10 to p90 coverage", f"0.25, nominal 0.80{coverage_meter}"),
-        ("Mean band width", "1.453 mm/day"),
-        ("Support", "1 issue, 1 station, 20 targets"),
-        ("Paired interval", "not identified, 1 bootstrap cluster"),
-    )
-    boii_rows = "".join(
-        f'<tr><th scope="row">{label}</th><td>{value}</td></tr>'
-        for label, value in boii
-    )
-    # Verbatim from the manuscript limitations section.
-    limitations = (
-        "The full 365-issue GEFS and AgriMet outcome archive is absent.",
-        "Full-archive reference-ETo skill remains pending.",
-        "Historical location evidence covers 19 stations.",
-        "The weather artifact has grid points, not field boundaries or area weights.",
-        "The Phase 2 result does not measure future forecast performance.",
-        "The BOII uncertainty is not estimable with one bootstrap cluster.",
-    )
-    limitation_items = "".join(f"<li>{item}</li>" for item in limitations)
+def _root_html() -> str:
     return f"""<!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MLET reference evapotranspiration outlook</title>
+<title>MLET selective neural correction for spatial evapotranspiration</title>
+<meta name="description" content="MLET studies when a neural correction should change a satellite evapotranspiration estimate.">
 <style>{_CSS}{_ROOT_CSS}</style></head>
 <body><main>
 <header class="bar"><span class="wm">MLET</span>
-<span class="bar-meta">Idaho reference evapotranspiration</span></header>
+<span class="bar-meta">Selective neural correction for spatial ET</span></header>
 
 <div class="hero">
-<p class="kicker">Reference ETo candidate</p>
-<h1>Twenty lead days of reference ET, from one archived weather issue.</h1>
-<p class="lede">One ASCE standardized short-reference ETo candidate on the native GEFS
-grid. Every cell carries p10, p50, and p90 from the weather ensemble. Every file
-carries a checksum.</p>
-<p class="status"><b>Validation status</b><span>Evaluation pending. This candidate is
-not validated, not promoted, and not an irrigation recommendation. The reference-ETo
-skill question stays open until the full archive hindcast runs.</span></p>
-<dl class="spec">
-<div><dt>GEFS issue</dt><dd>{html.escape(issue_short)}</dd></div>
-<div><dt>Lead days</dt><dd>{len(days)}</dd></div>
-<div><dt>Grid cells</dt><dd>{html.escape(str(viewer_data["grid_count"]))}</dd></div>
-<div><dt>Spacing</dt><dd>{spacing:g} deg</dd></div>
-<div><dt>Layer</dt><dd>{html.escape(str(layer["id"]))}</dd></div>
-<div><dt>Units</dt><dd>{html.escape(str(layer["units"]))}</dd></div>
-</dl>
-<p class="jump"><a href="outlook/">Open the grid viewer</a></p>
+<p class="kicker">Machine Learning Evapotranspiration</p>
+<h1>When should a neural correction change a satellite ET estimate?</h1>
+<p class="lede">The paper studies selective neural residual correction under spatial withholding and controlled weather-input faults. It tests whether a selector can choose when a correction helps over the OpenET fallback.</p>
+<p class="status"><b>Preprint</b><span>Draft manuscript. Not submitted to arXiv.</span></p>
+<div class="actions">
+<a href="https://github.com/marco-trotta1/MLET/blob/main/output/pdf/mlet_arxiv_preprint.pdf">Read the preprint</a>
+<a href="https://github.com/marco-trotta1/MLET/blob/main/output/arxiv/mlet_preprint_source.tar.gz">Source package</a>
+<a href="outlook/">Separate reference-ETo candidate</a>
+</div>
 </div>
 
 <section>
-<h2><span class="sn">01</span>Layer boundary</h2>
-<div class="pair">
-<div><h3>What eto_mm reports</h3>
-<p>{html.escape(str(layer["definition"]))} Millimeters per day at common
-{spacing:g} degree GEFS grid points, from empirical quantiles over the sorted
-ensemble members.</p></div>
-<div><h3>What eto_mm does not report</h3>
-<p>It is not observed ET, crop ET, soil water, or field condition. A grid point is a
-weather reference. It is not a field boundary, and the band is uncalibrated.</p></div>
-</div>
-</section>
-
-<section>
-<h2><span class="sn">02</span>Retrospective daily actual ET</h2>
-<p class="fine">85 stations, station-held-out 10-fold evaluation on the
-weather-complete public subset. All rows share the same 7,923 common fitted-model
-station-days. Baselines are shown in the lighter tone. This is daily-ET evidence
-only, and it is not validation of the outlook below.</p>
-<table>
-<thead><tr><th>Model</th><th class="num">MAE</th><th class="num">RMSE</th>
-<th class="num">Bias</th><th class="num">n</th><th class="bar"></th></tr></thead>
-<tbody>{phase2_rows}</tbody>
-</table>
-<p class="fine" style="margin-top:9px">Preregistered comparison: M3 OpenETRidge against
-B2 WeatherRidge, the better OpenET-free baseline. MAE is 43.4% lower, a difference of
-0.658 mm/day, station-blocked 95% CI 0.399 to 0.911 mm/day. B0 persistence reaches MAE
-0.350 mm/day on 1,555 consecutive-day pairs, but it reads the previous observed day and
-stays an oracle-like diagnostic, not a comparable model.</p>
-</section>
-
-<section>
-<h2><span class="sn">03</span>Reference ETo outlook, BOII diagnostic</h2>
-<div class="two">
-<div>
-<p class="fine">One retrospective reforecast case against published AgriMet ETos. The
-signed result is negative: the forecast loses to fixed station and target-day
-climatology from strictly prior calendar years.</p>
-<table class="ledger"><tbody>{boii_rows}</tbody></table>
-<p class="fine" style="margin-top:9px">The case sits below the 30-target support rule,
-so it supports no skill claim in either direction.</p>
-</div>
-<div><h3 style="margin-top:0">Limitations</h3>
-<ul class="lim">{limitation_items}</ul></div>
-</div>
-</section>
-
-<section>
-<h2><span class="sn">04</span>Artifact ledger</h2>
-<div class="two even">
-<div><table class="ledger"><tbody>{ledger_rows_left}</tbody></table></div>
-<div><table class="ledger"><tbody>{ledger_rows_right}</tbody></table></div>
-</div>
-<p class="fine" style="margin-top:9px">Files:
-<a href="outlook/source/outlook.json">candidate JSON</a> ·
-<a href="outlook/source/manifest.json">source manifest</a> ·
-<a href="outlook/viewer-data.json">viewer data</a> ·
-<a href="manifest.json">site manifest</a></p>
-</section>
-
-<section>
-<h2><span class="sn">05</span>Run locally</h2>
-<pre class="run">python3 scripts/build_eto_site.py \\
-  --source-dir data/outlook/gefs_reforecast_20190703_candidate \\
-  --out /tmp/mlet-eto-site
-python3 -m http.server 8000 --directory /tmp/mlet-eto-site</pre>
-<p class="fine" style="margin-top:9px">The builder verifies the candidate against its
-manifest and writes a self-contained static site. Serve the output over HTTP: the pages
-read local JSON, and browsers block those reads from a file path.</p>
+<h2>Main result</h2>
+<p>The learned benefit selector fails under one controlled wind-input fault. This result is specific to that probe and does not establish a general accuracy gain or irrigation benefit.</p>
+<p>We withdraw the earlier H2-strat claim. The Phase 2 result was pooled and does not establish an OpenET benefit for croplands or irrigated croplands.</p>
 </section>
 
 <footer>
 <span>MLET · open-source machine learning evapotranspiration</span>
-<a href="https://github.com/marco-trotta1/MLET/blob/main/docs/outlook/PRODUCT_CONTRACT.md">Product contract</a>
-<a href="https://github.com/marco-trotta1/MLET/blob/main/docs/evaluation/OUTLOOK_PREREGISTRATION.md">Preregistration</a>
-<a href="https://github.com/marco-trotta1/MLET/blob/main/docs/data/DATA_CARD.md">Data card</a>
 <a href="https://github.com/marco-trotta1/MLET">Repository</a>
+<a href="https://github.com/marco-trotta1/MLET/blob/main/manuscript/arxiv/mlet_preprint.tex">Paper source</a>
 </footer>
 </main></body></html>
 """
-
 
 _VIEWER_CSS = """
 main{max-width:1240px;margin:0 auto;padding:0 24px 72px}

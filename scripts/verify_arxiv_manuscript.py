@@ -362,10 +362,9 @@ def _verify_source_text() -> None:
         "U.S. Bureau of Reclamation (USBR)",
         "grass-reference evapotranspiration (ETos)",
         "retrospective reforecast diagnostic", "baseline-minus-forecast MAE difference",
-        "source_issue_at", "archive_available_at", "later retrieval timestamp",
-        "does not prove operational availability at", "original publication time",
-        "strictly prior calendar years", "common 0.5-degree GEFS grid-point subset",
-        "No interpolation", "uncalibrated ensemble quantile band",
+        "later retrieval timestamp", "does not prove operational availability at",
+        "strictly prior calendar years", "uncalibrated ensemble quantile band",
+        "We withdraw the earlier H2-strat claim",
         "post hoc", "matched", "Meetpal S. Kukal", "mailto:m@irrigant.xyz",
         "pdfauthor={Marco Trotta}", "irrigant_logo.png",
     )

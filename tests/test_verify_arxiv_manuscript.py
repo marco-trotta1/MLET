@@ -56,7 +56,7 @@ def test_manuscript_defines_required_terms_and_exact_scope() -> None:
         "uncalibrated ensemble quantile band", "published station-derived target",
         "retrospective reforecast diagnostic", "selective residual regression",
         "spatial transfer and input corruption", "relative-loss", "matched", "post hoc",
-        "scripts/decode_gefs_reforecast.py", "src/mlet/outlook/eto.py",
+        "We withdraw the earlier H2-strat claim", "src/mlet/outlook/eto.py",
     )
     missing = [phrase for phrase in required if phrase not in text]
     assert not missing, f"missing technical definitions or scope: {missing}"

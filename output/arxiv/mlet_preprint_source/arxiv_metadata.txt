@@ -3,7 +3,7 @@ Author: Marco Trotta
 Affiliation: Irrigant, Idaho, USA
 Contact: m@irrigant.xyz
 Suggested primary category: cs.LG (Machine Learning)
-Comments: 19 pages; code and saved predictions in ancillary files.
+Comments: 18 pages; code and saved predictions in ancillary files.
 Main source file: mlet_preprint.tex
 Locally verified engine: Tectonic/XeTeX
 

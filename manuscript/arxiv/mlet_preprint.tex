@@ -167,7 +167,7 @@ The study makes three connected empirical contributions.
 First, it evaluates selection by improvement over the fallback, with spatially cross-fitted targets and complete-system loss.
 Second, paired input faults separate neural error, rejection frequency, and correction ranking while holding the fitted predictor fixed.
 Third, matched acceptance exposes an inconclusive uncertainty comparison and a specific benefit-selector failure that later-year data do not confirm.
-Appendices~\ref{app:architecture} and~\ref{app:outlook} retain the original MLET architecture and reference-ETo visuals as historical context.
+Appendices~\ref{app:architecture} and~\ref{app:outlook} retain the original MLET architecture and one reference-ETo feasibility case as historical context.
 \clearpage\twocolumn
 \section{Related work}
 \citet{mao2024} formulate regression with multi-expert deferral, including two-stage methods and consistency analysis.
@@ -599,6 +599,7 @@ The later-year cropland subset contains 403 observations from nine stations in s
 There, no-VPD SupportGain scores 0.790 against 0.785 for OpenET, with improvement interval $[-0.035,0.017]$.
 Appendix~\ref{app:selective-tables} reports every method and both input specifications.
 These results limit the agricultural interpretation: identifying a correction failure is useful evidence, but it does not validate a better cropland estimator.
+We withdraw the earlier H2-strat claim: the Phase 2 result is pooled and does not establish an OpenET benefit for croplands or irrigated croplands.
 
 \section{Discussion and limits}
 \subsection{What the narrow result establishes}
@@ -1026,37 +1027,17 @@ Conditional $\etaactual$ scenarios & Named water and soil assumptions & Future s
 
 \clearpage
 \section{The retained reference-ETo outlook}\label{app:outlook}
-The original MLET outlook visualizations remain part of the project and appear here without replacing their scientific meaning.
-They describe reference evapotranspiration, separately from the actual-ET target of the neural correction experiment.
-The American Society of Civil Engineers Environmental and Water Resources Institute (ASCE-EWRI) specifies the standardized reference calculation \citep{asce2005}.
-The Global Ensemble Forecast System version 12 (GEFSv12), provided by the National Oceanic and Atmospheric Administration (NOAA), supplies forecast meteorology.
-The U.S. Bureau of Reclamation (USBR) AgriMet archive supplies the published station-derived target, grass-reference evapotranspiration (ETos).
-
-\subsection{Target, issue, and code provenance}
-The issue is July 3, 2019 at 00Z (00:00 UTC), where UTC means Coordinated Universal Time.
-The recorded \path{source_issue_at} identifies that historical forecast issue.
-The \path{archive_available_at} value is a later retrieval timestamp and does not prove operational availability at the historical issue time.
-The AgriMet retrieval timestamp also does not prove its original publication time.
-The independent prior-station climatology uses strictly prior calendar years for the target day of year.
-The target date, not the issue date, sets the climatology year.
-
-The implementation remains in \path{scripts/decode_gefs_reforecast.py}, \path{src/mlet/sources/gefs_reforecast_batch.py}, \path{src/mlet/sources/gefs_grib.py}, and \path{src/mlet/sources/gefs_reforecast.py}.
-Reference ET and spatial aggregation remain in \path{src/mlet/outlook/eto.py} and \path{src/mlet/outlook/spatial.py}.
-The frozen source receipts use SHA-256 (a 256-bit secure hash).
-None of the new selective regression results alters the outlook's release gate.
-
-
-
-The one-issue candidate passes the source count, member count, lead count,
-quantile order, local-day, station-history, target-time, and grid-distance
-checks. BOII (the Boise, Idaho AgriMet weather-station identifier) is a
-retrospective reforecast diagnostic.
-
-Its \path{source_issue_at} is 2019-07-03 00Z. Its \path{archive_available_at}
-is \path{2026-08-04T18:08:54.243122Z}. The latter is a later archive retrieval
-timestamp. It does not prove operational availability at the historical issue
-time. Figure~\ref{fig:boii} shows its trajectory.
+This separate branch predicts standardized reference ET, not the actual-ET target studied above.
+The American Society of Civil Engineers Environmental and Water Resources Institute (ASCE-EWRI) specifies the reference calculation \citep{asce2005}.
+The National Oceanic and Atmospheric Administration (NOAA) supplies weather forecasts from its Global Ensemble Forecast System version 12 (GEFSv12).
+The U.S. Bureau of Reclamation (USBR) AgriMet archive supplies published grass-reference evapotranspiration (ETos) observations.
+The BOII (the Boise, Idaho AgriMet weather-station identifier) case is a retrospective reforecast diagnostic for July 3, 2019 at 00Z (00:00 UTC).
+Its recorded archive retrieval at \path{2026-08-04T18:08:54.243122Z} is a later retrieval timestamp; it does not prove operational availability at issue time or original publication time.
 The case has one issue, one station, and $n=\FeasibilityN{}$ daily targets.
+Its source receipts use SHA-256 (a 256-bit secure hash).
+The frozen gate requires support across all lead-season-fold cells; this case does not meet that requirement or establish general forecast skill.
+The selective regression results do not change the outlook release gate.
+The displayed p10-to-p90 interval is an uncalibrated ensemble quantile band.
 
 \begin{figure}[!ht]
 \captionsetup{width=.96\textwidth}
@@ -1071,64 +1052,13 @@ The case has one issue, one station, and $n=\FeasibilityN{}$ daily targets.
   \label{fig:boii}
 \end{figure}
 
-The p50 MAE is \FeasibilityMAE{} $\mmday$. The fixed station and target-day
-climatology, using strictly prior calendar years, has MAE
-\FeasibilityBaselineMAE{} $\mmday$. The signed
-baseline-minus-forecast MAE difference is \FeasibilityImprovement{} $\mmday$,
-so forecast MAE is higher. The p50 RMSE is \FeasibilityRMSE{} $\mmday$, and
-the bias is \FeasibilityBias{} $\mmday$.
-
-Empirical p10-to-p90 coverage is \FeasibilityEmpiricalCoverage{}, and the
-nominal p10-to-p90 coverage target is \FeasibilityNominalCoverage{}. The mean
-p10-to-p90 band width is \FeasibilityWidth{} $\mmday$. The mean
-three-quantile pinball loss is \FeasibilityPinball{} $\mmday$.
-
-These values have no sampling interval. The case has only
-\FeasibilityClusters{} bootstrap cluster. It also has one target per occupied
-lead cell, below the frozen minimum of \SupportMinimum. The result is a
-negative feasibility diagnostic, not an estimate of general forecast skill.
-
-\subsection{Spatial artifact and support state}
-
-Figure~\ref{fig:native-grid} shows the real common 0.5-degree GEFS grid-point
-subset artifact. Each panel contains \GEFSGrids{} weather-grid points. It does
-not show field boundaries. The gold marker identifies BOII and its mapped grid
-point.
-
-\begin{figure}[!ht]
-\captionsetup{width=.96\textwidth}
-  \centering
-  \includegraphics[width=0.97\textwidth]{figure_4_native_grid.pdf}
-\caption{Reference-$\eto$ fields for the real 2019-07-03 candidate on the
-common 0.5-degree GEFS grid-point subset. The first three panels show p50 at
-leads 1, 10, and 20. The last panel shows p90 minus p10 at lead 20. Each panel
-contains $n=\GEFSGrids{}$ grid points. No interpolation, field geometry, or
-area-weighted Idaho estimate is inferred.}
-  \label{fig:native-grid}
-\end{figure}
-
-Figure~\ref{fig:support} makes the incomplete state explicit. The real archive
-supplies one target in each JJA, fold-2 lead cell. This is \FeasibilityN{} cell
-observations. The frozen gate needs \SupportMinimumTotal{} observations when
-every one of the \SupportCells{} cells reaches its minimum. The present archive
-therefore supports no full-hindcast claim.
-
-\begin{figure}[!ht]
-\captionsetup{width=.96\textwidth}
-  \centering
-  \includegraphics[width=0.97\textwidth]{figure_5_support_tensor.pdf}
-  \caption{Frozen reference-$\eto$ support tensor. The real feasibility
-  archive occupies \FeasibilityN{} cells with one target each. No cell reaches the
-  $n\ge\SupportMinimum{}$ threshold. The complete protocol requires all
-  \SupportCells{} lead-season-fold cells.}
-  \label{fig:support}
-\end{figure}
-
-
-The four season groups are December-January-February (DJF), March-April-May (MAM), June-July-August (JJA), and September-October-November (SON).
-The displayed band is an uncalibrated ensemble quantile band.
-Validation complete means that all required support cells meet their minimum count; the present diagnostic does not meet that condition.
-A skillful forecast additionally requires the frozen error-improvement criteria and an independent release review.
+The prior-station, target-day climatology has MAE \FeasibilityBaselineMAE{} $\mmday$.
+The baseline-minus-forecast MAE difference is \FeasibilityImprovement{} $\mmday$, so forecast MAE is higher.
+Forecast p50 RMSE is \FeasibilityRMSE{} $\mmday$, with bias \FeasibilityBias{} $\mmday$.
+The p10-to-p90 band has empirical coverage \FeasibilityEmpiricalCoverage{} against nominal coverage \FeasibilityNominalCoverage{}.
+These values have no sampling interval and only \FeasibilityClusters{} bootstrap cluster.
+Each occupied lead-season-fold cell has one target, below the required minimum of \SupportMinimum{}.
+The result is a negative feasibility diagnostic, not general forecast skill.
 
 \clearpage\twocolumn
 \balance

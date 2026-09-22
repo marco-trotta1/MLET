@@ -68,6 +68,14 @@ def test_build_eto_site_preserves_provenance_and_accessible_controls(
     assert len(viewer["days"]) == 20
     assert viewer["grid_count"] == 1
 
+    landing = (result.destination / "index.html").read_text()
+    assert "When should a neural correction change a satellite ET estimate?" in landing
+    assert "We withdraw the earlier H2-strat claim." in landing
+    assert "mlet_arxiv_preprint.pdf" in landing
+    assert "mlet_preprint_source.tar.gz" in landing
+    assert "Separate reference-ETo candidate" in landing
+    assert "43.4%" not in landing
+
     page = (result.destination / "outlook/index.html").read_text()
     assert 'aria-live="polite"' in page
     assert 'role="status"' in page
