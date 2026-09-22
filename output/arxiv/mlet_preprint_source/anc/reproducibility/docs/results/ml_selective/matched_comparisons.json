@@ -1,0 +1,322 @@
+{
+  "joint_archived_natural": {
+    "spread_minus_support": {
+      "difference": 0.014044117823904259,
+      "ci95": [
+        -0.01230356367039483,
+        0.04478151348274035
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.03388781492028166,
+      "ci95": [
+        -0.05638443524010194,
+        0.15673076624580473
+      ]
+    }
+  },
+  "joint_archived_probe_clean": {
+    "spread_minus_support": {
+      "difference": 0.014642570999961125,
+      "ci95": [
+        -0.011496938620011573,
+        0.04508390070930644
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.03426870814591002,
+      "ci95": [
+        -0.056428555530732276,
+        0.156486634784738
+      ]
+    }
+  },
+  "joint_archived_temperature_plus20": {
+    "spread_minus_support": {
+      "difference": -0.07232085603922071,
+      "ci95": [
+        -0.14696569861855913,
+        0.00789694702775148
+      ]
+    },
+    "gain_minus_support": {
+      "difference": -0.04865254651272205,
+      "ci95": [
+        -0.10781914047719007,
+        0.0007770501143236118
+      ]
+    }
+  },
+  "joint_archived_vpd_x10": {
+    "spread_minus_support": {
+      "difference": 0.0499461151062402,
+      "ci95": [
+        -0.004457579261190325,
+        0.11990821776592343
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.00451397119110686,
+      "ci95": [
+        -0.021388253492215927,
+        0.030515663724171492
+      ]
+    }
+  },
+  "joint_archived_wind_x10": {
+    "spread_minus_support": {
+      "difference": 0.0006602616224236044,
+      "ci95": [
+        -0.10314760790765576,
+        0.11368410129336502
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.020648634584650397,
+      "ci95": [
+        -0.16489936176849276,
+        0.25411803949315664
+      ]
+    }
+  },
+  "joint_noVPD_natural": {
+    "spread_minus_support": {
+      "difference": 0.04088186737717663,
+      "ci95": [
+        -0.036507618930029496,
+        0.15333689467272138
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.016498238578975546,
+      "ci95": [
+        -0.024382261672418498,
+        0.061204334054310604
+      ]
+    }
+  },
+  "joint_noVPD_probe_clean": {
+    "spread_minus_support": {
+      "difference": 0.041585529783431746,
+      "ci95": [
+        -0.03632755266919095,
+        0.15411864199348566
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.016319795065034285,
+      "ci95": [
+        -0.02437430907030504,
+        0.0608281284748965
+      ]
+    }
+  },
+  "joint_noVPD_temperature_plus20": {
+    "spread_minus_support": {
+      "difference": -0.003350836888272843,
+      "ci95": [
+        -0.07593973928817507,
+        0.0782363849870057
+      ]
+    },
+    "gain_minus_support": {
+      "difference": -0.01873843104353417,
+      "ci95": [
+        -0.10155372637067292,
+        0.05582290032015723
+      ]
+    }
+  },
+  "joint_noVPD_vpd_x10": {
+    "spread_minus_support": {
+      "difference": 0.041585529783431746,
+      "ci95": [
+        -0.03632755266919095,
+        0.15411864199348566
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.016319795065034285,
+      "ci95": [
+        -0.02437430907030504,
+        0.0608281284748965
+      ]
+    }
+  },
+  "joint_noVPD_wind_x10": {
+    "spread_minus_support": {
+      "difference": 0.003220284101783688,
+      "ci95": [
+        -0.06081107285008527,
+        0.08258669122852458
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.031851165924225135,
+      "ci95": [
+        -0.10495430671793145,
+        0.1944852003790777
+      ]
+    }
+  },
+  "proximity_archived_natural": {
+    "spread_minus_support": {
+      "difference": -0.029337362173486217,
+      "ci95": [
+        -0.053136971832282706,
+        -0.00786243544877839
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.2694625470004603,
+      "ci95": [
+        -0.038925901482949096,
+        0.9506687785264815
+      ]
+    }
+  },
+  "proximity_archived_probe_clean": {
+    "spread_minus_support": {
+      "difference": -0.03702552680089446,
+      "ci95": [
+        -0.07766388438262253,
+        -0.007458045626682635
+      ]
+    },
+    "gain_minus_support": {
+      "difference": -0.024989507950414547,
+      "ci95": [
+        -0.05664312356180479,
+        0.0022844501130020963
+      ]
+    }
+  },
+  "proximity_archived_temperature_plus20": {
+    "spread_minus_support": {
+      "difference": -0.021458340832999363,
+      "ci95": [
+        -0.04830095441064533,
+        0.005120154692195105
+      ]
+    },
+    "gain_minus_support": {
+      "difference": -0.010758083187001277,
+      "ci95": [
+        -0.03352466399013336,
+        0.011666892384517276
+      ]
+    }
+  },
+  "proximity_archived_vpd_x10": {
+    "spread_minus_support": {
+      "difference": 0.018649245203885903,
+      "ci95": [
+        -0.006075180949222594,
+        0.04767586620572061
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.11187207889889285,
+      "ci95": [
+        0.01851510602752338,
+        0.24236757483707905
+      ]
+    }
+  },
+  "proximity_archived_wind_x10": {
+    "spread_minus_support": {
+      "difference": -0.01748126946914267,
+      "ci95": [
+        -0.071966775675174,
+        0.03393051757372545
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.060877115177391014,
+      "ci95": [
+        -0.050742077481075704,
+        0.1725295279736219
+      ]
+    }
+  },
+  "proximity_noVPD_natural": {
+    "spread_minus_support": {
+      "difference": -0.015342581964688469,
+      "ci95": [
+        -0.03325146000455514,
+        0.0017573065045714048
+      ]
+    },
+    "gain_minus_support": {
+      "difference": -0.03251913144140921,
+      "ci95": [
+        -0.07056428997159764,
+        -0.002163260397524895
+      ]
+    }
+  },
+  "proximity_noVPD_probe_clean": {
+    "spread_minus_support": {
+      "difference": -0.012176380721114136,
+      "ci95": [
+        -0.02900278402256763,
+        0.004459858131214921
+      ]
+    },
+    "gain_minus_support": {
+      "difference": -0.03109933253784097,
+      "ci95": [
+        -0.06896134157265982,
+        0.0002765410595785428
+      ]
+    }
+  },
+  "proximity_noVPD_temperature_plus20": {
+    "spread_minus_support": {
+      "difference": 0.010147972543539815,
+      "ci95": [
+        -0.0166901929421696,
+        0.037571413729534035
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.0030933877560340253,
+      "ci95": [
+        -0.02932696908040729,
+        0.04021346863832395
+      ]
+    }
+  },
+  "proximity_noVPD_vpd_x10": {
+    "spread_minus_support": {
+      "difference": -0.012176380721114136,
+      "ci95": [
+        -0.02900278402256763,
+        0.004459858131214921
+      ]
+    },
+    "gain_minus_support": {
+      "difference": -0.03109933253784097,
+      "ci95": [
+        -0.06896134157265982,
+        0.0002765410595785428
+      ]
+    }
+  },
+  "proximity_noVPD_wind_x10": {
+    "spread_minus_support": {
+      "difference": 0.022708337897342307,
+      "ci95": [
+        -0.021822365159166898,
+        0.06558440965027344
+      ]
+    },
+    "gain_minus_support": {
+      "difference": 0.24293567479307074,
+      "ci95": [
+        0.10968410599618965,
+        0.41212235628167826
+      ]
+    }
+  }
+}

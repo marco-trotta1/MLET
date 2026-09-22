@@ -1,0 +1,11 @@
+{
+  "outer_folds": 30,
+  "inner_partitions": 90,
+  "original_models_reproduced": 5,
+  "protocol_and_code_hashes": "verified",
+  "audit_compatibility": "exact two-mask copy patch",
+  "cohort_hash": "match",
+  "sensitivity_rows_and_targets": "match",
+  "humidity_audit": "verified",
+  "status": "passed"
+}

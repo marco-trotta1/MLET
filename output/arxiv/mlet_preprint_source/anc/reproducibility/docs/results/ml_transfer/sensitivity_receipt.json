@@ -1,0 +1,2259 @@
+{
+  "seconds": 5.458570040995255,
+  "code_sha256": "89772092a398c1c498e3083b4ae2fb6d52d717f1036efa77884d951a0563bcf9",
+  "protocol_sha256": "c0e091914e85aa3e32bbc4fa8c915279fbdee86ff9db104184fa2d4ed7e1c3c2",
+  "timings": [
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0007825421635061502,
+      "predict_seconds": 5.254102870821953e-05,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.000421290984377265,
+      "predict_seconds": 4.4625019654631615e-05,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.026484583970159292,
+      "predict_seconds": 0.0014808340929448605,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.028910249937325716,
+      "predict_seconds": 0.0015107919462025166,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.028611375018954277,
+      "predict_seconds": 0.001484125154092908,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0005970420315861702,
+      "predict_seconds": 5.35410363227129e-05,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00046916701830923557,
+      "predict_seconds": 4.395795986056328e-05,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0005401249509304762,
+      "predict_seconds": 5.2833929657936096e-05,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0004499999340623617,
+      "predict_seconds": 4.533305764198303e-05,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.05740608414635062,
+      "predict_seconds": 0.0016751668881624937,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.03299304097890854,
+      "predict_seconds": 0.0016951248981058598,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.031182582955807447,
+      "predict_seconds": 0.0016282079741358757,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0005991668440401554,
+      "predict_seconds": 5.075009539723396e-05,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0004651250783354044,
+      "predict_seconds": 4.5416876673698425e-05,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.00041149999015033245,
+      "predict_seconds": 4.408322274684906e-05,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003856250550597906,
+      "predict_seconds": 4.8833899199962616e-05,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.02510916697792709,
+      "predict_seconds": 0.001779541140422225,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.028063250007107854,
+      "predict_seconds": 0.001913249958306551,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.026931833941489458,
+      "predict_seconds": 0.0018580830655992031,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.00044212513603270054,
+      "predict_seconds": 4.8208050429821014e-05,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00041791610419750214,
+      "predict_seconds": 4.470790736377239e-05,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.00041954219341278076,
+      "predict_seconds": 5.3666066378355026e-05,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.00040200003422796726,
+      "predict_seconds": 3.9833132177591324e-05,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.0260817080270499,
+      "predict_seconds": 0.001260500168427825,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.028212666977196932,
+      "predict_seconds": 0.0012889159843325615,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.02773612504824996,
+      "predict_seconds": 0.001250959001481533,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.00045616598799824715,
+      "predict_seconds": 4.712515510618687e-05,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00042754109017550945,
+      "predict_seconds": 4.087504930794239e-05,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0003796250093728304,
+      "predict_seconds": 4.2833155021071434e-05,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.00037720915861427784,
+      "predict_seconds": 4.02920413762331e-05,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.025359582854434848,
+      "predict_seconds": 0.0016596249770373106,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.027692792005836964,
+      "predict_seconds": 0.0017355422023683786,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.026811083080247045,
+      "predict_seconds": 0.0017048751469701529,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004434159491211176,
+      "predict_seconds": 4.529207944869995e-05,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0004210001789033413,
+      "predict_seconds": 5.124998278915882e-05,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.00038895895704627037,
+      "predict_seconds": 4.00422140955925e-05,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.00039295898750424385,
+      "predict_seconds": 5.3999945521354675e-05,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.025782166048884392,
+      "predict_seconds": 0.0012318750377744436,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.028617708943784237,
+      "predict_seconds": 0.001224250067025423,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.0281227498780936,
+      "predict_seconds": 0.0012206670362502337,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004860830958932638,
+      "predict_seconds": 4.983297549188137e-05,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0005604580510407686,
+      "predict_seconds": 7.254211232066154e-05,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0004110001027584076,
+      "predict_seconds": 4.3416861444711685e-05,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003896250855177641,
+      "predict_seconds": 4.295795224606991e-05,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.025974208023399115,
+      "predict_seconds": 0.0013528750278055668,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.028537666890770197,
+      "predict_seconds": 0.0014217500574886799,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.027826833073049784,
+      "predict_seconds": 0.0013866249937564135,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004417090676724911,
+      "predict_seconds": 4.2499974370002747e-05,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.000424874946475029,
+      "predict_seconds": 4.3250154703855515e-05,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.00038858293555676937,
+      "predict_seconds": 4.433421418070793e-05,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003885419573634863,
+      "predict_seconds": 3.912486135959625e-05,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.02617158298380673,
+      "predict_seconds": 0.0012727919965982437,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.02904391591437161,
+      "predict_seconds": 0.001310582971200347,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.0278372501488775,
+      "predict_seconds": 0.0012710420414805412,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.000441292067989707,
+      "predict_seconds": 4.441710188984871e-05,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0004330000374466181,
+      "predict_seconds": 4.237494431436062e-05,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.00040200003422796726,
+      "predict_seconds": 4.8833899199962616e-05,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003909580409526825,
+      "predict_seconds": 3.845803439617157e-05,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.026048125000670552,
+      "predict_seconds": 0.0009869581554085016,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.029144125059247017,
+      "predict_seconds": 0.0010204999707639217,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.028144791955128312,
+      "predict_seconds": 0.0010129171423614025,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004594591446220875,
+      "predict_seconds": 4.3042004108428955e-05,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0004384161438792944,
+      "predict_seconds": 3.958307206630707e-05,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0003832499496638775,
+      "predict_seconds": 4.191603511571884e-05,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003731660544872284,
+      "predict_seconds": 4.145805723965168e-05,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.02543995901942253,
+      "predict_seconds": 0.0018285000696778297,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.027975167147815228,
+      "predict_seconds": 0.0018880830612033606,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.02702670800499618,
+      "predict_seconds": 0.0018111669924110174,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.00045120902359485626,
+      "predict_seconds": 5.016685463488102e-05,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00041566696017980576,
+      "predict_seconds": 4.970794543623924e-05,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0004104999825358391,
+      "predict_seconds": 3.937515430152416e-05,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.00039974995888769627,
+      "predict_seconds": 4.000007174909115e-05,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.026570291025564075,
+      "predict_seconds": 0.0008281669579446316,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.029539375100284815,
+      "predict_seconds": 0.0009002499282360077,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.02837995789013803,
+      "predict_seconds": 0.0008683328051120043,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0005063749849796295,
+      "predict_seconds": 4.3208012357354164e-05,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00044950004667043686,
+      "predict_seconds": 4.191696643829346e-05,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.00040237489156425,
+      "predict_seconds": 4.2250147089362144e-05,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003820830024778843,
+      "predict_seconds": 3.941589966416359e-05,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.026248582871630788,
+      "predict_seconds": 0.0013531248550862074,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.03162875003181398,
+      "predict_seconds": 0.0014644579496234655,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.030617999844253063,
+      "predict_seconds": 0.0013263330329209566,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004666668828576803,
+      "predict_seconds": 4.379195161163807e-05,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0004301669541746378,
+      "predict_seconds": 4.091719165444374e-05,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0003838329575955868,
+      "predict_seconds": 4.145805723965168e-05,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003994579892605543,
+      "predict_seconds": 4.445808008313179e-05,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.02644491707906127,
+      "predict_seconds": 0.0010765001643449068,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.029072250006720424,
+      "predict_seconds": 0.00116958306171,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.027661541011184454,
+      "predict_seconds": 0.001058374997228384,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.00043783290311694145,
+      "predict_seconds": 4.2208004742860794e-05,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0004388748202472925,
+      "predict_seconds": 4.483293741941452e-05,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.00038195913657546043,
+      "predict_seconds": 3.979192115366459e-05,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.00038824998773634434,
+      "predict_seconds": 3.666616976261139e-05,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.026682249968871474,
+      "predict_seconds": 0.0008825000841170549,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.029363375157117844,
+      "predict_seconds": 0.0009247090201824903,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.02844320796430111,
+      "predict_seconds": 0.0008900831453502178,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.00043212505988776684,
+      "predict_seconds": 4.087504930794239e-05,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00042233383283019066,
+      "predict_seconds": 4.0082959458231926e-05,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0003625829704105854,
+      "predict_seconds": 4.63749747723341e-05,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.00036383303813636303,
+      "predict_seconds": 4.737498238682747e-05,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.0239098749589175,
+      "predict_seconds": 0.0030842500273138285,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.02608545799739659,
+      "predict_seconds": 0.0031779161654412746,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.02541470807045698,
+      "predict_seconds": 0.0030584160704165697,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004153330810368061,
+      "predict_seconds": 5.0833914428949356e-05,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00040541612543165684,
+      "predict_seconds": 5.2167102694511414e-05,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.00038191606290638447,
+      "predict_seconds": 4.441710188984871e-05,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003788750618696213,
+      "predict_seconds": 4.7666020691394806e-05,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.02475441712886095,
+      "predict_seconds": 0.0021059170830994844,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.027235749876126647,
+      "predict_seconds": 0.0022632500622421503,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.026433416875079274,
+      "predict_seconds": 0.00217404100112617,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004313751123845577,
+      "predict_seconds": 4.654098302125931e-05,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00041324994526803493,
+      "predict_seconds": 5.133310332894325e-05,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.000395667040720582,
+      "predict_seconds": 4.0125101804733276e-05,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003922500181943178,
+      "predict_seconds": 4.3209176510572433e-05,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.026569999987259507,
+      "predict_seconds": 0.0010644581634551287,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.0290901658590883,
+      "predict_seconds": 0.001061541959643364,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.028137041023001075,
+      "predict_seconds": 0.001079958165064454,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004498749040067196,
+      "predict_seconds": 4.120892845094204e-05,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.000432583037763834,
+      "predict_seconds": 4.3999869376420975e-05,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0003826250322163105,
+      "predict_seconds": 4.17088158428669e-05,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.00038408301770687103,
+      "predict_seconds": 3.991695120930672e-05,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.025755333015695214,
+      "predict_seconds": 0.0015902079176157713,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.02841379214078188,
+      "predict_seconds": 0.0015473749954253435,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.0274766250513494,
+      "predict_seconds": 0.0014899170491844416,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004308749921619892,
+      "predict_seconds": 4.3084146454930305e-05,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00045008398592472076,
+      "predict_seconds": 5.129212513566017e-05,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.00038549979217350483,
+      "predict_seconds": 4.2665982618927956e-05,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.00038833310827612877,
+      "predict_seconds": 3.941613249480724e-05,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.026187082985416055,
+      "predict_seconds": 0.0012749170418828726,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.028994958149269223,
+      "predict_seconds": 0.0013019160833209753,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.027925292029976845,
+      "predict_seconds": 0.0012370001059025526,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004378750454634428,
+      "predict_seconds": 4.2999861761927605e-05,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0004312910605221987,
+      "predict_seconds": 4.3125124648213387e-05,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0003812920767813921,
+      "predict_seconds": 3.895792178809643e-05,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003945410717278719,
+      "predict_seconds": 3.737490624189377e-05,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.02780929091386497,
+      "predict_seconds": 0.001078084111213684,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.0301495841704309,
+      "predict_seconds": 0.0012038338463753462,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.02913224999792874,
+      "predict_seconds": 0.0010712079238146544,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.000507415970787406,
+      "predict_seconds": 4.595797508955002e-05,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.000442249933257699,
+      "predict_seconds": 4.254095256328583e-05,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.00044533307664096355,
+      "predict_seconds": 4.0624989196658134e-05,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.000383750069886446,
+      "predict_seconds": 3.516697324812412e-05,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.02584958402439952,
+      "predict_seconds": 0.00034404220059514046,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.028444624971598387,
+      "predict_seconds": 0.00032575009390711784,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.027602958027273417,
+      "predict_seconds": 0.00032958295196294785,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.00045420811511576176,
+      "predict_seconds": 3.9125094190239906e-05,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00042870803736150265,
+      "predict_seconds": 3.8499943912029266e-05,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0003915419802069664,
+      "predict_seconds": 3.8041966035962105e-05,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.000439999857917428,
+      "predict_seconds": 4.491698928177357e-05,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.025652999989688396,
+      "predict_seconds": 0.0003922500181943178,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.02784562506712973,
+      "predict_seconds": 0.0003881659358739853,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.027150917099788785,
+      "predict_seconds": 0.0003891249652951956,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.00042716600000858307,
+      "predict_seconds": 3.754091449081898e-05,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0004165000282227993,
+      "predict_seconds": 3.591598942875862e-05,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0003873331006616354,
+      "predict_seconds": 3.816699609160423e-05,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003772501368075609,
+      "predict_seconds": 3.4125056117773056e-05,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.027334291953593493,
+      "predict_seconds": 0.0003709997981786728,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.029712332878261805,
+      "predict_seconds": 0.00038683321326971054,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.028681542025879025,
+      "predict_seconds": 0.0003741658292710781,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0005304999649524689,
+      "predict_seconds": 5.2582938224077225e-05,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0006052909884601831,
+      "predict_seconds": 4.687509499490261e-05,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0004189161118119955,
+      "predict_seconds": 3.937515430152416e-05,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.00040787504985928535,
+      "predict_seconds": 3.679213114082813e-05,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.02598612499423325,
+      "predict_seconds": 0.0004656671080738306,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.02864995808340609,
+      "predict_seconds": 0.00046537513844668865,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.02777475002221763,
+      "predict_seconds": 0.00044408300891518593,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004504169337451458,
+      "predict_seconds": 4.641595296561718e-05,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00042062485590577126,
+      "predict_seconds": 3.658398054540157e-05,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0003690829034894705,
+      "predict_seconds": 3.8416823372244835e-05,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.00034887506626546383,
+      "predict_seconds": 3.562518395483494e-05,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.02435750002041459,
+      "predict_seconds": 0.00045370799489319324,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.0257315409835428,
+      "predict_seconds": 0.0004636249504983425,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.02502912492491305,
+      "predict_seconds": 0.0004924579989165068,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.00043499981984496117,
+      "predict_seconds": 4.612491466104984e-05,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00038870819844305515,
+      "predict_seconds": 3.8790982216596603e-05,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0003722079563885927,
+      "predict_seconds": 3.9125094190239906e-05,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003619580529630184,
+      "predict_seconds": 4.4042011722922325e-05,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.02475137496367097,
+      "predict_seconds": 0.0004939169157296419,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.027456459123641253,
+      "predict_seconds": 0.0006393329240381718,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.02640245808288455,
+      "predict_seconds": 0.0005214579869061708,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004539580550044775,
+      "predict_seconds": 4.045804962515831e-05,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0004285841714590788,
+      "predict_seconds": 3.91670037060976e-05,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.0006659161299467087,
+      "predict_seconds": 6.983312778174877e-05,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.00046766712330281734,
+      "predict_seconds": 4.070904105901718e-05,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.02604441693983972,
+      "predict_seconds": 0.00038025015965104103,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.03203383390791714,
+      "predict_seconds": 0.00046995910815894604,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.028073000023141503,
+      "predict_seconds": 0.000434541841968894,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0005783329252153635,
+      "predict_seconds": 4.583410918712616e-05,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.00044179102405905724,
+      "predict_seconds": 3.7207966670393944e-05,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.000380875077098608,
+      "predict_seconds": 3.9125094190239906e-05,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.0003696668427437544,
+      "predict_seconds": 3.5542063415050507e-05,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.024902791948989034,
+      "predict_seconds": 0.0003461658488959074,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.027382791973650455,
+      "predict_seconds": 0.0003407078329473734,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.02664854214526713,
+      "predict_seconds": 0.00033712503500282764,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.0004346671048551798,
+      "predict_seconds": 3.954116255044937e-05,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0004166660364717245,
+      "predict_seconds": 3.78340482711792e-05,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.00039733294397592545,
+      "predict_seconds": 3.837491385638714e-05,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.000380875077098608,
+      "predict_seconds": 3.9582839235663414e-05,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.02570391702465713,
+      "predict_seconds": 0.0005331248976290226,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.028538750018924475,
+      "predict_seconds": 0.0005379170179367065,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.027631749864667654,
+      "predict_seconds": 0.0005221250467002392,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.00046437489800155163,
+      "predict_seconds": 4.216702654957771e-05,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0004222078714519739,
+      "predict_seconds": 3.8499943912029266e-05,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "WeatherRidge_noVPD",
+      "fit_seconds": 0.00039483304135501385,
+      "predict_seconds": 4.016607999801636e-05,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "CombinedRidge_noVPD",
+      "fit_seconds": 0.00038049998693168163,
+      "predict_seconds": 3.516604192554951e-05,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "WeatherHGB_noVPD",
+      "fit_seconds": 0.04180745896883309,
+      "predict_seconds": 0.0003631669096648693,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "DirectHGB_noVPD",
+      "fit_seconds": 0.02825029194355011,
+      "predict_seconds": 0.00033316598273813725,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "ResidualHGB_noVPD",
+      "fit_seconds": 0.027127457782626152,
+      "predict_seconds": 0.00033012498170137405,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "WeatherRidge_clipped",
+      "fit_seconds": 0.000484042102470994,
+      "predict_seconds": 4.2208004742860794e-05,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "CombinedRidge_clipped",
+      "fit_seconds": 0.0004314999096095562,
+      "predict_seconds": 3.78340482711792e-05,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": []
+    }
+  ],
+  "gates": [
+    {
+      "regime": "station",
+      "fold": 0,
+      "lambda_noVPD": 0.5464573789743032
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "lambda_noVPD": 0.6622801006745349
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "lambda_noVPD": 0.4333379315067774
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "lambda_noVPD": 0.47034439787085974
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "lambda_noVPD": 0.34324232378910624
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "lambda_noVPD": 0.7615280393960431
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "lambda_noVPD": 0.8085698593348288
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "lambda_noVPD": 0.46085816275022673
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "lambda_noVPD": 0.49835412071322366
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "lambda_noVPD": 0.7471190785511732
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "lambda_noVPD": 0.32854584484950133
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "lambda_noVPD": 0.509191304887871
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "lambda_noVPD": 0.6334803764123659
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "lambda_noVPD": 0.6269664401379806
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "lambda_noVPD": 0.7583944140629845
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "lambda_noVPD": 0.6887613288572321
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "lambda_noVPD": 0.6703843298971038
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "lambda_noVPD": 0.7096886180221664
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "lambda_noVPD": 0.6576824332314793
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "lambda_noVPD": 0.5779088498002677
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "lambda_noVPD": 0.04306943038057954
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "lambda_noVPD": 0.0
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "lambda_noVPD": 0.0
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "lambda_noVPD": 0.0
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "lambda_noVPD": 0.09037464275661654
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "lambda_noVPD": 0.0
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "lambda_noVPD": 0.0683332581165547
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "lambda_noVPD": 0.0
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "lambda_noVPD": 0.0
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "lambda_noVPD": 0.0
+    }
+  ]
+}

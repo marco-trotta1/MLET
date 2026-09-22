@@ -1,0 +1,1047 @@
+{
+  "seconds": 0.25223758281208575,
+  "fits": [
+    {
+      "regime": "station",
+      "fold": 0,
+      "cover": "Croplands",
+      "fit_seconds": 0.00031633395701646805,
+      "predict_seconds": 4.7541921958327293e-05,
+      "test_rows": 656,
+      "train_rows": 2014,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00024229194968938828,
+      "predict_seconds": 4.333280958235264e-05,
+      "test_rows": 9,
+      "train_rows": 1183,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "cover": "Wetland/Riparian",
+      "fit_seconds": 0.00021491688676178455,
+      "predict_seconds": 3.279116936028004e-05,
+      "test_rows": 99,
+      "train_rows": 241,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "cover": "Croplands",
+      "fit_seconds": 0.00023812497965991497,
+      "predict_seconds": 4.191603511571884e-05,
+      "test_rows": 328,
+      "train_rows": 2342,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "cover": "Shrublands",
+      "fit_seconds": 0.00021750014275312424,
+      "predict_seconds": 4.1291117668151855e-05,
+      "test_rows": 302,
+      "train_rows": 897,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "cover": "Wetland/Riparian",
+      "fit_seconds": 0.0002060839906334877,
+      "predict_seconds": 4.074978642165661e-05,
+      "test_rows": 7,
+      "train_rows": 333,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00021733297035098076,
+      "predict_seconds": 4.0499959141016006e-05,
+      "test_rows": 188,
+      "train_rows": 1004,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "cover": "Grasslands",
+      "fit_seconds": 0.0002221670001745224,
+      "predict_seconds": 4.112487658858299e-05,
+      "test_rows": 3,
+      "train_rows": 1913,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "cover": "Croplands",
+      "fit_seconds": 0.0002579169813543558,
+      "predict_seconds": 4.270905628800392e-05,
+      "test_rows": 238,
+      "train_rows": 2432,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.0002232501283288002,
+      "predict_seconds": 4.224991425871849e-05,
+      "test_rows": 620,
+      "train_rows": 572,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00022583291865885258,
+      "predict_seconds": 4.0958868339657784e-05,
+      "test_rows": 112,
+      "train_rows": 1804,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "cover": "Shrublands",
+      "fit_seconds": 0.00022358400747179985,
+      "predict_seconds": 4.2250147089362144e-05,
+      "test_rows": 63,
+      "train_rows": 1136,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00021141604520380497,
+      "predict_seconds": 4.1624996811151505e-05,
+      "test_rows": 16,
+      "train_rows": 590,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00021095899865031242,
+      "predict_seconds": 4.100007936358452e-05,
+      "test_rows": 113,
+      "train_rows": 493,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00021199998445808887,
+      "predict_seconds": 4.0624989196658134e-05,
+      "test_rows": 173,
+      "train_rows": 1019,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "cover": "Shrublands",
+      "fit_seconds": 0.0002123329322785139,
+      "predict_seconds": 4.337495192885399e-05,
+      "test_rows": 222,
+      "train_rows": 977,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "cover": "Croplands",
+      "fit_seconds": 0.0002380001824349165,
+      "predict_seconds": 3.954186104238033e-05,
+      "test_rows": 12,
+      "train_rows": 2658,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "cover": "Grasslands",
+      "fit_seconds": 0.0002360418438911438,
+      "predict_seconds": 4.13751695305109e-05,
+      "test_rows": 146,
+      "train_rows": 1770,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "cover": "Croplands",
+      "fit_seconds": 0.0002338751219213009,
+      "predict_seconds": 4.2208004742860794e-05,
+      "test_rows": 623,
+      "train_rows": 2047,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.0002193329855799675,
+      "predict_seconds": 4.3042004108428955e-05,
+      "test_rows": 71,
+      "train_rows": 535,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00021299999207258224,
+      "predict_seconds": 4.0584011003375053e-05,
+      "test_rows": 65,
+      "train_rows": 1127,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "cover": "Shrublands",
+      "fit_seconds": 0.0002252080012112856,
+      "predict_seconds": 4.12908848375082e-05,
+      "test_rows": 214,
+      "train_rows": 985,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "cover": "Shrublands",
+      "fit_seconds": 0.0002389999572187662,
+      "predict_seconds": 4.279217682778835e-05,
+      "test_rows": 261,
+      "train_rows": 938,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "cover": "Grasslands",
+      "fit_seconds": 0.000225334195420146,
+      "predict_seconds": 4.045804962515831e-05,
+      "test_rows": 111,
+      "train_rows": 1805,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00021750014275312424,
+      "predict_seconds": 4.141591489315033e-05,
+      "test_rows": 86,
+      "train_rows": 1106,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00021529197692871094,
+      "predict_seconds": 4.1667139157652855e-05,
+      "test_rows": 139,
+      "train_rows": 467,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "cover": "Croplands",
+      "fit_seconds": 0.00022999988868832588,
+      "predict_seconds": 4.2499974370002747e-05,
+      "test_rows": 36,
+      "train_rows": 2634,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00022562500089406967,
+      "predict_seconds": 3.42091079801321e-05,
+      "test_rows": 550,
+      "train_rows": 1366,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "cover": "Croplands",
+      "fit_seconds": 0.00030574994161725044,
+      "predict_seconds": 4.495796747505665e-05,
+      "test_rows": 66,
+      "train_rows": 2604,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "cover": "Wetland/Riparian",
+      "fit_seconds": 0.00022649997845292091,
+      "predict_seconds": 3.474997356534004e-05,
+      "test_rows": 137,
+      "train_rows": 203,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00022333301603794098,
+      "predict_seconds": 4.324992187321186e-05,
+      "test_rows": 3,
+      "train_rows": 603,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "cover": "Croplands",
+      "fit_seconds": 0.00024274992756545544,
+      "predict_seconds": 4.283292219042778e-05,
+      "test_rows": 389,
+      "train_rows": 2281,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00022470788098871708,
+      "predict_seconds": 4.054210148751736e-05,
+      "test_rows": 19,
+      "train_rows": 1897,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00020562508143484592,
+      "predict_seconds": 4.0833139792084694e-05,
+      "test_rows": 194,
+      "train_rows": 412,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "cover": "Shrublands",
+      "fit_seconds": 0.0002132081426680088,
+      "predict_seconds": 3.991695120930672e-05,
+      "test_rows": 57,
+      "train_rows": 1142,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00021816720254719257,
+      "predict_seconds": 4.024989902973175e-05,
+      "test_rows": 54,
+      "train_rows": 1862,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "cover": "Shrublands",
+      "fit_seconds": 0.00020833290182054043,
+      "predict_seconds": 4.0207989513874054e-05,
+      "test_rows": 80,
+      "train_rows": 1119,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.0002093329094350338,
+      "predict_seconds": 4.316610284149647e-05,
+      "test_rows": 69,
+      "train_rows": 537,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "cover": "Wetland/Riparian",
+      "fit_seconds": 0.0001996250357478857,
+      "predict_seconds": 3.145798109471798e-05,
+      "test_rows": 97,
+      "train_rows": 243,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "cover": "Croplands",
+      "fit_seconds": 0.00022141705267131329,
+      "predict_seconds": 4.2125117033720016e-05,
+      "test_rows": 160,
+      "train_rows": 2510,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "cover": "Croplands",
+      "fit_seconds": 0.00021900003775954247,
+      "predict_seconds": 3.966689109802246e-05,
+      "test_rows": 162,
+      "train_rows": 2508,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00020512519404292107,
+      "predict_seconds": 4.233303479850292e-05,
+      "test_rows": 921,
+      "train_rows": 995,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00021054106764495373,
+      "predict_seconds": 4.02920413762331e-05,
+      "test_rows": 51,
+      "train_rows": 1141,
+      "warnings": []
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00020183413289487362,
+      "predict_seconds": 4.0458980947732925e-05,
+      "test_rows": 1,
+      "train_rows": 605,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "cover": "Croplands",
+      "fit_seconds": 0.00023312494158744812,
+      "predict_seconds": 4.100007936358452e-05,
+      "test_rows": 70,
+      "train_rows": 2600,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00021525006741285324,
+      "predict_seconds": 4.100007936358452e-05,
+      "test_rows": 126,
+      "train_rows": 1066,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00022475002333521843,
+      "predict_seconds": 4.266691394150257e-05,
+      "test_rows": 155,
+      "train_rows": 1761,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00020591681823134422,
+      "predict_seconds": 4.079216159880161e-05,
+      "test_rows": 4,
+      "train_rows": 602,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "cover": "Croplands",
+      "fit_seconds": 0.00022341706790030003,
+      "predict_seconds": 3.9708102121949196e-05,
+      "test_rows": 118,
+      "train_rows": 2552,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00020654103718698025,
+      "predict_seconds": 4.170788452029228e-05,
+      "test_rows": 286,
+      "train_rows": 906,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "cover": "Shrublands",
+      "fit_seconds": 0.00020733289420604706,
+      "predict_seconds": 4.341593012213707e-05,
+      "test_rows": 206,
+      "train_rows": 993,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "cover": "Wetland/Riparian",
+      "fit_seconds": 0.0002811669837683439,
+      "predict_seconds": 3.679096698760986e-05,
+      "test_rows": 99,
+      "train_rows": 241,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00022504199296236038,
+      "predict_seconds": 4.3416861444711685e-05,
+      "test_rows": 61,
+      "train_rows": 545,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.0002166670747101307,
+      "predict_seconds": 4.124990664422512e-05,
+      "test_rows": 205,
+      "train_rows": 987,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00023079197853803635,
+      "predict_seconds": 4.1582854464650154e-05,
+      "test_rows": 112,
+      "train_rows": 1804,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "cover": "Croplands",
+      "fit_seconds": 0.00022562500089406967,
+      "predict_seconds": 4.312489181756973e-05,
+      "test_rows": 23,
+      "train_rows": 2647,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "cover": "Wetland/Riparian",
+      "fit_seconds": 0.00019920803606510162,
+      "predict_seconds": 3.195786848664284e-05,
+      "test_rows": 137,
+      "train_rows": 203,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "cover": "Croplands",
+      "fit_seconds": 0.00022470788098871708,
+      "predict_seconds": 4.045804962515831e-05,
+      "test_rows": 152,
+      "train_rows": 2518,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00022566691040992737,
+      "predict_seconds": 4.154210910201073e-05,
+      "test_rows": 40,
+      "train_rows": 1876,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00020866701379418373,
+      "predict_seconds": 4.0624989196658134e-05,
+      "test_rows": 112,
+      "train_rows": 1080,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00020833383314311504,
+      "predict_seconds": 4.312489181756973e-05,
+      "test_rows": 83,
+      "train_rows": 523,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "cover": "Croplands",
+      "fit_seconds": 0.00023683300241827965,
+      "predict_seconds": 4.229089245200157e-05,
+      "test_rows": 548,
+      "train_rows": 2122,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00021733390167355537,
+      "predict_seconds": 4.370789974927902e-05,
+      "test_rows": 1241,
+      "train_rows": 675,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.0002145830076187849,
+      "predict_seconds": 4.1833147406578064e-05,
+      "test_rows": 255,
+      "train_rows": 937,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "cover": "Croplands",
+      "fit_seconds": 0.00021866708993911743,
+      "predict_seconds": 4.166620783507824e-05,
+      "test_rows": 961,
+      "train_rows": 1709,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00022483407519757748,
+      "predict_seconds": 4.0082959458231926e-05,
+      "test_rows": 57,
+      "train_rows": 1859,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.0002093329094350338,
+      "predict_seconds": 4.2708124965429306e-05,
+      "test_rows": 69,
+      "train_rows": 537,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "cover": "Shrublands",
+      "fit_seconds": 0.00020858412608504295,
+      "predict_seconds": 4.187505692243576e-05,
+      "test_rows": 214,
+      "train_rows": 985,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "cover": "Croplands",
+      "fit_seconds": 0.00022183405235409737,
+      "predict_seconds": 4.2499974370002747e-05,
+      "test_rows": 242,
+      "train_rows": 2428,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00021391594782471657,
+      "predict_seconds": 4.041590727865696e-05,
+      "test_rows": 218,
+      "train_rows": 1698,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00020825001411139965,
+      "predict_seconds": 4.0582846850156784e-05,
+      "test_rows": 71,
+      "train_rows": 535,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "cover": "Shrublands",
+      "fit_seconds": 0.0002030839677900076,
+      "predict_seconds": 4.2250147089362144e-05,
+      "test_rows": 699,
+      "train_rows": 500,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "cover": "Croplands",
+      "fit_seconds": 0.00022341706790030003,
+      "predict_seconds": 4.0667131543159485e-05,
+      "test_rows": 62,
+      "train_rows": 2608,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00021070917136967182,
+      "predict_seconds": 4.274980165064335e-05,
+      "test_rows": 119,
+      "train_rows": 1073,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.0002033337950706482,
+      "predict_seconds": 4.041707143187523e-05,
+      "test_rows": 20,
+      "train_rows": 586,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "cover": "Croplands",
+      "fit_seconds": 0.00021791597828269005,
+      "predict_seconds": 4.116608761250973e-05,
+      "test_rows": 408,
+      "train_rows": 2262,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00021174992434680462,
+      "predict_seconds": 4.270789213478565e-05,
+      "test_rows": 86,
+      "train_rows": 1106,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "cover": "Wetland/Riparian",
+      "fit_seconds": 0.00020033400505781174,
+      "predict_seconds": 3.2207928597927094e-05,
+      "test_rows": 104,
+      "train_rows": 236,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "cover": "Shrublands",
+      "fit_seconds": 0.00021016597747802734,
+      "predict_seconds": 4.2208004742860794e-05,
+      "test_rows": 80,
+      "train_rows": 1119,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "cover": "Croplands",
+      "fit_seconds": 0.00022329110652208328,
+      "predict_seconds": 4.02920413762331e-05,
+      "test_rows": 86,
+      "train_rows": 2584,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00020420807413756847,
+      "predict_seconds": 7.008295506238937e-05,
+      "test_rows": 298,
+      "train_rows": 308,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00023912498727440834,
+      "predict_seconds": 4.033301956951618e-05,
+      "test_rows": 93,
+      "train_rows": 1823,
+      "warnings": []
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00021500000730156898,
+      "predict_seconds": 4.629185423254967e-05,
+      "test_rows": 3,
+      "train_rows": 1189,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00021833297796547413,
+      "predict_seconds": 4.0833139792084694e-05,
+      "test_rows": 7,
+      "train_rows": 1647,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00021070800721645355,
+      "predict_seconds": 4.070787690579891e-05,
+      "test_rows": 3,
+      "train_rows": 589,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00021729199215769768,
+      "predict_seconds": 4.191719926893711e-05,
+      "test_rows": 1,
+      "train_rows": 1028,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "cover": "Croplands",
+      "fit_seconds": 0.00022191694006323814,
+      "predict_seconds": 4.0125101804733276e-05,
+      "test_rows": 38,
+      "train_rows": 2187,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00021225004456937313,
+      "predict_seconds": 4.2250147089362144e-05,
+      "test_rows": 19,
+      "train_rows": 886,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "cover": "Wetland/Riparian",
+      "fit_seconds": 0.00020687514916062355,
+      "predict_seconds": 3.154110163450241e-05,
+      "test_rows": 13,
+      "train_rows": 175,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "cover": "Croplands",
+      "fit_seconds": 0.00024083303287625313,
+      "predict_seconds": 4.0667131543159485e-05,
+      "test_rows": 72,
+      "train_rows": 2187,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.0002180000301450491,
+      "predict_seconds": 4.1207997128367424e-05,
+      "test_rows": 16,
+      "train_rows": 1057,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00021941703744232655,
+      "predict_seconds": 3.995909355580807e-05,
+      "test_rows": 3,
+      "train_rows": 1758,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.0002068330068141222,
+      "predict_seconds": 4.787510260939598e-05,
+      "test_rows": 7,
+      "train_rows": 514,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "cover": "Croplands",
+      "fit_seconds": 0.00021704193204641342,
+      "predict_seconds": 4.054117016494274e-05,
+      "test_rows": 28,
+      "train_rows": 1747,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "cover": "Grasslands",
+      "fit_seconds": 0.0002091249916702509,
+      "predict_seconds": 4.254188388586044e-05,
+      "test_rows": 81,
+      "train_rows": 635,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "cover": "Croplands",
+      "fit_seconds": 0.00021329103037714958,
+      "predict_seconds": 4.129181616008282e-05,
+      "test_rows": 99,
+      "train_rows": 1405,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00021316693164408207,
+      "predict_seconds": 4.0082959458231926e-05,
+      "test_rows": 25,
+      "train_rows": 1763,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "cover": "Croplands",
+      "fit_seconds": 0.00022066710516810417,
+      "predict_seconds": 4.075001925230026e-05,
+      "test_rows": 47,
+      "train_rows": 2072,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "cover": "Grasslands",
+      "fit_seconds": 0.00021195807494223118,
+      "predict_seconds": 4.033301956951618e-05,
+      "test_rows": 5,
+      "train_rows": 1582,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "cover": "Shrublands",
+      "fit_seconds": 0.00020770798437297344,
+      "predict_seconds": 4.237494431436062e-05,
+      "test_rows": 29,
+      "train_rows": 500,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "cover": "Croplands",
+      "fit_seconds": 0.00021533295512199402,
+      "predict_seconds": 3.9833132177591324e-05,
+      "test_rows": 119,
+      "train_rows": 1978,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "cover": "Wetland/Riparian",
+      "fit_seconds": 0.00019691698253154755,
+      "predict_seconds": 3.087497316300869e-05,
+      "test_rows": 28,
+      "train_rows": 223,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "cover": "Mixed Forests",
+      "fit_seconds": 0.00020070793107151985,
+      "predict_seconds": 4.333304241299629e-05,
+      "test_rows": 6,
+      "train_rows": 298,
+      "warnings": []
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "cover": "Evergreen Forests",
+      "fit_seconds": 0.00020599993877112865,
+      "predict_seconds": 3.979192115366459e-05,
+      "test_rows": 3,
+      "train_rows": 1153,
+      "warnings": []
+    }
+  ],
+  "code_sha256": "f87fd0ec3ad851883a2b17547149167f651d6b7a044c64ad6ebcf48bae0df6ee",
+  "protocol_sha256": "c9ee3ebda8e935043c0964d2d4a6d61e7fe99b231dce087a27153e70cd58e5f7"
+}

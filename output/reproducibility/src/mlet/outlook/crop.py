@@ -1,0 +1,633 @@
+"""Dated crop-coefficient inputs and crop-weighted potential ETc."""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from dataclasses import dataclass, replace
+from datetime import date, datetime, timezone
+import math
+
+from mlet.sources.cdl import (
+    CdlLayerMetadata,
+    CropFraction,
+    validate_crop_fraction,
+    validate_cdl_layer_metadata,
+)
+from mlet.outlook.dates import idaho_local_date
+
+
+_MIN_KC = 0.0
+_MAX_KC = 1.4
+_COVERAGE_TOLERANCE = 1e-9
+
+
+@dataclass(frozen=True)
+class CropCoefficientInput:
+    """One explicit, dated crop/vegetation-state coefficient for a run input."""
+
+    crop_code: str | None
+    crop_class: str
+    kc: float
+    effective_date: date
+    vegetation_state: str
+    source_name: str
+    source_version: str
+    source_available_at: datetime
+
+    def __post_init__(self) -> None:
+        """Reject malformed dated coefficient evidence at the public boundary."""
+        validate_crop_coefficient_input(self)
+        object.__setattr__(
+            self,
+            "source_available_at",
+            _require_utc_timestamp(
+                self.source_available_at, "crop coefficient source_available_at"
+            ),
+        )
+
+    def to_record(
+        self, *, issued_at: datetime, valid_date: date
+    ) -> dict[str, object]:
+        """Return manifest-ready provenance for this coefficient input."""
+        _validate_coefficient_eligibility(self, issued_at=issued_at, valid_date=valid_date)
+        return {
+            "crop_code": self.crop_code,
+            "crop_class": self.crop_class,
+            "kc": self.kc,
+            "effective_date": self.effective_date.isoformat(),
+            "vegetation_state": self.vegetation_state,
+            "source_name": self.source_name,
+            "source_version": self.source_version,
+            "source_available_at": _format_utc_timestamp(self.source_available_at),
+        }
+
+
+def validate_crop_coefficient_input(
+    coefficient: object,
+) -> CropCoefficientInput:
+    """Validate one complete, explicitly dated crop-coefficient source input.
+
+    This boundary validator is deliberately reused when an assignment is built,
+    checked for issue-time eligibility, or serialized.  Frozen dataclasses can
+    still be altered with ``object.__setattr__``; no mutated blank source or
+    non-UTC timestamp may therefore cross into an ETc artifact.
+    """
+    if not isinstance(coefficient, CropCoefficientInput):
+        raise ValueError("crop_coefficients must contain CropCoefficientInput records")
+    _require_crop_key(coefficient.crop_code, coefficient.crop_class)
+    kc = _require_kc(coefficient.kc)
+    if coefficient.crop_class == "non_crop" and kc != 0.0:
+        raise ValueError("non-crop crop coefficient must equal 0")
+    _require_date(coefficient.effective_date, "crop coefficient effective_date")
+    _require_text(coefficient.vegetation_state, "crop coefficient vegetation_state")
+    _require_text(coefficient.source_name, "crop coefficient source_name")
+    _require_text(coefficient.source_version, "crop coefficient source_version")
+    _require_utc_timestamp(
+        coefficient.source_available_at, "crop coefficient source_available_at"
+    )
+    return coefficient
+
+
+@dataclass(frozen=True)
+class _ValidatedCropCoefficientAssignment:
+    """One materialized, validated view of mutable assignment inputs.
+
+    A frozen dataclass can still be bypassed with ``object.__setattr__``.  In
+    particular, an attacker or faulty caller could replace either collection
+    with a one-shot iterable after construction.  Artifact serialization must
+    render the exact values it validated, rather than consume such an iterable
+    a second time.
+    """
+
+    fractions: tuple[CropFraction, ...]
+    crop_coefficients: tuple[CropCoefficientInput, ...]
+    issued_at: datetime
+    valid_date: date
+
+
+@dataclass(frozen=True)
+class CropCoefficientAssignment:
+    """CDL fractions paired with the dated coefficients used to calculate ETc."""
+
+    fractions: tuple[CropFraction, ...]
+    crop_coefficients: tuple[CropCoefficientInput, ...]
+    issued_at: datetime
+    valid_date: date
+
+    def __post_init__(self) -> None:
+        fractions, coefficients, issue_time, target_date = _validate_assignment(
+            fractions=self.fractions,
+            crop_coefficients=self.crop_coefficients,
+            issued_at=self.issued_at,
+            valid_date=self.valid_date,
+        )
+        object.__setattr__(self, "fractions", fractions)
+        object.__setattr__(self, "crop_coefficients", coefficients)
+        object.__setattr__(self, "issued_at", issue_time)
+        object.__setattr__(self, "valid_date", target_date)
+
+    def _validated_snapshot(self) -> _ValidatedCropCoefficientAssignment:
+        """Materialize all assignment inputs once and retain their validation result."""
+        return _ValidatedCropCoefficientAssignment(
+            *_validate_assignment(
+                fractions=self.fractions,
+                crop_coefficients=self.crop_coefficients,
+                issued_at=self.issued_at,
+                valid_date=self.valid_date,
+            )
+        )
+
+    def assert_valid(self) -> None:
+        """Check that each stored Kc still matches its eligible source input."""
+        self._validated_snapshot()
+
+    def to_record(self) -> dict[str, object]:
+        """Expose all crop terms needed to replay an ETc calculation."""
+        return _crop_coefficient_assignment_to_record(self._validated_snapshot())
+
+
+def apply_crop_coefficients(
+    fractions: Sequence[CropFraction],
+    crop_coefficients: Sequence[CropCoefficientInput],
+    *,
+    issued_at: datetime,
+    valid_date: date,
+) -> CropCoefficientAssignment:
+    """Apply explicit dated coefficients without silently inventing a crop Kc.
+
+    The caller provides the coefficient inputs selected for its valid date.  No
+    coefficient is inferred from a CDL code, crop class, or a previous run.
+    """
+    issue_time = _require_utc_timestamp(issued_at, "issued_at")
+    target_date = _require_date(valid_date, "valid_date")
+    coefficient_by_crop: dict[tuple[str | None, str], CropCoefficientInput] = {}
+    for coefficient in crop_coefficients:
+        _validate_coefficient_eligibility(
+            coefficient, issued_at=issue_time, valid_date=target_date
+        )
+        key = (coefficient.crop_code, coefficient.crop_class)
+        if key in coefficient_by_crop:
+            raise ValueError("crop_coefficients must not repeat a crop code and class")
+        coefficient_by_crop[key] = coefficient
+
+    assigned: list[CropFraction] = []
+    required_keys: set[tuple[str | None, str]] = set()
+    for fraction in fractions:
+        _validate_crop_fraction(fraction)
+        if fraction.crop_class == "unknown":
+            if fraction.kc is not None:
+                raise ValueError("unknown crop coverage must not carry a crop coefficient")
+            assigned.append(fraction)
+            continue
+        key = (fraction.crop_code, fraction.crop_class)
+        required_keys.add(key)
+        coefficient = coefficient_by_crop.get(key)
+        if coefficient is None:
+            raise ValueError("missing dated crop coefficient for a known crop fraction")
+        assigned.append(replace(fraction, kc=coefficient.kc))
+
+    unused = set(coefficient_by_crop) - required_keys
+    if unused:
+        raise ValueError("crop coefficient input does not match any known crop fraction")
+    if not assigned:
+        raise ValueError("crop coefficient assignment requires at least one crop fraction")
+    return CropCoefficientAssignment(
+        fractions=tuple(assigned),
+        crop_coefficients=tuple(crop_coefficients),
+        issued_at=issue_time,
+        valid_date=target_date,
+    )
+
+
+@dataclass(frozen=True)
+class PotentialEtcRecord:
+    """One coverage-complete, manifest-ready ample-water ETc calculation.
+
+    Stored ETc and coverage terms must be the exact IEEE-754 values derived
+    from the assignment.  ``_COVERAGE_TOLERANCE`` applies only while deciding
+    whether input fractions sum to a declared cell coverage; it never permits
+    an alternate output scalar to be serialized.
+    """
+
+    grid_id: str
+    eto_mm: float
+    potential_et_c_mm: float
+    coverage_fraction: float
+    known_coverage_fraction: float
+    source_year: int
+    layer_metadata: CdlLayerMetadata
+    crop_coefficient_assignment: CropCoefficientAssignment
+
+    def __post_init__(self) -> None:
+        """Reject direct records whose replay fields do not match their assignment."""
+        values = _validate_potential_etc_record(
+            grid_id=self.grid_id,
+            eto_mm=self.eto_mm,
+            potential_et_c_mm=self.potential_et_c_mm,
+            coverage_fraction=self.coverage_fraction,
+            known_coverage_fraction=self.known_coverage_fraction,
+            source_year=self.source_year,
+            layer_metadata=self.layer_metadata,
+            crop_coefficient_assignment=self.crop_coefficient_assignment,
+        )
+        for field_name, value in values.items():
+            object.__setattr__(self, field_name, value)
+
+    def assert_valid(self) -> None:
+        """Recheck a record against its current crop-coefficient assignment."""
+        _validate_potential_etc_record(
+            grid_id=self.grid_id,
+            eto_mm=self.eto_mm,
+            potential_et_c_mm=self.potential_et_c_mm,
+            coverage_fraction=self.coverage_fraction,
+            known_coverage_fraction=self.known_coverage_fraction,
+            source_year=self.source_year,
+            layer_metadata=self.layer_metadata,
+            crop_coefficient_assignment=self.crop_coefficient_assignment,
+        )
+
+    def _assert_valid_with_assignment_snapshot(
+        self, assignment_snapshot: _ValidatedCropCoefficientAssignment
+    ) -> None:
+        """Validate during serialization using its single materialized input view."""
+        _validate_potential_etc_record(
+            grid_id=self.grid_id,
+            eto_mm=self.eto_mm,
+            potential_et_c_mm=self.potential_et_c_mm,
+            coverage_fraction=self.coverage_fraction,
+            known_coverage_fraction=self.known_coverage_fraction,
+            source_year=self.source_year,
+            layer_metadata=self.layer_metadata,
+            crop_coefficient_assignment=self.crop_coefficient_assignment,
+            assignment_snapshot=assignment_snapshot,
+        )
+
+    def to_record(self) -> dict[str, object]:
+        """Return every grid and CDL coverage term needed to replay ETc."""
+        assignment = self.crop_coefficient_assignment
+        if not isinstance(assignment, CropCoefficientAssignment):
+            raise ValueError("potential ET record requires a CropCoefficientAssignment")
+        assignment_snapshot = assignment._validated_snapshot()
+        self._assert_valid_with_assignment_snapshot(assignment_snapshot)
+        layer = self.layer_metadata
+        return {
+            "grid_id": self.grid_id,
+            "eto_mm": self.eto_mm,
+            "potential_et_c_mm": self.potential_et_c_mm,
+            "coverage_fraction": self.coverage_fraction,
+            "known_coverage_fraction": self.known_coverage_fraction,
+            "coverage_tolerance": _COVERAGE_TOLERANCE,
+            "source_year": self.source_year,
+            "cdl_layer": {
+                "source_year": layer.source_year,
+                "layer_version": layer.layer_version,
+                "legend_version": layer.legend_version,
+                "release_at": layer.release_at,
+                "upstream_uri": layer.upstream_uri,
+                "sha256": layer.sha256,
+            },
+            "crop_coefficient_assignment": _crop_coefficient_assignment_to_record(
+                assignment_snapshot
+            ),
+        }
+
+
+def potential_et_c(
+    eto_mm: float, crop_coefficient_assignment: CropCoefficientAssignment
+) -> PotentialEtcRecord:
+    """Calculate ETc from one validated, coverage-complete crop assignment.
+
+    The fraction sum must equal the declared CDL coverage within
+    ``_COVERAGE_TOLERANCE``.  This deliberately rejects a dropped crop class
+    instead of renormalizing a partial cell into a plausible ETc value.  A
+    raw ``CropFraction`` sequence is deliberately not accepted: every Kc must
+    be bound to its eligible, dated provenance through
+    ``CropCoefficientAssignment`` before ETc can be calculated.
+    """
+    eto = _require_finite_nonnegative(eto_mm, "eto_mm")
+    if not isinstance(crop_coefficient_assignment, CropCoefficientAssignment):
+        raise ValueError("potential ET requires a CropCoefficientAssignment")
+    (
+        grid_id,
+        coverage_fraction,
+        known_coverage_fraction,
+        source_year,
+        layer_metadata,
+        effective_kc,
+    ) = _derive_potential_etc_terms(crop_coefficient_assignment)
+    return PotentialEtcRecord(
+        grid_id=grid_id,
+        eto_mm=eto,
+        potential_et_c_mm=eto * effective_kc,
+        coverage_fraction=coverage_fraction,
+        known_coverage_fraction=known_coverage_fraction,
+        source_year=source_year,
+        layer_metadata=layer_metadata,
+        crop_coefficient_assignment=crop_coefficient_assignment,
+    )
+
+
+def _validate_potential_etc_record(
+    *,
+    grid_id: object,
+    eto_mm: object,
+    potential_et_c_mm: object,
+    coverage_fraction: object,
+    known_coverage_fraction: object,
+    source_year: object,
+    layer_metadata: object,
+    crop_coefficient_assignment: object,
+    assignment_snapshot: _ValidatedCropCoefficientAssignment | None = None,
+) -> dict[str, object]:
+    """Validate persisted ETc fields against their sole eligible calculation input."""
+    if not isinstance(crop_coefficient_assignment, CropCoefficientAssignment):
+        raise ValueError("potential ET record requires a CropCoefficientAssignment")
+    snapshot = assignment_snapshot or crop_coefficient_assignment._validated_snapshot()
+    (
+        expected_grid_id,
+        expected_coverage,
+        expected_known_coverage,
+        expected_source_year,
+        expected_layer_metadata,
+        effective_kc,
+    ) = _derive_potential_etc_terms(
+        crop_coefficient_assignment, assignment_snapshot=snapshot
+    )
+    actual_grid_id = _require_text(grid_id, "grid_id")
+    if actual_grid_id != expected_grid_id:
+        raise ValueError("potential ET record grid_id must match its crop coefficient assignment")
+    eto = _require_finite_nonnegative(eto_mm, "eto_mm")
+    actual_et_c = _require_finite_nonnegative(potential_et_c_mm, "potential_et_c_mm")
+    actual_coverage = _require_fraction(coverage_fraction, "coverage_fraction")
+    actual_known_coverage = _require_fraction(
+        known_coverage_fraction, "known_coverage_fraction"
+    )
+    if actual_coverage != expected_coverage:
+        raise ValueError("coverage_fraction must match its crop coefficient assignment")
+    if actual_known_coverage != expected_known_coverage:
+        raise ValueError("known_coverage_fraction must match its crop coefficient assignment")
+    if not isinstance(source_year, int) or isinstance(source_year, bool) or source_year < 1:
+        raise ValueError("source_year must be a recorded positive integer")
+    if source_year != expected_source_year:
+        raise ValueError("source_year must match its crop coefficient assignment")
+    if not isinstance(layer_metadata, CdlLayerMetadata):
+        raise ValueError("layer_metadata must be a CdlLayerMetadata record")
+    validate_cdl_layer_metadata(layer_metadata)
+    if layer_metadata != expected_layer_metadata:
+        raise ValueError("layer_metadata must match its crop coefficient assignment")
+    expected_et_c = eto * effective_kc
+    if not math.isfinite(expected_et_c) or actual_et_c != expected_et_c:
+        raise ValueError("potential_et_c_mm must equal eto_mm times the effective Kc")
+    return {
+        "grid_id": actual_grid_id,
+        "eto_mm": eto,
+        "potential_et_c_mm": actual_et_c,
+        "coverage_fraction": actual_coverage,
+        "known_coverage_fraction": actual_known_coverage,
+        "source_year": source_year,
+        "layer_metadata": layer_metadata,
+        "crop_coefficient_assignment": crop_coefficient_assignment,
+    }
+
+
+def _derive_potential_etc_terms(
+    crop_coefficient_assignment: CropCoefficientAssignment,
+    *,
+    assignment_snapshot: _ValidatedCropCoefficientAssignment | None = None,
+) -> tuple[str, float, float, int, CdlLayerMetadata, float]:
+    """Return the only native-cell ETc terms reproducible from one assignment."""
+    snapshot = assignment_snapshot or crop_coefficient_assignment._validated_snapshot()
+    cell_fractions = snapshot.fractions
+    grid_id, coverage_fraction, source_year, selected_layer_metadata = (
+        _validate_native_crop_assignment_structure(cell_fractions)
+    )
+    active = [fraction for fraction in cell_fractions if fraction.crop_class != "unknown"]
+    if not active:
+        raise ValueError("potential ET requires known crop coverage")
+    known_coverage_fraction = sum(fraction.fraction for fraction in active)
+    if known_coverage_fraction <= 0.0:
+        raise ValueError("potential ET requires positive known crop coverage")
+    weighted_kc = sum(fraction.fraction * _require_kc(fraction.kc) for fraction in active)
+    return (
+        grid_id,
+        coverage_fraction,
+        known_coverage_fraction,
+        source_year,
+        selected_layer_metadata,
+        weighted_kc / known_coverage_fraction,
+    )
+
+
+def _validate_assignment(
+    *,
+    fractions: object,
+    crop_coefficients: object,
+    issued_at: object,
+    valid_date: object,
+) -> tuple[
+    tuple[CropFraction, ...], tuple[CropCoefficientInput, ...], datetime, date
+]:
+    try:
+        assigned_fractions = tuple(fractions)  # type: ignore[arg-type]
+    except TypeError as error:
+        raise ValueError("fractions must be an iterable of CropFraction records") from error
+    try:
+        coefficients = tuple(crop_coefficients)  # type: ignore[arg-type]
+    except TypeError as error:
+        raise ValueError("crop_coefficients must be an iterable of CropCoefficientInput records") from error
+    if not assigned_fractions:
+        raise ValueError("crop coefficient assignment requires at least one crop fraction")
+
+    issue_time = _require_utc_timestamp(issued_at, "issued_at")
+    target_date = _require_date(valid_date, "valid_date")
+    coefficient_by_crop: dict[tuple[str | None, str], CropCoefficientInput] = {}
+    for coefficient in coefficients:
+        _validate_coefficient_eligibility(
+            coefficient, issued_at=issue_time, valid_date=target_date
+        )
+        key = (coefficient.crop_code, coefficient.crop_class)
+        if key in coefficient_by_crop:
+            raise ValueError("crop_coefficients must not repeat a crop code and class")
+        coefficient_by_crop[key] = coefficient
+
+    required_keys: set[tuple[str | None, str]] = set()
+    for fraction in assigned_fractions:
+        _validate_crop_fraction(fraction)
+        if fraction.crop_class == "unknown":
+            if fraction.kc is not None:
+                raise ValueError("unknown crop coverage must not carry a crop coefficient")
+            continue
+        fraction_kc = _require_kc(fraction.kc)
+        if fraction.crop_class == "non_crop" and fraction_kc != 0.0:
+            raise ValueError("non-crop crop coefficient must equal 0")
+        key = (fraction.crop_code, fraction.crop_class)
+        required_keys.add(key)
+        coefficient = coefficient_by_crop.get(key)
+        if coefficient is None:
+            raise ValueError("missing dated crop coefficient for a known crop fraction")
+        if fraction_kc != coefficient.kc:
+            raise ValueError(
+                "crop fraction Kc does not match its dated crop coefficient"
+            )
+
+    unused = set(coefficient_by_crop) - required_keys
+    if unused:
+        raise ValueError("crop coefficient input does not match any known crop fraction")
+    _validate_native_crop_assignment_structure(assigned_fractions)
+    return assigned_fractions, coefficients, issue_time, target_date
+
+
+def _crop_coefficient_assignment_to_record(
+    snapshot: _ValidatedCropCoefficientAssignment,
+) -> dict[str, object]:
+    """Serialize exactly the assignment collection materialized during validation."""
+    return {
+        "issued_at": _format_utc_timestamp(snapshot.issued_at),
+        "valid_date": snapshot.valid_date.isoformat(),
+        "fractions": [
+            {
+                "crop_code": fraction.crop_code,
+                "crop_class": fraction.crop_class,
+                "fraction": fraction.fraction,
+                "coverage_fraction": fraction.coverage_fraction,
+                "cdl_year": fraction.source_year,
+                "kc": fraction.kc,
+            }
+            for fraction in snapshot.fractions
+        ],
+        "crop_coefficients": [
+            coefficient.to_record(
+                issued_at=snapshot.issued_at, valid_date=snapshot.valid_date
+            )
+            for coefficient in snapshot.crop_coefficients
+        ],
+    }
+
+
+def _validate_native_crop_assignment_structure(
+    fractions: tuple[CropFraction, ...],
+) -> tuple[str, float, int, CdlLayerMetadata]:
+    """Require one native CDL cell with exact recorded coverage structure.
+
+    This validation belongs to a crop-coefficient assignment rather than only
+    its ETc projection: assignments are serializable provenance artifacts and
+    must not claim a heterogeneous grid, year, layer, or coverage sum.
+    """
+    if not fractions:
+        raise ValueError("crop coefficient assignment requires at least one crop fraction")
+    grid_ids = {fraction.grid_id for fraction in fractions}
+    if len(grid_ids) != 1:
+        raise ValueError("crop coefficient assignment fractions must belong to one grid_id")
+    source_years = {fraction.source_year for fraction in fractions}
+    if len(source_years) != 1:
+        raise ValueError("crop coefficient assignment fractions must share one source_year")
+    coverage_fraction = fractions[0].coverage_fraction
+    if any(fraction.coverage_fraction != coverage_fraction for fraction in fractions[1:]):
+        raise ValueError("crop coefficient assignment fractions must share one coverage_fraction")
+    layer_metadata = {fraction.layer_metadata for fraction in fractions}
+    if len(layer_metadata) != 1:
+        raise ValueError(
+            "crop coefficient assignment fractions must share identical CDL layer metadata"
+        )
+    selected_layer_metadata = next(iter(layer_metadata))
+    validate_cdl_layer_metadata(selected_layer_metadata)
+
+    fraction_sum = sum(fraction.fraction for fraction in fractions)
+    if not _is_close(fraction_sum, coverage_fraction):
+        raise ValueError(
+            "crop coefficient assignment fractions must sum to declared coverage within "
+            f"{_COVERAGE_TOLERANCE:g}"
+        )
+    return (
+        next(iter(grid_ids)),
+        coverage_fraction,
+        next(iter(source_years)),
+        selected_layer_metadata,
+    )
+
+
+def _validate_crop_fraction(fraction: CropFraction) -> None:
+    validate_crop_fraction(fraction)
+
+
+def _validate_coefficient_eligibility(
+    coefficient: CropCoefficientInput, *, issued_at: datetime, valid_date: date
+) -> None:
+    validate_crop_coefficient_input(coefficient)
+    issue_time = _require_utc_timestamp(issued_at, "issued_at")
+    target_date = _require_date(valid_date, "valid_date")
+    if coefficient.source_available_at > issue_time:
+        raise ValueError(
+            "crop coefficient source_available_at is later than issued_at"
+        )
+    if coefficient.effective_date > idaho_local_date(issue_time):
+        raise ValueError(
+            "crop coefficient effective_date is later than the Idaho-local issued_at date"
+        )
+    if coefficient.effective_date > target_date:
+        raise ValueError("crop coefficient effective_date is later than valid_date")
+
+
+def _require_crop_key(crop_code: str | None, crop_class: object) -> None:
+    _require_text(crop_class, "crop_class")
+    if crop_class == "unknown":
+        if crop_code is not None:
+            raise ValueError("unknown crop coverage must not declare a crop code")
+        return
+    if crop_class == "non_crop":
+        if crop_code is not None:
+            raise ValueError("non-crop coverage must not declare a crop code")
+        return
+    _require_text(crop_code, "crop_code")
+
+
+def _require_text(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{label} must be non-empty text")
+    return value
+
+
+def _require_date(value: object, label: str) -> date:
+    if not isinstance(value, date) or isinstance(value, datetime):
+        raise ValueError(f"{label} must be a date")
+    return value
+
+
+def _require_utc_timestamp(value: object, label: str) -> datetime:
+    if not isinstance(value, datetime) or value.tzinfo is None:
+        raise ValueError(f"{label} must be an explicit UTC datetime")
+    if value.utcoffset() != timezone.utc.utcoffset(value):
+        raise ValueError(f"{label} must be an explicit UTC datetime")
+    return value.astimezone(timezone.utc)
+
+
+def _format_utc_timestamp(value: datetime) -> str:
+    utc_value = _require_utc_timestamp(value, "timestamp")
+    return utc_value.isoformat().replace("+00:00", "Z")
+
+
+def _require_fraction(value: object, label: str) -> float:
+    result = _require_finite_nonnegative(value, label)
+    if result > 1.0:
+        raise ValueError(f"{label} must be within [0, 1]")
+    return result
+
+
+def _require_kc(value: object) -> float:
+    result = _require_finite_nonnegative(value, "crop coefficient")
+    if result > _MAX_KC:
+        raise ValueError("crop coefficient must be within [0, 1.4]")
+    return result
+
+
+def _require_finite_nonnegative(value: object, label: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{label} must be a finite non-negative number")
+    result = float(value)
+    if not math.isfinite(result) or result < 0.0:
+        raise ValueError(f"{label} must be a finite non-negative number")
+    return result
+
+
+def _is_close(left: float, right: float) -> bool:
+    return math.isclose(left, right, rel_tol=0.0, abs_tol=_COVERAGE_TOLERANCE)

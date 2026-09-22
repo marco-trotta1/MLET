@@ -1,8 +1,12 @@
 # Reproducibility
 
-Every generated number in the MLET manuscript must be regenerable from a clean
-clone by the commands on this page. The committed Phase 2 record includes an
-independent reproduction receipt.
+The current paper studies selective neural residual correction for spatial evapotranspiration.
+Use [the paper reproduction instructions](../manuscript/REPRODUCIBILITY.md) for its pinned environment, saved-result audits, figures, and source package.
+The recorded ML environment uses Python 3.13.5. The general package supports the Python versions listed below.
+
+This page describes general software verification and the earlier Phase 2 and outlook workflows.
+Those historical workflows retain their original scientific scope.
+The original ETo completion gate does not define completion of the current retrospective ML paper.
 
 ## Environment
 
