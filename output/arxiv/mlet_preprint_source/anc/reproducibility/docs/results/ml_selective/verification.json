@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "outer_configurations": 40,
+  "inner_partitions": 120,
+  "neural_fits": 480,
+  "prediction_rows": 85296,
+  "negative_controls": "exact",
+  "matched_budgets": "exact",
+  "original_visuals": "unchanged",
+  "experiment_and_analysis_hashes": "match"
+}

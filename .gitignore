@@ -53,3 +53,7 @@ output/previews/
 output/pdf/*.log
 output/pdf/*.stderr
 output/pdf/*.stdout
+
+output/pdf/*.aux
+output/pdf/*.blg
+output/pdf/*.out

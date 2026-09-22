@@ -1,0 +1,2167 @@
+{
+  "seconds": 82.09658524999395,
+  "code_sha256": "1c7a2e2096cb94da5eb424aef7cb0aa2cad447ca29f2457bf8e60fa67fda9ed9",
+  "protocol_sha256": "6346b820c5c809b0cd99d5aa467ca05abcd852f37f621cd850a83ab5873b4f5c",
+  "timings": [
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.463696249993518,
+      "predict_seconds": 0.00017112493515014648,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.47919675009325147,
+      "predict_seconds": 0.00016675004735589027,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.4591830831486732,
+      "predict_seconds": 0.00015658303163945675,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.46372799994423985,
+      "predict_seconds": 0.00017145811580121517,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.4738742080517113,
+      "predict_seconds": 0.00016341707669198513,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 0,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.4695851670112461,
+      "predict_seconds": 0.00016154209151864052,
+      "test_rows": 764,
+      "train_rows": 7159,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.476641041925177,
+      "predict_seconds": 0.0001666247844696045,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4515171248931438,
+      "predict_seconds": 0.0001618748065084219,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.4598177089355886,
+      "predict_seconds": 0.00017370819114148617,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.46038808301091194,
+      "predict_seconds": 0.00016004103235900402,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.4530432499013841,
+      "predict_seconds": 0.00013108295388519764,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 1,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.46081975009292364,
+      "predict_seconds": 0.00016129203140735626,
+      "test_rows": 828,
+      "train_rows": 7095,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.460891833063215,
+      "predict_seconds": 0.0002015829086303711,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.44289783388376236,
+      "predict_seconds": 0.0001722089946269989,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.44408737518824637,
+      "predict_seconds": 0.0001807499211281538,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.45120920799672604,
+      "predict_seconds": 0.00018899980932474136,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.4394638747908175,
+      "predict_seconds": 0.00012691691517829895,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 2,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.4425364579074085,
+      "predict_seconds": 0.00014183297753334045,
+      "test_rows": 1049,
+      "train_rows": 6874,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.47228708304464817,
+      "predict_seconds": 0.00010795891284942627,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.46253658295609057,
+      "predict_seconds": 0.00013766693882644176,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.46708333282731473,
+      "predict_seconds": 0.00012595904991030693,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.4691802498418838,
+      "predict_seconds": 0.00015804101713001728,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.46575795812532306,
+      "predict_seconds": 0.0001423328649252653,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 3,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.4790657078847289,
+      "predict_seconds": 0.0001499168574810028,
+      "test_rows": 666,
+      "train_rows": 7257,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.4674870418384671,
+      "predict_seconds": 0.00019120797514915466,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.44719145889393985,
+      "predict_seconds": 0.00015433295629918575,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.45330316689796746,
+      "predict_seconds": 0.00013866578228771687,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.483367667067796,
+      "predict_seconds": 0.0001954999752342701,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.4720140830613673,
+      "predict_seconds": 0.00016895798034965992,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 4,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.462299708975479,
+      "predict_seconds": 0.00017666700296103954,
+      "test_rows": 973,
+      "train_rows": 6950,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.47657858300954103,
+      "predict_seconds": 0.00014162505976855755,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4689813330769539,
+      "predict_seconds": 0.00017004203982651234,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.511996041983366,
+      "predict_seconds": 0.00015412503853440285,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.474460625089705,
+      "predict_seconds": 0.00014541717246174812,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.48810474993661046,
+      "predict_seconds": 0.00016087503172457218,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 5,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.4741192921064794,
+      "predict_seconds": 0.00014216708950698376,
+      "test_rows": 633,
+      "train_rows": 7290,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.4649921669624746,
+      "predict_seconds": 0.00015233387239277363,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.45476270793005824,
+      "predict_seconds": 0.00017012516036629677,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.4597738750744611,
+      "predict_seconds": 0.00015150010585784912,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.49719429202377796,
+      "predict_seconds": 0.00016191601753234863,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.46133195818401873,
+      "predict_seconds": 0.000161041971296072,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 6,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.4644872499629855,
+      "predict_seconds": 0.0001459158957004547,
+      "test_rows": 756,
+      "train_rows": 7167,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.5033207500819117,
+      "predict_seconds": 0.0001561250537633896,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.47726087481714785,
+      "predict_seconds": 0.00016433303244411945,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.4712018340360373,
+      "predict_seconds": 0.00011116708628833294,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.47221137513406575,
+      "predict_seconds": 0.0001271669752895832,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.46811699983663857,
+      "predict_seconds": 0.00011875014752149582,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 7,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.47628708300180733,
+      "predict_seconds": 0.0001315409317612648,
+      "test_rows": 659,
+      "train_rows": 7264,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.4839701249729842,
+      "predict_seconds": 9.229197166860104e-05,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.475112667074427,
+      "predict_seconds": 9.00421291589737e-05,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.48993387492373586,
+      "predict_seconds": 0.00017062504775822163,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.48764325003139675,
+      "predict_seconds": 0.00012833299115300179,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.48248791694641113,
+      "predict_seconds": 0.00013866601511836052,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 8,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.4938002498820424,
+      "predict_seconds": 0.00013583386316895485,
+      "test_rows": 460,
+      "train_rows": 7463,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.44463849999010563,
+      "predict_seconds": 0.00017062504775822163,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.44831129210069776,
+      "predict_seconds": 0.00019062496721744537,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.4479243748355657,
+      "predict_seconds": 0.00017629098147153854,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.44011804182082415,
+      "predict_seconds": 0.0001525420229882002,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.4339222500566393,
+      "predict_seconds": 0.00013824994675815105,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "station",
+      "fold": 9,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.44065012503415346,
+      "predict_seconds": 0.00015625008381903172,
+      "test_rows": 1135,
+      "train_rows": 6788,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.4998399999458343,
+      "predict_seconds": 0.00013691582717001438,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4994828749913722,
+      "predict_seconds": 0.00013195793144404888,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.4890841250307858,
+      "predict_seconds": 0.00013166689313948154,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.49207537481561303,
+      "predict_seconds": 0.00013262499123811722,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.48487583291716874,
+      "predict_seconds": 0.00012708292342722416,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 0,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.5124917500652373,
+      "predict_seconds": 0.0001523748505860567,
+      "test_rows": 355,
+      "train_rows": 7568,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.4975157920271158,
+      "predict_seconds": 0.00026766699738800526,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.486727082869038,
+      "predict_seconds": 0.00015695905312895775,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.4929401248227805,
+      "predict_seconds": 0.00017895898781716824,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.4708294589072466,
+      "predict_seconds": 0.00014925003051757812,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.49732087505981326,
+      "predict_seconds": 0.00016058282926678658,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 1,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.47788445791229606,
+      "predict_seconds": 0.00015395809896290302,
+      "test_rows": 709,
+      "train_rows": 7214,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.4789819580037147,
+      "predict_seconds": 0.0001519590150564909,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4687374581117183,
+      "predict_seconds": 0.00014479202218353748,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.4886241250205785,
+      "predict_seconds": 0.00014470797032117844,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.4744598329998553,
+      "predict_seconds": 0.00013879104517400265,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.49634266598150134,
+      "predict_seconds": 0.00016120797954499722,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 2,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.48343583289533854,
+      "predict_seconds": 0.00014891615137457848,
+      "test_rows": 538,
+      "train_rows": 7385,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.49127158406190574,
+      "predict_seconds": 0.0001296249683946371,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4942024170886725,
+      "predict_seconds": 0.0001393752172589302,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.49679654091596603,
+      "predict_seconds": 0.00015149987302720547,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.5112578750122339,
+      "predict_seconds": 0.00013399985618889332,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.5008370000869036,
+      "predict_seconds": 0.00014174985699355602,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 3,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.5060282088816166,
+      "predict_seconds": 0.00014750007539987564,
+      "test_rows": 387,
+      "train_rows": 7536,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.3916767919436097,
+      "predict_seconds": 0.00026712496764957905,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.38418100005947053,
+      "predict_seconds": 0.00023587513715028763,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.3774245830718428,
+      "predict_seconds": 0.00020225020125508308,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.3797076668124646,
+      "predict_seconds": 0.00023024994879961014,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.37521666707471013,
+      "predict_seconds": 0.00024270801804959774,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 4,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.3819183751475066,
+      "predict_seconds": 0.00019691698253154755,
+      "test_rows": 2044,
+      "train_rows": 5879,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.42943179211579263,
+      "predict_seconds": 0.00015079183503985405,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4249420831911266,
+      "predict_seconds": 0.00017933407798409462,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.4295195830054581,
+      "predict_seconds": 0.00018249987624585629,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.42824737494811416,
+      "predict_seconds": 0.0001509999856352806,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.4245630418881774,
+      "predict_seconds": 0.00017187511548399925,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 5,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.4289079161826521,
+      "predict_seconds": 0.00014645815826952457,
+      "test_rows": 1301,
+      "train_rows": 6622,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.47707354207523167,
+      "predict_seconds": 0.00013333302922546864,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4683757908642292,
+      "predict_seconds": 0.00012674997560679913,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.47676937491633,
+      "predict_seconds": 9.704194962978363e-05,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.4962966670282185,
+      "predict_seconds": 0.000174832995980978,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.47313983319327235,
+      "predict_seconds": 0.00013762502931058407,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 6,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.4804598749615252,
+      "predict_seconds": 0.00010537495836615562,
+      "test_rows": 531,
+      "train_rows": 7392,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.4604115830734372,
+      "predict_seconds": 0.00014770799316465855,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.45218287501484156,
+      "predict_seconds": 0.00015487498603761196,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.45784737495705485,
+      "predict_seconds": 0.00013216701336205006,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.4574523330666125,
+      "predict_seconds": 0.00012029195204377174,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.4584832498803735,
+      "predict_seconds": 0.0001576668582856655,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 7,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.4576972918584943,
+      "predict_seconds": 0.00016533304005861282,
+      "test_rows": 900,
+      "train_rows": 7023,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.47382158297114074,
+      "predict_seconds": 0.00013475003652274609,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4634012079332024,
+      "predict_seconds": 0.00011308398097753525,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.46962770796380937,
+      "predict_seconds": 0.00012762495316565037,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.4726939999964088,
+      "predict_seconds": 0.00012445892207324505,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.46808383404277265,
+      "predict_seconds": 0.00010983296670019627,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 8,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.48975974996574223,
+      "predict_seconds": 0.00018129195086658,
+      "test_rows": 678,
+      "train_rows": 7245,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.49727133312262595,
+      "predict_seconds": 0.00014387513510882854,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.48008404206484556,
+      "predict_seconds": 0.0001299581490457058,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.4856600419152528,
+      "predict_seconds": 0.00013633305206894875,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.4863942500669509,
+      "predict_seconds": 0.000140791991725564,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.4823131251614541,
+      "predict_seconds": 9.574997238814831e-05,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "proximity",
+      "fold": 9,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.48407833301462233,
+      "predict_seconds": 9.949994273483753e-05,
+      "test_rows": 480,
+      "train_rows": 7443,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.47513108304701746,
+      "predict_seconds": 0.00012837490066885948,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4524112909566611,
+      "predict_seconds": 0.00011612498201429844,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.45018445793539286,
+      "predict_seconds": 9.054201655089855e-05,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.4529502501245588,
+      "predict_seconds": 0.00010149995796382427,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.4500830420292914,
+      "predict_seconds": 7.100007496774197e-05,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 0,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.45414020912721753,
+      "predict_seconds": 9.212503209710121e-05,
+      "test_rows": 11,
+      "train_rows": 6930,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.42701991694048047,
+      "predict_seconds": 7.195794023573399e-05,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4233031671028584,
+      "predict_seconds": 8.712499402463436e-05,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.4259103329386562,
+      "predict_seconds": 7.200008258223534e-05,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.42901324992999434,
+      "predict_seconds": 7.316702976822853e-05,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.4261570000089705,
+      "predict_seconds": 7.125013507902622e-05,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 1,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.4299065419472754,
+      "predict_seconds": 6.495811976492405e-05,
+      "test_rows": 57,
+      "train_rows": 6622,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.440687500173226,
+      "predict_seconds": 7.991702295839787e-05,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.43592795892618597,
+      "predict_seconds": 6.408314220607281e-05,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.44266974995844066,
+      "predict_seconds": 5.8165984228253365e-05,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.4432292908895761,
+      "predict_seconds": 8.44169408082962e-05,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.44494041707366705,
+      "predict_seconds": 0.00010241707786917686,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 2,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.44261387502774596,
+      "predict_seconds": 8.299993351101875e-05,
+      "test_rows": 13,
+      "train_rows": 6749,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.4576111249625683,
+      "predict_seconds": 8.408306166529655e-05,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.45008787512779236,
+      "predict_seconds": 8.729100227355957e-05,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.45578408311121166,
+      "predict_seconds": 9.654206223785877e-05,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.45739125018008053,
+      "predict_seconds": 7.233303040266037e-05,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.45798987499438226,
+      "predict_seconds": 0.00011179200373589993,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 3,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.47603345778770745,
+      "predict_seconds": 0.00011312495917081833,
+      "test_rows": 98,
+      "train_rows": 6985,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.3482173748780042,
+      "predict_seconds": 0.00011791707947850227,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.3388673330191523,
+      "predict_seconds": 8.583301678299904e-05,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.3444655421189964,
+      "predict_seconds": 7.054186426103115e-05,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.3455746250692755,
+      "predict_seconds": 9.429198689758778e-05,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.34172650007531047,
+      "predict_seconds": 7.712491787970066e-05,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 4,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.34993891697376966,
+      "predict_seconds": 6.691599264740944e-05,
+      "test_rows": 109,
+      "train_rows": 5339,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.39625483308918774,
+      "predict_seconds": 6.949994713068008e-05,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.3900496249552816,
+      "predict_seconds": 7.27921724319458e-05,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.39854270895011723,
+      "predict_seconds": 0.0001135410275310278,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.39846850000321865,
+      "predict_seconds": 0.00012279092334210873,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.3915130828972906,
+      "predict_seconds": 8.412497118115425e-05,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 5,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.39689762494526803,
+      "predict_seconds": 0.000100292032584548,
+      "test_rows": 124,
+      "train_rows": 6097,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.4422184999566525,
+      "predict_seconds": 7.916591130197048e-05,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4372045830823481,
+      "predict_seconds": 8.399994112551212e-05,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.4419764999765903,
+      "predict_seconds": 6.391690112650394e-05,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.4434540830552578,
+      "predict_seconds": 8.15410166978836e-05,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.4402119580190629,
+      "predict_seconds": 0.00010420894250273705,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 6,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.4455817090347409,
+      "predict_seconds": 7.458403706550598e-05,
+      "test_rows": 52,
+      "train_rows": 6795,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.4246535408310592,
+      "predict_seconds": 6.616697646677494e-05,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4180564589332789,
+      "predict_seconds": 9.00421291589737e-05,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.42205099994316697,
+      "predict_seconds": 7.229205220937729e-05,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.41926004202105105,
+      "predict_seconds": 6.179208867251873e-05,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.41896129096858203,
+      "predict_seconds": 6.9082947447896e-05,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 7,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.42321229190565646,
+      "predict_seconds": 9.099999442696571e-05,
+      "test_rows": 29,
+      "train_rows": 6403,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.45886079082265496,
+      "predict_seconds": 0.00012441608123481274,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.4361909171566367,
+      "predict_seconds": 0.00011324998922646046,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.44654070888645947,
+      "predict_seconds": 0.00012091710232198238,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.4427783330902457,
+      "predict_seconds": 8.612498641014099e-05,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.43974608392454684,
+      "predict_seconds": 9.220791980624199e-05,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 8,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.4439030000939965,
+      "predict_seconds": 8.333404548466206e-05,
+      "test_rows": 147,
+      "train_rows": 6743,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "DirectMLP_noVPD_20260713",
+      "fit_seconds": 0.443992790998891,
+      "predict_seconds": 9.650015272200108e-05,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "DirectMLP_noVPD_20260714",
+      "fit_seconds": 0.43775766692124307,
+      "predict_seconds": 6.125005893409252e-05,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "DirectMLP_noVPD_20260715",
+      "fit_seconds": 0.45281804190017283,
+      "predict_seconds": 0.0001295830588787794,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "ResidualMLP_noVPD_20260713",
+      "fit_seconds": 0.4722912909928709,
+      "predict_seconds": 0.00011779204942286015,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "ResidualMLP_noVPD_20260714",
+      "fit_seconds": 0.4404610840138048,
+      "predict_seconds": 0.00010729208588600159,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    },
+    {
+      "regime": "joint",
+      "fold": 9,
+      "model": "ResidualMLP_noVPD_20260715",
+      "fit_seconds": 0.44500162499025464,
+      "predict_seconds": 0.00010641710832715034,
+      "test_rows": 9,
+      "train_rows": 6803,
+      "warnings": [
+        "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+      ]
+    }
+  ]
+}

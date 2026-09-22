@@ -295,6 +295,16 @@ def _verify_citations() -> None:
         for key in group.split(",")
         if key.strip()
     }
+    if "\\bibliography{references}" in text:
+        bib_text = (MANUSCRIPT_TEX.parent / "references.bib").read_text()
+        keys = re.findall(r"@[A-Za-z]+\{([^,]+),", bib_text)
+        if len(keys) != len(set(keys)):
+            raise ValueError("The bibliography has duplicate keys")
+        missing = cited - set(keys)
+        unused = set(keys) - cited
+        if missing or unused:
+            raise ValueError(f"Citation mismatch: missing={sorted(missing)}, unused={sorted(unused)}")
+        return
     bib_matches = list(
         re.finditer(
             r"\\bibitem\[[^]]+\]\{([^}]+)\}\s*(.*?)(?=\\bibitem|\\end\{thebibliography\})",
@@ -344,51 +354,20 @@ def _verify_source_text() -> None:
     normalized_manuscript = " ".join(manuscript.split())
     required = (
         "Machine Learning Evapotranspiration (MLET)",
+        "selective residual regression", "spatial transfer and input corruption",
+        "mean absolute error (MAE)", "root mean square error (RMSE)",
+        "reference evapotranspiration (ETo)", "gridMET ETo",
         "Global Ensemble Forecast System version 12 (GEFSv12)",
         "National Oceanic and Atmospheric Administration (NOAA)",
         "U.S. Bureau of Reclamation (USBR)",
-        "American Society of Civil Engineers Environmental and Water Resources Institute (ASCE-EWRI)",
         "grass-reference evapotranspiration (ETos)",
-        "reference evapotranspiration (ETo)",
-        "mean absolute error (MAE)",
-        "root mean square error (RMSE)",
-        "SHA-256 (a 256-bit secure hash)",
-        "Coordinated Universal Time (UTC)",
-        "00Z (00:00 UTC)",
-        "H2 (the preregistered OpenET comparison)",
-        "BOII (the Boise, Idaho AgriMet weather-station identifier)",
-        "December-January-February (DJF)",
-        "March-April-May (MAM)",
-        "June-July-August (JJA)",
-        "September-October-November (SON)",
-        "station-held-out 10-fold evaluation",
-        "gridMET ETo",
-        "uncalibrated ensemble quantile band",
-        "published station-derived target",
-        "retrospective reforecast diagnostic",
-        "baseline-minus-forecast MAE difference",
-        "source_issue_at",
-        "archive_available_at",
-        "later retrieval timestamp",
-        "does not prove operational availability at",
-        "original publication time",
-        "strictly prior calendar years",
-        "target date, not the issue date, sets $Y_d$",
-        "predictor-ready common table used by the runner",
-        "drops rows with a missing measured response, OpenET value, gridMET ETo value",
-        "common 0.5-degree GEFS grid-point subset",
-        "No interpolation",
-        "Validation complete",
-        "skillful",
-        "release review",
-        "scripts/decode_gefs_reforecast.py",
-        "src/mlet/sources/gefs_reforecast_batch.py",
-        "src/mlet/sources/gefs_grib.py",
-        "src/mlet/sources/gefs_reforecast.py",
-        "src/mlet/outlook/spatial.py",
-        "src/mlet/outlook/eto.py",
-        "vendor/pyfao56/src/pyfao56/__version__.py",
-        "Vendored pyfao56 version 1.4.3",
+        "retrospective reforecast diagnostic", "baseline-minus-forecast MAE difference",
+        "source_issue_at", "archive_available_at", "later retrieval timestamp",
+        "does not prove operational availability at", "original publication time",
+        "strictly prior calendar years", "common 0.5-degree GEFS grid-point subset",
+        "No interpolation", "uncalibrated ensemble quantile band",
+        "post hoc", "matched", "Meetpal S. Kukal", "mailto:m@irrigant.xyz",
+        "pdfauthor={Marco Trotta}", "irrigant_logo.png",
     )
     for phrase in required:
         if phrase not in normalized_manuscript:
@@ -414,10 +393,12 @@ def _verify_pdf(pdf_path: Path) -> None:
         raise ValueError("The compiled manuscript has fewer than eight pages")
     if "Page size:       612 x 792 pts (letter)" not in info:
         raise ValueError("The compiled manuscript is not US Letter size")
-    title = "MLET: Incremental Predictive Value of OpenET and an Auditable Reference-Evapotranspiration Outlook"
+    title = "MLET: Selective Neural Residual Correction for Spatial Evapotranspiration"
     title_match = re.search(r"^Title:\s+(.+)$", info, flags=re.MULTILINE)
     if title_match is None or title_match.group(1).strip() != title:
         raise ValueError("The compiled manuscript has the wrong PDF title")
+    if "Author:          Marco Trotta" not in info:
+        raise ValueError("The PDF author must be Marco Trotta alone")
     if COMPILE_LOG.is_file():
         log = COMPILE_LOG.read_text(encoding="utf-8", errors="replace")
         fatal_terms = ("LaTeX Error", "undefined references", "undefined citations")
@@ -477,21 +458,27 @@ def _pdf_signature(pdf_path: Path) -> tuple[int, str, str, tuple[str, ...]]:
 
 def _source_manifest() -> dict[str, Path]:
     """Return the tracked clean source files and their canonical inputs."""
+    manuscript_root = MANUSCRIPT_TEX.parent
     manifest = {
-        "ARXIV_SUBMISSION.md": REPO_ROOT / "manuscript" / "arxiv" / "ARXIV_SUBMISSION.md",
-        "generated_claims.tex": CLAIMS_TEX,
-        "mlet_preprint.tex": MANUSCRIPT_TEX,
-        "assets/irrigant_logo.png": REPO_ROOT / "manuscript" / "assets" / "irrigant_logo.png",
-        "assets/uidaho_logo.png": REPO_ROOT / "manuscript" / "assets" / "uidaho_logo.png",
+        "ARXIV_SUBMISSION.md": manuscript_root / "ARXIV_SUBMISSION.md",
+        "assets/irrigant_logo.png": REPO_ROOT / "manuscript/assets/irrigant_logo.png",
     }
-    for stem in (
-        "figure_1_evidence_paths",
-        "figure_2_phase2_models",
-        "figure_3_boii_feasibility",
-        "figure_4_native_grid",
-        "figure_5_support_tensor",
-    ):
-        manifest[f"figures/{stem}.pdf"] = FIGURE_ROOT / f"{stem}.pdf"
+    for pattern in ("*.tex", "*.bib"):
+        for path in manuscript_root.glob(pattern):
+            manifest[path.name] = path
+    submission_metadata = REPO_ROOT / "output/arxiv/arxiv_metadata.txt"
+    if submission_metadata.exists():
+        manifest["arxiv_metadata.txt"] = submission_metadata
+    bibliography = REPO_ROOT / "output/pdf/mlet_preprint.bbl"
+    if bibliography.exists():
+        manifest["mlet_preprint.bbl"] = bibliography
+    for path in FIGURE_ROOT.glob("*.pdf"):
+        manifest[f"figures/{path.name}"] = path
+    reproducibility = REPO_ROOT / "output/reproducibility"
+    if reproducibility.exists():
+        for path in reproducibility.rglob("*"):
+            if path.is_file():
+                manifest["anc/reproducibility/" + str(path.relative_to(reproducibility))] = path
     return manifest
 
 
@@ -572,6 +559,8 @@ def main() -> int:
     _verify_figure_sources()
     _verify_citations()
     _verify_source_text()
+    subprocess.run(["python3", str(REPO_ROOT / "scripts/verify_ml_paper.py")], check=True)
+    subprocess.run(["python3", str(REPO_ROOT / "scripts/verify_selective_results.py")], check=True)
     _verify_final_package(args.pdf.resolve())
     print("MLET arXiv manuscript verification passed.")
     return 0

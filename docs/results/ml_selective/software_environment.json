@@ -1,0 +1,15 @@
+{
+  "python": "3.13.5 (v3.13.5:6cb20a219a8, Jun 11 2025, 12:23:45) [Clang 16.0.0 (clang-1600.0.26.6)]",
+  "packages": {
+    "numpy": "2.4.3",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.8.0",
+    "scipy": "1.17.1",
+    "matplotlib": "3.11.0",
+    "openpyxl": "3.1.5",
+    "certifi": "2026.2.25",
+    "pytest": "8.4.2",
+    "pypdf": "6.14.2",
+    "threadpoolctl": "3.6.0"
+  }
+}

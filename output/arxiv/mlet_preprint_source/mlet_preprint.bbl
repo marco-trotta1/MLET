@@ -1,0 +1,164 @@
+\begin{thebibliography}{22}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[{ASCE Task Committee on Standardization of Reference
+  Evapotranspiration}(2005)]{asce2005}
+{ASCE Task Committee on Standardization of Reference Evapotranspiration}.
+\newblock \emph{The ASCE Standardized Reference Evapotranspiration Equation}.
+\newblock American Society of Civil Engineers, 2005.
+\newblock \doi{10.1061/9780784408056}.
+
+\bibitem[Cui et~al.(2026)Cui, Wang, Xu, et~al.]{cui2026}
+Taoyong Cui, Zhongyao Wang, Xinyue Xu, et~al.
+\newblock {JEPA-Anything}: Learning predictive models across different worlds,
+  2026.
+\newblock URL \url{https://arxiv.org/abs/2609.20800}.
+
+\bibitem[de~Mathelin et~al.(2023)de~Mathelin, Deheeger, Mougeot, and
+  Vayatis]{mathelin2023}
+Antoine de~Mathelin, Francois Deheeger, Mathilde Mougeot, and Nicolas Vayatis.
+\newblock Deep anti-regularized ensembles provide reliable out-of-distribution
+  uncertainty quantification.
+\newblock \emph{arXiv:2304.04042}, 2023.
+\newblock URL \url{https://arxiv.org/abs/2304.04042}.
+
+\bibitem[Dobrokhotov et~al.(2026)Dobrokhotov, Lopez, Kozyreva, and
+  Mukhina]{residual2026}
+Aleksei Dobrokhotov, Oliver Lopez, Ludmila Kozyreva, and Daria Mukhina.
+\newblock A machine learning residual correction framework for enhancing
+  physical-based evapotranspiration estimates over croplands.
+\newblock \emph{European Journal of Remote Sensing}, 59:\penalty0 2695909,
+  2026.
+\newblock \doi{10.1080/22797254.2026.2695909}.
+
+\bibitem[Hafner et~al.(2025)Hafner, Pasukonis, Ba, and Lillicrap]{hafner2025}
+Danijar Hafner, Jurgis Pasukonis, Jimmy Ba, and Timothy Lillicrap.
+\newblock Mastering diverse control tasks through world models.
+\newblock \emph{Nature}, 640:\penalty0 647--653, 2025.
+\newblock \doi{10.1038/s41586-025-08744-2}.
+\newblock URL \url{https://arxiv.org/abs/2301.04104}.
+\newblock Associated preprint: arXiv:2301.04104.
+
+\bibitem[Hascoet et~al.(2022)Hascoet, Pellet, and Aires]{hascoet2022}
+Tristan E.~M. Hascoet, Victor Pellet, and Filipe Aires.
+\newblock Learning evapotranspiration dataset corrections from water cycle
+  closure supervision.
+\newblock In \emph{NeurIPS Workshop on Tackling Climate Change with Machine
+  Learning}, 2022.
+\newblock URL \url{https://www.climatechange.ai/papers/neurips2022/23}.
+
+\bibitem[Hu et~al.(2023)Hu, Liang, Fan, Chen, Zheng, and Zimmermann]{hu2023}
+Junfeng Hu, Yuxuan Liang, Zhencheng Fan, Hongyang Chen, Yu~Zheng, and Roger
+  Zimmermann.
+\newblock Graph neural processes for spatio-temporal extrapolation.
+\newblock \emph{arXiv:2305.18719}, 2023.
+\newblock URL \url{https://arxiv.org/abs/2305.18719}.
+
+\bibitem[Kukal et~al.(2026)Kukal, Allen, Kilic, et~al.]{kukal2026}
+Meetpal~S. Kukal, Richard~G. Allen, Ayse Kilic, et~al.
+\newblock Artificial intelligence/machine learning estimation of {FAO} and
+  {ASCE} standardized reference {ET} erodes the physical basis and intended
+  purpose of {ET} standardization.
+\newblock \emph{Agricultural Water Management}, 333:\penalty0 110657, 2026.
+\newblock \doi{10.1016/j.agwat.2026.110657}.
+
+\bibitem[Lakshminarayanan et~al.(2016)Lakshminarayanan, Pritzel, and
+  Blundell]{laksh2016}
+Balaji Lakshminarayanan, Alexander Pritzel, and Charles Blundell.
+\newblock Simple and scalable predictive uncertainty estimation using deep
+  ensembles.
+\newblock \emph{arXiv:1612.01474}, 2016.
+\newblock URL \url{https://arxiv.org/abs/1612.01474}.
+
+\bibitem[Mao et~al.(2024)Mao, Mohri, and Zhong]{mao2024}
+Anqi Mao, Mehryar Mohri, and Yutao Zhong.
+\newblock Regression with multi-expert deferral.
+\newblock In \emph{Proceedings of the 41st International Conference on Machine
+  Learning}, volume 235 of \emph{Proceedings of Machine Learning Research},
+  pages 34738--34759, 2024.
+\newblock URL \url{https://proceedings.mlr.press/v235/mao24d.html}.
+
+\bibitem[Meyer and Pebesma(2020)]{meyer2020}
+Hanna Meyer and Edzer Pebesma.
+\newblock Predicting into unknown space? estimating the area of applicability
+  of spatial prediction models.
+\newblock \emph{arXiv:2005.07939}, 2020.
+\newblock URL \url{https://arxiv.org/abs/2005.07939}.
+
+\bibitem[Nguyen et~al.(2026)Nguyen, Serino, Prakash, and Klasky]{nguyen2026}
+Khoa Nguyen, Daniel Serino, Aviral Prakash, and Marc Klasky.
+\newblock {GeoQ}: Geometry-aware conditional quantile error estimation for
+  scientific surrogate models.
+\newblock \emph{arXiv:2608.21652}, 2026.
+\newblock URL \url{https://arxiv.org/abs/2608.21652}.
+
+\bibitem[{OpenET}(2026)]{openetissues}
+{OpenET}.
+\newblock Accuracy and known issues, 2026.
+\newblock URL \url{https://etdata.org/accuracy-known-issues/}.
+\newblock Accessed September 22, 2026.
+
+\bibitem[Roberts et~al.(2017)Roberts, Bahn, Ciuti, et~al.]{roberts2017}
+David~R. Roberts, Volker Bahn, Simone Ciuti, et~al.
+\newblock Cross-validation strategies for data with temporal, spatial,
+  hierarchical, or phylogenetic structure.
+\newblock \emph{Ecography}, 40:\penalty0 913--929, 2017.
+\newblock \doi{10.1111/ecog.02881}.
+
+\bibitem[Rozanov et~al.(2025)Rozanov, Subedi, Sharma, and Runck]{rozanov2025}
+Aleksei Rozanov, Samikshya Subedi, Vasudha Sharma, and Bryan~C. Runck.
+\newblock Knowledge-guided machine learning models to upscale
+  evapotranspiration in the {U.S. Midwest}, 2025.
+\newblock URL \url{https://arxiv.org/abs/2510.11505}.
+
+\bibitem[Shi(2024)]{shi2024}
+Haiyang Shi.
+\newblock Extrapolability improvement of machine learning-based
+  evapotranspiration models via domain-adversarial neural networks, 2024.
+\newblock URL \url{https://arxiv.org/abs/2406.00805}.
+
+\bibitem[Sokol et~al.(2024)Sokol, Moniz, and Chawla]{sokol2024}
+Anna Sokol, Nuno Moniz, and Nitesh Chawla.
+\newblock Conformalized selective regression.
+\newblock \emph{arXiv:2402.16300}, 2024.
+\newblock URL \url{https://arxiv.org/abs/2402.16300}.
+
+\bibitem[Volk et~al.(2024)Volk, Huntington, Melton, et~al.]{volk2024}
+John~M. Volk, Justin~L. Huntington, Forrest~S. Melton, et~al.
+\newblock Assessing the accuracy of {OpenET} satellite-based evapotranspiration
+  data to support water resource and land management applications.
+\newblock \emph{Nature Water}, 2:\penalty0 193--205, 2024.
+\newblock \doi{10.1038/s44221-023-00181-7}.
+
+\bibitem[Volk et~al.(2023{\natexlab{a}})]{fluxdata}
+John~M. Volk et~al.
+\newblock Post-processed data and graphical tools for a {CONUS}-wide eddy flux
+  evapotranspiration dataset, 2023{\natexlab{a}}.
+\newblock URL \url{https://zenodo.org/records/7636781}.
+
+\bibitem[Volk et~al.(2023{\natexlab{b}})]{openetdata}
+John~M. Volk et~al.
+\newblock {OpenET} model data for assessing the accuracy of {OpenET}
+  satellite-based evapotranspiration data, 2023{\natexlab{b}}.
+\newblock URL \url{https://zenodo.org/records/10119477}.
+
+\bibitem[Wei et~al.(2026)Wei, Liu, Song, et~al.]{wei2026}
+Jiaxing Wei, Shaomin Liu, Lisheng Song, et~al.
+\newblock Development and validation of physically constrained machine learning
+  for improving remote sensing-based evapotranspiration estimation.
+\newblock \emph{Remote Sensing of Environment}, 2026.
+\newblock \doi{10.1016/j.rse.2026.115460}.
+
+\bibitem[Xu et~al.(2020)Xu, Li, Zhang, Du, Kawarabayashi, and Jegelka]{xu2020}
+Keyulu Xu, Jingling Li, Mozhi Zhang, Simon~S. Du, Ken-ichi Kawarabayashi, and
+  Stefanie Jegelka.
+\newblock How neural networks extrapolate: From feedforward to graph neural
+  networks.
+\newblock \emph{arXiv:2009.11848}, 2020.
+\newblock URL \url{https://arxiv.org/abs/2009.11848}.
+
+\end{thebibliography}

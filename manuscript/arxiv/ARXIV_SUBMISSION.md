@@ -1,49 +1,49 @@
 # MLET arXiv source
 
-Title: MLET: Incremental Predictive Value of OpenET and an Auditable
-Reference-Evapotranspiration Outlook.
+Title: MLET: Selective Neural Residual Correction for Spatial Evapotranspiration.
+Author: Marco Trotta.
+Affiliation: Irrigant, Idaho, USA.
+Contact: m@irrigant.xyz.
 
-Public repository: https://github.com/marco-trotta1/MLET. Immutable scientific
-code revision: `d8feb34`. Dataset DOIs:
-https://doi.org/10.5281/zenodo.10119477 and
-https://doi.org/10.5281/zenodo.7636781.
+Use `mlet_preprint.tex` as the main source file.
+The source uses the original MLET letter-paper design, Irrigant logo, and five original visuals.
+Meetpal S. Kukal appears in the acknowledgements, not the author block.
+The current paper studies selective neural residual correction under spatial transfer and input corruption.
+The original reference-ETo diagnostics remain in a separate appendix.
 
-Use mlet_preprint.tex as the main file. The source compiles with Tectonic and
-uses the letter-paper layout in the manuscript.
+The archive contains the manuscript, generated tables, bibliography, 13 vector figures, and Irrigant logo.
+The generated `arxiv_metadata.txt` contains the current title, author, and abstract.
+Packaging copies the compiled paper to both repository PDF paths.
+The README links to `output/pdf/mlet_arxiv_preprint.pdf`.
+The `anc/reproducibility/` directory contains code, protocols, and saved predictions.
+It contains no private email, raw weather archive, credentials, or LaTeX source.
 
-The source archive contains these files:
+Compile from this directory:
 
-- mlet_preprint.tex
-- generated_claims.tex
-- figures/figure_1_evidence_paths.pdf
-- figures/figure_2_phase2_models.pdf
-- figures/figure_3_boii_feasibility.pdf
-- figures/figure_4_native_grid.pdf
-- figures/figure_5_support_tensor.pdf
-- assets/uidaho_logo.png
-- assets/irrigant_logo.png
-- ARXIV_SUBMISSION.md
+```bash
+tectonic --keep-logs --keep-intermediates mlet_preprint.tex
+```
 
-Generate claims and figures from the repository root before a new build:
+Build and verify from the full repository:
 
-PYTHONPATH=src python3 scripts/build_arxiv_claims.py --out
-manuscript/arxiv/generated_claims.tex
+```bash
+python3 scripts/build_ml_paper_artifacts.py
+python3 scripts/build_selective_artifacts.py
+cd manuscript/arxiv
+tectonic --outdir ../../output/pdf --keep-logs --keep-intermediates mlet_preprint.tex
+cd ../..
+python3 scripts/package_selective_paper.py
+python3 scripts/verify_arxiv_manuscript.py --pdf output/pdf/mlet_preprint.pdf
+```
 
-PYTHONPATH=src python3 scripts/build_arxiv_figures.py --out
-manuscript/arxiv/figures
+Suggested arXiv category: cs.LG.
+This is a subject suggestion, not a moderation decision.
+The package is not submitted, and the arXiv server build remains untested.
+The branded preprint is not an anonymous ICML submission template.
+The paper cites existing deferral theory and makes a limited empirical contribution.
+It does not claim a new deferral algorithm or establish ICML acceptance or ISEF competitiveness.
 
-Compile from manuscript/arxiv:
-
-tectonic --outdir ../../output/pdf --keep-logs mlet_preprint.tex
-
-Run the source, citation, figure, and PDF checks from the repository root:
-
-PYTHONPATH=src python3 scripts/verify_arxiv_manuscript.py --pdf
-output/pdf/mlet_preprint.pdf
-
-The Phase 2 result is reproduced. The full reference-ETo hindcast remains
-pending. The BOII artifact is a retrospective reforecast diagnostic. Its later
-archive retrieval does not prove operational availability at the historical
-issue time. The AgriMet target retrieval time does not prove original
-publication time. Do not promote the outlook until the full archive, support
-checks, checksums, and independent release review are complete.
+The previous complete-weather benchmark is already inspected.
+The selective protocol precedes its run; the matched-budget diagnostic is post hoc.
+Synthetic input faults test robustness, not physical weather interventions.
+The original outlook remains a negative one-issue feasibility diagnostic with incomplete support.
