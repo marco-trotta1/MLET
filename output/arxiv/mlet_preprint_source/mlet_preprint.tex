@@ -136,9 +136,9 @@ After VPD omission, a tenfold wind-input fault raises residual-network station M
 Support screening yields 0.857, but largely through fallback: it accepts only 1.74\% of the station-weighted population.
 At matched 50\% acceptance, its advantage over disagreement is inconclusive.
 However, the learned benefit ranking is worse than the support ranking by 0.243 $\unit$, with paired interval [0.110, 0.412], under that same fault.
-The later-year evaluation does not confirm this ordering.
+The later-year evaluation does not confirm this ordering, and natural-test gains do not transfer uniformly to croplands.
 We derive the baseline-relative risk objective, preserve all negative controls, and distinguish screening from ranking improvements.
-The result isolates a failure of cross-fitted benefit selection under a specified environmental input shift; it does not establish a universally better correction architecture.
+The result isolates a failure of cross-fitted benefit selection under a specified input fault and separates correction ranking from fallback frequency.
 \end{quote}
 \noindent\textbf{Keywords:} selective regression; neural residual learning; model deferral; input corruption; evapotranspiration
 
@@ -159,50 +159,15 @@ A crossed experiment separates geographic withholding, later years, and omission
 Paired input faults then isolate selection behavior while holding labels and neural parameters fixed.
 The contribution is a reproducible empirical study of selector transfer, supported by an explicit loss objective and matched-acceptance diagnostics.
 
-The original MLET reference-ETo outlook remains a separate evidence path.
-Figure~\ref{fig:evidence-paths} preserves its architecture, and Appendix~\ref{app:outlook} retains the original diagnostic and spatial visuals.
-Those artifacts do not supply neural forecasting or irrigation-skill claims.
-\clearpage
-\section{MLET evidence architecture}
-Actual evapotranspiration is the measured crop-and-soil flux used for this paper's ML target.
-The reference evapotranspiration (ETo) calculation describes a standardized surface and remains a separate physical calculation \citep{asce2005}.
-The selective models operate on the historical actual-ET branch below.
-The earlier reference-ETo branch retains its source and validation constraints.
-The earlier OpenET information-value result is reproduced in Appendix~\ref{app:benchmark}.
-Adding OpenET to weather ridge reduces pooled MAE from 1.514 to 0.856 $\unit$ on the original station split.
-Unchanged OpenET already scores 0.784 on those rows.
-This demands a stronger objective for the present study: determine whether, and when, a correction improves the existing satellite estimate.
+Agricultural use requires a separate population check: success across mixed land covers need not imply success on croplands.
+We therefore report cropland transfer alongside the full archive and retain the satellite estimate as a deployable fallback concept.
+The evaluation is retrospective; it does not test operational availability or irrigation interventions.
 
-\begin{figure}[ht]
-\centering\includegraphics[width=.98\textwidth]{figure_1_evidence_paths.pdf}
-\caption{The original MLET evidence architecture, retained unchanged. The left branch supplies 7,923 station-days from 85 stations for retrospective actual-ET evaluation. The right branch contains a separate reference-ETo protocol and one diagnostic with 20 targets. The new selective neural experiments concern the left branch.}
-\label{fig:evidence-paths}
-\end{figure}
-
-\subsection{Physical target definitions}
-The original MLET quantities retain the following definitions and evidence requirements.
-\begin{table}[ht]
-
-\centering
-\caption{Target ontology and claim boundary.}
-\label{tab:ontology}
-\small
-\begin{tabularx}{0.98\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
-  >{\raggedright\arraybackslash}p{0.23\textwidth}
-  >{\raggedright\arraybackslash}p{0.30\textwidth}
-  >{\raggedright\arraybackslash}X}
-\toprule
-Layer or label & Quantity & Time and source & Allowed claim \\
-\midrule
-\code{ET\_corr} & Energy-balance-corrected actual ET & Historical flux label & Retrospective daily actual-ET prediction \\
-\code{eto\_mm} & Standardized short-reference $\eto$ & Future local date from issue-time GEFS & Regional reference-$\eto$ outlook after the frozen hindcast gate \\
-AgriMet \code{ETos} & Published grass-reference ET & Later station observation; converted from inches per day & Independent reference-$\eto$ evaluation target \\
-\code{potential\_et\_c\_mm} & $K_c\eto$ under ample-water assumptions & Conditional future projection & Conditional crop ET only \\
-\code{eta\_analysis\_mm} & Satellite actual-ET analysis & Delayed historical observation & Analysis comparison only \\
-Conditional $\etaactual$ scenarios & Named water and soil assumptions & Future scenario & Scenario evidence only \\
-\bottomrule
-\end{tabularx}
-\end{table}
+The study makes three connected empirical contributions.
+First, it evaluates selection by improvement over the fallback, with spatially cross-fitted targets and complete-system loss.
+Second, paired input faults separate neural error, rejection frequency, and correction ranking while holding the fitted predictor fixed.
+Third, matched acceptance exposes an inconclusive uncertainty comparison and a specific benefit-selector failure that later-year data do not confirm.
+Appendices~\ref{app:architecture} and~\ref{app:outlook} retain the original MLET architecture and reference-ETo visuals as historical context.
 \clearpage\twocolumn
 \section{Related work}
 \citet{mao2024} formulate regression with multi-expert deferral, including two-stage methods and consistency analysis.
@@ -625,6 +590,16 @@ No curve or acceptance budget is used to refit a model.
 \caption{Expected station MAE at matched station-weighted acceptance budgets, with VPD omitted. The boundary decision is randomized to match each budget exactly. Every other rejected correction returns OpenET. These post hoc curves use label-free outer ranks; they do not establish deployable thresholds. The paired 50\% comparisons appear in the text.}
 \label{fig:matched-acceptance}
 \end{figure*}
+\subsection{Cropland transfer is a separate ML target}
+The natural cropland subset contains 2,670 observations from 32 stations in 18 proximity groups.
+After VPD omission, OpenET scores 0.931 station MAE, while the full residual ensemble scores 0.997 $\unit$.
+All selective alternatives have higher cropland point error than OpenET; uniform shrinkage is closest at 0.961 $\unit$.
+Its paired improvement interval is $[-0.074,0.017]$, so this comparison does not establish a cropland benefit.
+The later-year cropland subset contains 403 observations from nine stations in seven groups.
+There, no-VPD SupportGain scores 0.790 against 0.785 for OpenET, with improvement interval $[-0.035,0.017]$.
+Appendix~\ref{app:selective-tables} reports every method and both input specifications.
+These results limit the agricultural interpretation: identifying a correction failure is useful evidence, but it does not validate a better cropland estimator.
+
 \section{Discussion and limits}
 \subsection{What the narrow result establishes}
 The fitted benefit selector can transfer differently from the neural predictor it controls.
@@ -634,11 +609,9 @@ Matching acceptance separates two questions: whether the selector rejects unfami
 The support-versus-disagreement ranking difference is inconclusive at the specified 50\% budget.
 The larger Gain-versus-Support difference applies to one spatial probe and does not confirm in the smaller later-year cohort.
 
-This distinction matters for agricultural model deployment.
-An aggregate mixed-land-cover gain does not establish a gain for croplands.
-Appendix~\ref{app:selective-tables} reports every selective method on croplands.
-The geographic no-VPD selectors all have higher cropland point MAE than unchanged OpenET.
-The study therefore supports diagnostics for correction behavior, rather than an agricultural deployment claim.
+For agricultural deployment, selection must improve the error of the relevant crop population.
+The cropland results show why an aggregate mixed-land-cover score cannot supply that evidence.
+The present result supports diagnostics for correction behavior; it does not establish an agricultural deployment gain.
 
 \subsection{Scope of inference}
 All new analyses extend an inspected benchmark.
@@ -689,11 +662,6 @@ Codex assists with code development, data auditing, analysis, figures, and manus
 All reported experimental values come from executed scripts and saved prediction records.
 
 
-\clearpage
-\begingroup\small
-\bibliographystyle{plainnat}
-\bibliography{references}
-\endgroup
 \clearpage
 \appendix
 \section{Original benchmark and covariate mechanisms}\label{app:benchmark}
@@ -988,9 +956,9 @@ Its recorded single-run wall time is 161.98 seconds on the same platform, with o
 This includes selector fitting, prediction, output writing, and reporting; it excludes literature work and manuscript production.
 All 40 outer neural ensembles reproduce the earlier saved predictions within relative and absolute tolerance $10^{-10}$.
 No ensemble is rerun to select a favorable seed.
-\clearpage
+\clearpage\onecolumn
 \section{Selective results by population and fault}\label{app:selective-tables}
-\begin{table*}[t]
+\begin{table}[!ht]
 \captionsetup{width=.96\textwidth}
 \centering\footnotesize
 \caption{Cropland station MAE and paired 95\% improvement intervals against OpenET, in $\unit$. Proximity includes 2,670 rows, 32 stations, and 18 groups. Joint includes 403 rows, nine stations, and seven groups. Models train across land covers; this table reports evaluation strata.}
@@ -998,9 +966,9 @@ No ensemble is rerun to select a favorable seed.
 Method & Proximity / archived & Proximity / no VPD & Joint / archived & Joint / no VPD\\\midrule
 \tableinput{table_selective_crop.tex}
 \bottomrule\end{tabular}
-\end{table*}
+\end{table}
 
-\begin{table*}[t]
+\begin{table}[!ht]
 \captionsetup{width=.96\textwidth}
 \centering\footnotesize
 \caption{Complete-system station MAE after VPD omission, in $\unit$. All fault columns use the same eligible rows as their clean column: 7,873 rows at 84 stations for proximity, and 646 rows at 27 stations for joint. The VPD fault is an exact negative control. These paired probes do not estimate fault prevalence.}
@@ -1010,11 +978,53 @@ Method & Proximity / archived & Proximity / no VPD & Joint / archived & Joint / 
 Method & Clean & VPD $\times10$ & Wind $\times10$ & $T+20$ & Clean & VPD $\times10$ & Wind $\times10$ & $T+20$\\\midrule
 \tableinput{table_selective_faults.tex}
 \bottomrule\end{tabular}
-\end{table*}
+\end{table}
 All archived-input fault results, per-seed predictions, selector acceptance rates, and ranking diagnostics appear in the saved numerical package.
 The paired 95\% intervals use proximity components and condition on the fitted predictions.
 The matched-budget curves keep their learned scores fixed during resampling.
-\clearpage\onecolumn
+\clearpage
+\section{Original evidence architecture}\label{app:architecture}
+Actual evapotranspiration is the measured crop-and-soil flux used for this paper's ML target.
+The reference evapotranspiration (ETo) calculation describes a standardized surface and remains a separate physical calculation \citep{asce2005}.
+The selective models operate on the historical actual-ET branch below.
+The earlier reference-ETo branch retains its source and validation constraints.
+The earlier OpenET information-value result is reproduced in Appendix~\ref{app:benchmark}.
+Adding OpenET to weather ridge reduces pooled MAE from 1.514 to 0.856 $\unit$ on the original station split.
+Unchanged OpenET already scores 0.784 on those rows.
+This demands a stronger objective for the present study: determine whether, and when, a correction improves the existing satellite estimate.
+
+\begin{figure}[ht]
+\centering\includegraphics[width=.98\textwidth]{figure_1_evidence_paths.pdf}
+\caption{The original MLET evidence architecture, retained unchanged. The left branch supplies 7,923 station-days from 85 stations for retrospective actual-ET evaluation. The right branch contains a separate reference-ETo protocol and one diagnostic with 20 targets. The new selective neural experiments concern the left branch.}
+\label{fig:evidence-paths}
+\end{figure}
+
+\subsection{Physical target definitions}
+The original MLET quantities retain the following definitions and evidence requirements.
+\begin{table}[ht]
+
+\centering
+\caption{Target ontology and claim boundary.}
+\label{tab:ontology}
+\small
+\begin{tabularx}{0.98\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
+  >{\raggedright\arraybackslash}p{0.23\textwidth}
+  >{\raggedright\arraybackslash}p{0.30\textwidth}
+  >{\raggedright\arraybackslash}X}
+\toprule
+Layer or label & Quantity & Time and source & Allowed claim \\
+\midrule
+\code{ET\_corr} & Energy-balance-corrected actual ET & Historical flux label & Retrospective daily actual-ET prediction \\
+\code{eto\_mm} & Standardized short-reference $\eto$ & Future local date from issue-time GEFS & Regional reference-$\eto$ outlook after the frozen hindcast gate \\
+AgriMet \code{ETos} & Published grass-reference ET & Later station observation; converted from inches per day & Independent reference-$\eto$ evaluation target \\
+\code{potential\_et\_c\_mm} & $K_c\eto$ under ample-water assumptions & Conditional future projection & Conditional crop ET only \\
+\code{eta\_analysis\_mm} & Satellite actual-ET analysis & Delayed historical observation & Analysis comparison only \\
+Conditional $\etaactual$ scenarios & Named water and soil assumptions & Future scenario & Scenario evidence only \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\clearpage
 \section{The retained reference-ETo outlook}\label{app:outlook}
 The original MLET outlook visualizations remain part of the project and appear here without replacing their scientific meaning.
 They describe reference evapotranspiration, separately from the actual-ET target of the neural correction experiment.
@@ -1120,4 +1130,10 @@ The displayed band is an uncalibrated ensemble quantile band.
 Validation complete means that all required support cells meet their minimum count; the present diagnostic does not meet that condition.
 A skillful forecast additionally requires the frozen error-improvement criteria and an independent release review.
 
+\clearpage\twocolumn
+\balance
+\begingroup\small
+\bibliographystyle{plainnat}
+\bibliography{references}
+\endgroup
 \end{document}

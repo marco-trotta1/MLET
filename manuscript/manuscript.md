@@ -12,6 +12,8 @@ Spatial cross-fitting supplies the selector targets without outer-label leakage.
 A second evaluation also excludes later years from training.
 
 The study keeps the original Irrigant branding and all five original graphics.
+The main results include the cropland transfer comparisons.
+The original evidence architecture appears in the appendix, and references appear at the end.
 The reference-ETo outlook remains separate from the actual-ET neural task.
 Its original diagnostic, spatial map, and support tensor remain in the appendix.
 The retrospective actual-ET target does not establish forecast or irrigation skill.

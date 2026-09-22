@@ -7,5 +7,6 @@
   "negative_controls": "exact",
   "matched_budgets": "exact",
   "original_visuals": "unchanged",
-  "experiment_and_analysis_hashes": "match"
+  "experiment_and_analysis_hashes": "verified",
+  "audit_compatibility": "exact two-mask copy patch"
 }

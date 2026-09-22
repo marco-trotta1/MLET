@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import ml_transfer_audit as audit
 from ml_selective_residual import METHODS
+from audit_code_provenance import verify_audit_code
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs/results/ml_selective"
@@ -17,7 +18,10 @@ def main():
               'protocol_sha256': ROOT/'docs/evaluation/ML_SELECTIVE_RESIDUAL_PROTOCOL.md',
               'cohort_sha256': audit.OUT/'cohort.csv', 'split_sha256': audit.OUT/'splits.json'}
     for key, path in checks.items():
-        assert receipt[key] == audit.sha(path), f'Stale experiment file: {path}'
+        if key == 'audit_code_sha256':
+            verify_audit_code(path, receipt[key])
+        else:
+            assert receipt[key] == audit.sha(path), f'Stale experiment file: {path}'
     analysis = json.loads((OUT/'analysis_receipt.json').read_text())
     assert analysis['code_sha256'] == audit.sha(ROOT/'scripts/build_selective_artifacts.py')
     assert analysis['protocol_sha256'] == audit.sha(ROOT/'docs/evaluation/ML_MATCHED_SELECTION_ANALYSIS.md')
@@ -80,7 +84,7 @@ def main():
     summary = {'status':'passed', 'outer_configurations':40, 'inner_partitions':inner_count,
                'neural_fits':ensemble_count*3, 'prediction_rows':prediction_rows,
                'negative_controls':'exact', 'matched_budgets':'exact', 'original_visuals':'unchanged',
-               'experiment_and_analysis_hashes':'match'}
+               'experiment_and_analysis_hashes':'verified', 'audit_compatibility':'exact two-mask copy patch'}
     (OUT/'verification.json').write_text(json.dumps(summary,indent=2))
     print(json.dumps(summary,indent=2))
 

@@ -47,3 +47,46 @@ def test_bootstrap_preserves_identical_pairing():
                     "y":[0.,2.,3.],"a":[1.,1.,1.],"b":[1.,1.,1.]})
     r=audit.bootstrap(d,"a","b")
     np.testing.assert_allclose([r["delta_macro_mae"],*r["ci95"]],[0,0,0],atol=1e-12)
+
+
+def test_forward_split_accepts_read_only_pandas_arrays(monkeypatch):
+    original = pd.Series.to_numpy
+    def read_only_view(self, *args, **kwargs):
+        result = original(self, *args, **kwargs)
+        if not kwargs.get("copy", False):
+            result.setflags(write=False)
+        return result
+    monkeypatch.setattr(pd.Series, "to_numpy", read_only_view)
+    test_inner_forward_split_excludes_future_and_groups()
+
+
+def test_compatibility_patch_preserves_all_recorded_inner_partitions():
+    import json
+    root = Path(__file__).resolve().parents[1]
+    cohort = pd.read_csv(root / "docs/results/ml_transfer/cohort.csv").set_index("row_id")
+    splits = json.loads((root / "docs/results/ml_transfer/splits.json").read_text())
+    for split in splits:
+        train = cohort.loc[split["train_row_ids"]]
+        actual = audit.inner_partitions(train, split["regime"] == "joint")
+        assert len(actual) == len(split["inner_partitions"])
+        for (fit, val), recorded in zip(actual, split["inner_partitions"]):
+            assert train.index[fit].tolist() == recorded["train_row_ids"]
+            assert train.index[val].tolist() == recorded["validation_row_ids"]
+
+
+def test_provenance_rejects_changes_beyond_the_compatibility_patch(tmp_path):
+    import hashlib
+    import sys
+    import pytest
+    root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(root / "scripts"))
+    from audit_code_provenance import verify_audit_code
+    recorded = (root / "scripts/ml_transfer_audit.recorded.py").read_bytes()
+    digest = hashlib.sha256(recorded).hexdigest()
+    target = tmp_path / "ml_transfer_audit.py"
+    (tmp_path / "ml_transfer_audit.recorded.py").write_bytes(recorded)
+    target.write_bytes(path.read_bytes())
+    verify_audit_code(target, digest)
+    target.write_bytes(target.read_bytes().replace(b"2016-01-01", b"2015-01-01"))
+    with pytest.raises(ValueError, match="beyond"):
+        verify_audit_code(target, digest)

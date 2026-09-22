@@ -117,8 +117,8 @@ def inner_partitions(train: pd.DataFrame, forward: bool) -> list[tuple[np.ndarra
     groups = sorted(train.group.unique())
     parts = []
     for a,b in field_withheld_folds(groups, min(3,len(groups)), SEED):
-        fit = train.group.isin(a).to_numpy()
-        val = train.group.isin(b).to_numpy()
+        fit = train.group.isin(a).to_numpy(copy=True)
+        val = train.group.isin(b).to_numpy(copy=True)
         if forward:
             fit &= (train.date < "2016-01-01").to_numpy()
             val &= (train.date >= "2016-01-01").to_numpy()

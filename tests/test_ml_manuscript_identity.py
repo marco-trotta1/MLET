@@ -23,3 +23,10 @@ def test_published_pdf_matches_the_current_manuscript():
     current = ROOT / "output/pdf/mlet_preprint.pdf"
     published = ROOT / "output/pdf/mlet_arxiv_preprint.pdf"
     assert published.read_bytes() == current.read_bytes(), "The published paper is stale"
+
+
+def test_references_follow_all_manuscript_sections():
+    text = (ROOT / "manuscript/arxiv/mlet_preprint.tex").read_text()
+    bibliography = text.index(r"\bibliography{references}")
+    assert bibliography > text.rindex(r"\section{")
+    assert bibliography > text.rindex(r"\end{figure}")

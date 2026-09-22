@@ -20,6 +20,12 @@ python scripts/build_selective_artifacts.py
 ```
 
 The checks do not fit another model.
+The current audit copies its two boolean masks before applying time cutoffs.
+This supports read-only arrays returned by newer pandas versions.
+`scripts/ml_transfer_audit.recorded.py` preserves the exact code used for the recorded experiment.
+The verifier accepts only the documented two-mask copy change relative to that snapshot.
+A regression test verifies all 90 saved inner partitions.
+The original experiment receipts, predictions, and numerical results remain unchanged.
 They verify partitions, code hashes, target alignment, selector arithmetic, metric values, exact negative controls, and the original graphics.
 The figure builders read saved predictions.
 

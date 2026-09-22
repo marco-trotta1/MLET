@@ -35,7 +35,7 @@ def main():
         path.mkdir(parents=True)
     shutil.copytree(ROOT/'src/mlet', repro/'src/mlet', ignore=shutil.ignore_patterns('__pycache__'))
     (repro/'src/mlet/sources/__init__.py').write_text('"""Source adapters for the paper reproduction package."""\n')
-    scripts = ['fetch_data.py','fetch_ml_sources.py','ml_transfer_audit.py','ml_transfer_sensitivity.py',
+    scripts = ['audit_code_provenance.py','ml_transfer_audit.recorded.py','fetch_data.py','fetch_ml_sources.py','ml_transfer_audit.py','ml_transfer_sensitivity.py',
       'ml_neural_sensitivity.py','ml_landcover_sensitivity.py','audit_ml_humidity.py','build_ml_paper_artifacts.py',
       'verify_ml_paper.py','ml_selective_residual.py','build_selective_artifacts.py','verify_selective_results.py']
     for name in scripts:

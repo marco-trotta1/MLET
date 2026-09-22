@@ -9,7 +9,9 @@ Use `mlet_preprint.tex` as the main source file.
 The source uses the original MLET letter-paper design, Irrigant logo, and five original visuals.
 Meetpal S. Kukal appears in the acknowledgements, not the author block.
 The current paper studies selective neural residual correction under spatial transfer and input corruption.
-The original reference-ETo diagnostics remain in a separate appendix.
+The main text focuses on selective neural correction, spatial cross-fitting, controlled input faults, and cropland transfer.
+The original evidence architecture and reference-ETo diagnostics remain in separate appendices.
+The references follow all appendices and figures.
 
 The archive contains the manuscript, generated tables, bibliography, 13 vector figures, and Irrigant logo.
 The generated `arxiv_metadata.txt` contains the current title, author, and abstract.

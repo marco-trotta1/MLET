@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import numpy as np
 import pandas as pd
+from audit_code_provenance import verify_audit_code
 
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/"docs/results/ml_transfer"
@@ -43,7 +44,10 @@ def main():
     for receipt,script,protocol in checks:
         r=json.loads((OUT/receipt).read_text())
         for key,path in [("code_sha256",ROOT/"scripts"/script),("protocol_sha256",ROOT/"docs/evaluation"/protocol)]:
-            assert r[key]==hashlib.sha256(path.read_bytes()).hexdigest()
+            if key == "code_sha256" and script == "ml_transfer_audit.py":
+                verify_audit_code(path, r[key])
+            else:
+                assert r[key]==hashlib.sha256(path.read_bytes()).hexdigest()
     run=json.loads((OUT/"run_receipt.json").read_text())
     assert run["cohort_sha256"]==hashlib.sha256((OUT/"cohort.csv").read_bytes()).hexdigest()
     for regime,n in [("station",7923),("proximity",7923),("joint",649)]:
@@ -56,7 +60,7 @@ def main():
     h=json.loads((OUT/"humidity_summary.json").read_text())
     assert h["negative_vp_rows"]==50 and h["by_station"]["manilacotton"]["n"]==32
     summary={"outer_folds":len(splits),"inner_partitions":count,"original_models_reproduced":5,
-      "protocol_and_code_hashes":"match","cohort_hash":"match","sensitivity_rows_and_targets":"match",
+      "protocol_and_code_hashes":"verified", "audit_compatibility":"exact two-mask copy patch","cohort_hash":"match","sensitivity_rows_and_targets":"match",
       "humidity_audit":"verified","status":"passed"}
     (OUT/"verification.json").write_text(json.dumps(summary,indent=2))
     print(json.dumps(summary,indent=2))
