@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="260" viewBox="0 0 1080 260" role="img" aria-labelledby="title desc">
+<title id="title">MLET: Machine Learning Evapotranspiration</title>
+<desc id="desc">An original MLET wordmark. Four letters make a small wave, then settle. The graphic is decorative, not a scientific result.</desc>
+<style>
+  .letter { fill: none; stroke: #edf5ef; stroke-width: 15; stroke-linecap: square; stroke-linejoin: miter; }
+  .label { font-family: Arial, Helvetica, sans-serif; }
+  @keyframes wave { 0%, 45%, 100% { transform: translateY(0); stroke: #edf5ef; } 18% { transform: translateY(-8px); stroke: #d8b55b; } 30% { transform: translateY(2px); stroke: #99c8b8; } }
+  .m { animation: wave 2.8s ease-in-out 0s 1; }
+  .l { animation: wave 2.8s ease-in-out .18s 1; }
+  .e { animation: wave 2.8s ease-in-out .36s 1; }
+  .t { animation: wave 2.8s ease-in-out .54s 1; }
+  @media (prefers-reduced-motion: reduce) { .letter { animation: none; } }
+</style>
+<rect width="1080" height="260" rx="12" fill="#102c30"/>
+<path d="M38 222 H1042" stroke="#3b5759"/>
+<text class="label" x="43" y="35" fill="#a7c5bd" font-size="12" letter-spacing="2.4">IRRIGANT / RESEARCH</text>
+<text class="label" x="1038" y="35" fill="#a7c5bd" font-size="12" letter-spacing="2" text-anchor="end">SPATIAL LEARNING</text>
+<g class="letter m"><path d="M56 174 V78 L105 141 L154 78 V174"/></g>
+<g class="letter l"><path d="M207 78 V174 H282"/></g>
+<g class="letter e"><path d="M394 78 H324 V174 H394 M324 125 H382"/></g>
+<g class="letter t"><path d="M435 78 H522 M479 78 V174"/></g>
+<path d="M565 77 V177" stroke="#547774"/>
+<text class="label" x="602" y="110" fill="#edf5ef" font-size="29" letter-spacing="-.5">Machine Learning</text>
+<text class="label" x="602" y="150" fill="#99c8b8" font-size="29" letter-spacing="-.5">Evapotranspiration</text>
+<circle cx="1034" cy="172" r="5" fill="#d8b55b"/>
+<text class="label" x="43" y="244" fill="#d5e1dc" font-size="11" letter-spacing="1.8">LEARN THE CORRECTION. TEST THE TRANSFER.</text>
+<path d="M790 242 Q810 230 830 242 T870 242 T910 242 T950 242 T990 242 T1030 242" fill="none" stroke="#6c9d9a" stroke-width="1.5"/>
+</svg>
