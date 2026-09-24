@@ -43,6 +43,10 @@ fault transforms from `scripts/ml_tier1_selective.py`. Apply the dose-response
 and sensor-fault transforms to test inputs only. Do not add noise because the
 source archive gives no sensor-accuracy specification.
 
+For augmented selector training, recompute the correction, ensemble spread,
+and support distance from each transformed input. Use those values with the
+transformed input to build its selector features.
+
 Report station-macro MAE, pooled MAE, RMSE, and acceptance for every method,
 condition, and test year. Also report pooled results across all nine years.
 Report paired 95% intervals from 2,000 group-bootstrap draws with seed
