@@ -54,12 +54,13 @@ Use one-sided paired group sign-flip tests. Apply Holm correction across the
 complete family below. Define positive change as lower MAE for the first
 method.
 
-- Gain versus SupportGain for clean, every wind dose, every temperature dose,
-  Fahrenheit-as-Celsius, and VPD x10.
+- Gain versus SupportGain for clean, wind x0, x0.447, x2.237, x3.6, x5, and
+  x10, temperature +5, +10, +20, and +32 C, Fahrenheit-as-Celsius, and VPD x10.
 - MonoGain versus SupportGain for the same conditions.
 - AugmentedGain versus SupportGain for the same conditions.
 - LocalShrinkage versus Uniform on clean rows.
 
+Treat wind x1 as the clean condition. Do not count it as a separate test.
 Treat other comparisons as exploratory. Report negative and inconclusive
 results. Do not claim that a weather fault represents a real sensor failure.
 
