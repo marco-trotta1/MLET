@@ -1,0 +1,395 @@
+{
+  "protocol_sha256": "99c2fd5efd8c391e40b8828cacc8ed4740dc8e2d213f255c5909c3d9b06d669b",
+  "script_sha256": "1b5954954bb68ba2b4ef81ca24e71f2646055b50da5e55c038dea0cc9ea3b646",
+  "cohort_sha256": "f6489781e8400982cde097bf29893a993f869060399640344fd5738c70b42088",
+  "split_sha256": "abbd46b6436bc758a2eb094d403cc6f84896b1269fc92fc9934a042926c1111e",
+  "outer_seed": 20261006,
+  "inner_seed": 20261007,
+  "neural_seeds": [
+    20260713,
+    20260714,
+    20260715,
+    20260716,
+    20260717,
+    20260718,
+    20260719,
+    20260720,
+    20260721,
+    20260722
+  ],
+  "versions": {
+    "python": "3.13.5 (v3.13.5:6cb20a219a8, Jun 11 2025, 12:23:45) [Clang 16.0.0 (clang-1600.0.26.6)]",
+    "numpy": "2.4.3",
+    "pandas": "2.3.3",
+    "scikit_learn": "1.8.0"
+  },
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "train_rows": 13727,
+  "test_rows": 2639,
+  "train_stations": 127,
+  "test_stations": 24,
+  "train_groups": 81,
+  "test_groups": 21,
+  "inner_fits": [
+    {
+      "part": 0,
+      "train_rows": 9376,
+      "validation_rows": 4351,
+      "network_fit": {
+        "fit_seconds": 6.125996416900307,
+        "train_rows": 9376,
+        "seeds": [
+          {
+            "seed": 20260713,
+            "iterations": 120,
+            "loss": 0.31748909718862584,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260714,
+            "iterations": 120,
+            "loss": 0.3228608000196365,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260715,
+            "iterations": 120,
+            "loss": 0.31872743134448367,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260716,
+            "iterations": 120,
+            "loss": 0.3147958572318207,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260717,
+            "iterations": 120,
+            "loss": 0.32047718896844984,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260718,
+            "iterations": 120,
+            "loss": 0.32028022113788895,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260719,
+            "iterations": 120,
+            "loss": 0.31688220247197085,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260720,
+            "iterations": 120,
+            "loss": 0.3189394989180127,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260721,
+            "iterations": 120,
+            "loss": 0.31984064204313084,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260722,
+            "iterations": 120,
+            "loss": 0.31458014041682963,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "part": 1,
+      "train_rows": 10020,
+      "validation_rows": 3707,
+      "network_fit": {
+        "fit_seconds": 6.5263642501086,
+        "train_rows": 10020,
+        "seeds": [
+          {
+            "seed": 20260713,
+            "iterations": 120,
+            "loss": 0.3513730234526422,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260714,
+            "iterations": 120,
+            "loss": 0.3532607590860627,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260715,
+            "iterations": 120,
+            "loss": 0.351272375502739,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260716,
+            "iterations": 120,
+            "loss": 0.34914156792797857,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260717,
+            "iterations": 120,
+            "loss": 0.35373740074210475,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260718,
+            "iterations": 120,
+            "loss": 0.347907080077261,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260719,
+            "iterations": 120,
+            "loss": 0.35279231391035737,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260720,
+            "iterations": 120,
+            "loss": 0.35026172698463587,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260721,
+            "iterations": 120,
+            "loss": 0.3483081633085433,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260722,
+            "iterations": 120,
+            "loss": 0.34739686767323913,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "part": 2,
+      "train_rows": 8058,
+      "validation_rows": 5669,
+      "network_fit": {
+        "fit_seconds": 5.278313291957602,
+        "train_rows": 8058,
+        "seeds": [
+          {
+            "seed": 20260713,
+            "iterations": 120,
+            "loss": 0.31480435246229277,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260714,
+            "iterations": 120,
+            "loss": 0.31447711995243277,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260715,
+            "iterations": 120,
+            "loss": 0.3153672904793766,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260716,
+            "iterations": 120,
+            "loss": 0.3169894377445384,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260717,
+            "iterations": 120,
+            "loss": 0.3156980331122556,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260718,
+            "iterations": 120,
+            "loss": 0.31834039395584707,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260719,
+            "iterations": 120,
+            "loss": 0.31693095172677554,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260720,
+            "iterations": 120,
+            "loss": 0.3214056209110237,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260721,
+            "iterations": 120,
+            "loss": 0.3128321495973729,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          },
+          {
+            "seed": 20260722,
+            "iterations": 120,
+            "loss": 0.3132062211502951,
+            "warnings": [
+              "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "outer_fit": {
+    "fit_seconds": 8.94722850015387,
+    "train_rows": 13727,
+    "seeds": [
+      {
+        "seed": 20260713,
+        "iterations": 120,
+        "loss": 0.3422224731233385,
+        "warnings": [
+          "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+        ]
+      },
+      {
+        "seed": 20260714,
+        "iterations": 120,
+        "loss": 0.3430315967016307,
+        "warnings": [
+          "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+        ]
+      },
+      {
+        "seed": 20260715,
+        "iterations": 120,
+        "loss": 0.3488055813728927,
+        "warnings": [
+          "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+        ]
+      },
+      {
+        "seed": 20260716,
+        "iterations": 120,
+        "loss": 0.34273286978129924,
+        "warnings": [
+          "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+        ]
+      },
+      {
+        "seed": 20260717,
+        "iterations": 120,
+        "loss": 0.3445426905240341,
+        "warnings": [
+          "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+        ]
+      },
+      {
+        "seed": 20260718,
+        "iterations": 120,
+        "loss": 0.3420862145334363,
+        "warnings": [
+          "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+        ]
+      },
+      {
+        "seed": 20260719,
+        "iterations": 120,
+        "loss": 0.34713459211796927,
+        "warnings": [
+          "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+        ]
+      },
+      {
+        "seed": 20260720,
+        "iterations": 120,
+        "loss": 0.3474012698627828,
+        "warnings": [
+          "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+        ]
+      },
+      {
+        "seed": 20260721,
+        "iterations": 120,
+        "loss": 0.3408808221952914,
+        "warnings": [
+          "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+        ]
+      },
+      {
+        "seed": 20260722,
+        "iterations": 120,
+        "loss": 0.3397698427485295,
+        "warnings": [
+          "Stochastic Optimizer: Maximum iterations (120) reached and the optimization hasn't converged yet."
+        ]
+      }
+    ]
+  },
+  "seconds": 28.239603915950283
+}

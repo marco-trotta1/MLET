@@ -1,0 +1,152 @@
+{
+  "primary_comparison": {
+    "outcome": "Gain MAE minus SupportGain MAE",
+    "positive_favors": "SupportGain",
+    "station_macro_difference_mm_day": 0.015129424061428037,
+    "ci95_mm_day": [
+      0.0,
+      0.033550290363554676
+    ],
+    "bootstrap_draws": 2000,
+    "bootstrap_seed": 20260924,
+    "rows": 133,
+    "stations": 21,
+    "groups": 17,
+    "groups_favor_supportgain": 2,
+    "conditional_on_fixed_models": true,
+    "exploratory": true
+  },
+  "populations": {
+    "other_invalid": {
+      "rows": 133,
+      "stations": 21,
+      "groups": 17,
+      "methods": {
+        "OpenET": {
+          "station_macro_mae_mm_day": 0.7545937633465578,
+          "pooled_mae_mm_day": 0.647711920331714
+        },
+        "Full": {
+          "station_macro_mae_mm_day": 0.7820707545004666,
+          "pooled_mae_mm_day": 0.6857250446771301,
+          "station_weighted_acceptance": 1.0
+        },
+        "Gain": {
+          "station_macro_mae_mm_day": 0.791237153381133,
+          "pooled_mae_mm_day": 0.6870793830100258,
+          "station_weighted_acceptance": 0.5722659149129737
+        },
+        "SupportGain": {
+          "station_macro_mae_mm_day": 0.776107729319705,
+          "pooled_mae_mm_day": 0.6670021074957857,
+          "station_weighted_acceptance": 0.5521600948071537
+        }
+      }
+    },
+    "all_invalid": {
+      "rows": 165,
+      "stations": 22,
+      "groups": 18,
+      "methods": {
+        "OpenET": {
+          "station_macro_mae_mm_day": 0.7700449622061408,
+          "pooled_mae_mm_day": 0.734365635323359
+        },
+        "Full": {
+          "station_macro_mae_mm_day": 1.7774886208943796,
+          "pooled_mae_mm_day": 4.951526503196291,
+          "station_weighted_acceptance": 1.0
+        },
+        "Gain": {
+          "station_macro_mae_mm_day": 1.78623836528047,
+          "pooled_mae_mm_day": 4.952618181973716,
+          "station_weighted_acceptance": 0.5917083733260203
+        },
+        "SupportGain": {
+          "station_macro_mae_mm_day": 0.790581020635054,
+          "pooled_mae_mm_day": 0.7499146952798531,
+          "station_weighted_acceptance": 0.5270619086795558
+        }
+      }
+    },
+    "manilacotton": {
+      "rows": 32,
+      "stations": 1,
+      "groups": 1,
+      "methods": {
+        "OpenET": {
+          "station_macro_mae_mm_day": 1.0945201382573833,
+          "pooled_mae_mm_day": 1.0945201382573833
+        },
+        "Full": {
+          "station_macro_mae_mm_day": 22.681263815166552,
+          "pooled_mae_mm_day": 22.681263815166552,
+          "station_weighted_acceptance": 1.0
+        },
+        "Gain": {
+          "station_macro_mae_mm_day": 22.681263815166552,
+          "pooled_mae_mm_day": 22.681263815166552,
+          "station_weighted_acceptance": 1.0
+        },
+        "SupportGain": {
+          "station_macro_mae_mm_day": 1.0945201382573833,
+          "pooled_mae_mm_day": 1.0945201382573833,
+          "station_weighted_acceptance": 0.0
+        }
+      }
+    },
+    "negative_vapor": {
+      "rows": 50,
+      "stations": 6,
+      "groups": 6,
+      "methods": {
+        "OpenET": {
+          "station_macro_mae_mm_day": 0.8591106570512436,
+          "pooled_mae_mm_day": 0.9516411396405653
+        },
+        "Full": {
+          "station_macro_mae_mm_day": 4.3069288826164,
+          "pooled_mae_mm_day": 14.779365326162026,
+          "station_weighted_acceptance": 1.0
+        },
+        "Gain": {
+          "station_macro_mae_mm_day": 4.427470744249306,
+          "pooled_mae_mm_day": 14.82673415963214,
+          "station_weighted_acceptance": 0.7333333333333334
+        },
+        "SupportGain": {
+          "station_macro_mae_mm_day": 0.821797485422113,
+          "pooled_mae_mm_day": 1.006488618804874,
+          "station_weighted_acceptance": 0.5333333333333333
+        }
+      }
+    },
+    "negative_vapor_other": {
+      "rows": 18,
+      "stations": 5,
+      "groups": 5,
+      "methods": {
+        "OpenET": {
+          "station_macro_mae_mm_day": 0.8120287608100156,
+          "pooled_mae_mm_day": 0.6976340309884445
+        },
+        "Full": {
+          "station_macro_mae_mm_day": 0.6320618961063685,
+          "pooled_mae_mm_day": 0.7315457901539778,
+          "station_weighted_acceptance": 1.0
+        },
+        "Gain": {
+          "station_macro_mae_mm_day": 0.776712130065857,
+          "pooled_mae_mm_day": 0.8631258831265218,
+          "station_weighted_acceptance": 0.6799999999999999
+        },
+        "SupportGain": {
+          "station_macro_mae_mm_day": 0.767252954855059,
+          "pooled_mae_mm_day": 0.8499881397781911,
+          "station_weighted_acceptance": 0.64
+        }
+      }
+    }
+  },
+  "secondary_results": "Descriptive. No p-values or planned intervals."
+}

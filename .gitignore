@@ -53,6 +53,7 @@ output/previews/
 output/pdf/*.log
 output/pdf/*.stderr
 output/pdf/*.stdout
+output/reproducibility/
 
 output/pdf/*.aux
 output/pdf/*.blg

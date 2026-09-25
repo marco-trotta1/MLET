@@ -1,0 +1,38 @@
+{
+  "protocol_sha256": "f68d2adc5dbbbbd6bd033d366c0fd4857fe00fa0363b64d0fddeda5d7e053c2f",
+  "runner_sha256": "1b64d4a2e7b3591e7df45bdf1d243edeccd9ab7e2dc75a7a1f4e5f2d4803c3a4",
+  "tier1_script_sha256": "de58b86700be7cb3f8e646cc1beab91cba9931abeb50cb2da67cbb0a5b60ceb0",
+  "cohort_sha256": "bb21af40366fb0e713942cfc7d5ce7c55e682825e8da144f6452f8e3c6baf6d4",
+  "run_receipt_sha256": "45fec3bbea12100b97308a92f695c81cc0d6a6e1903296b448c551c6e50e2a18",
+  "results_sha256": "c25d8dc0edc844b172bf3fbd4bc2f66cfc09abe1969531d6152ced5ead49086b",
+  "splits_sha256": "1937d04c5bf41ba191ee31be8b9ce167777213e0a194c13b9dc33b347dd0524a",
+  "split_seed": 20260927,
+  "threshold_km": 25,
+  "prediction_columns": [
+    "row_id",
+    "test_year",
+    "station",
+    "group",
+    "y",
+    "openet",
+    "Gain",
+    "SupportGain",
+    "accept_Gain",
+    "accept_SupportGain"
+  ],
+  "compressed_predictions": {
+    "clean": "f9f31b57b091f9c919c8c7c9e78690fd67bd1d2fa17dac0c79878e99ea8427c0",
+    "wind_x0": "7016a4cf4f5ac4155cd5d98823783aa66c3e32891bffde125121e9eec8497b6c",
+    "wind_x0.447": "0b1cc01aeb65b2d663338c4b76668ace82966556907a5cab100099afd8bdf9fc",
+    "wind_x2.237": "81eb016dc58cd7b43959c94dae95989fe76c46f00e42f50a7c08648a55659b66",
+    "wind_x3.6": "185a412d691cf15bf86d509cb01a9c55fc6b184260c3b2d8951fe6272c0e3302",
+    "wind_x5": "ad3610645d6882ea8ea1e13dea3394dedd6fa7c937a425c4edcc415c5ffacc0a",
+    "wind_x10": "ed03f82eeefd09ccca65146035e28925e7827277ee9acf73be56efa15fe3df1b",
+    "temperature_plus5": "22b091cc7f38c0ec7e4f9556c7dbe3f922b369e9447264fce18b84481cd14aa7",
+    "temperature_plus10": "3c4d561a5b376334db36c935d673055e0f3c0c454e9af87f099e06d27cb911a2",
+    "temperature_plus20": "e8ea9f713bc192eefd748cdef31a6fd995beaf1a27c146617d300bffedf433a3",
+    "temperature_plus32": "a7e187ce59e525d66746883c5ee4db99463e68e89865079f178960ae94c19e57",
+    "temperature_fahrenheit_as_celsius": "73d811405c12a019961b82892bedcf0c3e1c5fac3190b2bfb1dcc7bfe0b61ce2",
+    "vpd_x10": "bbab5b31306ec10861437247eaa3d6e9cac4d432982def618a54241e9bae5f05"
+  }
+}

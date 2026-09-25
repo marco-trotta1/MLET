@@ -1,0 +1,17 @@
+{
+  "status": "exploratory_post_hoc",
+  "outcome": "all-station Full MAE minus cropland-only Full MAE",
+  "positive_favors": "cropland-only training",
+  "difference_mm_day": 0.10802417888964369,
+  "ci95_mm_day": [
+    0.03883141231689136,
+    0.20600224328346542
+  ],
+  "bootstrap_draws": 2000,
+  "bootstrap_seed": 20261006,
+  "rows": 3234,
+  "stations": 49,
+  "groups": 24,
+  "p_value": null,
+  "limitation": "Point estimates were reviewed before this interval was defined. It conditions on fitted models and is not independent confirmation."
+}

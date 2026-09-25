@@ -1,0 +1,126 @@
+{
+  "seconds": 49.1428637499921,
+  "code_sha256": "e0b73487f6848545a5e1780c6349bcc15aded757d23b6aac60209281ebaa6b33",
+  "protocol_sha256": "0753a47f61321c9da37496f68649b38d70188a19255ff0d3377ffd22d6681e2b",
+  "clean_cohort_sha256": "c8821835df08983ae0daad11632a18ced8501546b8779c2dff3cf988dc7d0ea8",
+  "original_cohort_sha256": "8037f3038ad49fe5af5fbce47dc56ad9a6299a9d5122332b2aff800b12b93cc7",
+  "split_sha256": "81f09cfc1f1e5cf9f4a93005860d46c6352ff731550560fbae7a5e7b6b7d5c0a",
+  "versions": {
+    "numpy": "2.4.3",
+    "pandas": "2.3.3",
+    "scikit_learn": "1.8.0"
+  },
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "fault_seed": 20260923,
+  "neural_seeds": [
+    20260713,
+    20260714,
+    20260715
+  ],
+  "primary_comparisons": [
+    "Gain versus SupportGain across clean, wind, temperature, and VPD probes",
+    "MonoGain versus SupportGain across the same probes",
+    "AugmentedGain versus SupportGain across the same probes",
+    "LocalShrinkage versus Uniform on clean and each fault"
+  ],
+  "folds": [
+    {
+      "fold": 0,
+      "train_rows": 7403,
+      "test_rows": 355,
+      "inner_rows": 7403,
+      "augmented_rows": 7403,
+      "fit_seconds": 1.4589328330475837,
+      "uniform_multiplier": 0.5
+    },
+    {
+      "fold": 1,
+      "train_rows": 7087,
+      "test_rows": 671,
+      "inner_rows": 7087,
+      "augmented_rows": 7087,
+      "fit_seconds": 1.4015073331538588,
+      "uniform_multiplier": 0.5
+    },
+    {
+      "fold": 2,
+      "train_rows": 7226,
+      "test_rows": 532,
+      "inner_rows": 7226,
+      "augmented_rows": 7226,
+      "fit_seconds": 1.4427096671424806,
+      "uniform_multiplier": 0.5
+    },
+    {
+      "fold": 3,
+      "train_rows": 7376,
+      "test_rows": 382,
+      "inner_rows": 7376,
+      "augmented_rows": 7376,
+      "fit_seconds": 1.4605675828643143,
+      "uniform_multiplier": 0.5
+    },
+    {
+      "fold": 4,
+      "train_rows": 5753,
+      "test_rows": 2005,
+      "inner_rows": 5753,
+      "augmented_rows": 5753,
+      "fit_seconds": 1.158320541959256,
+      "uniform_multiplier": 0.5
+    },
+    {
+      "fold": 5,
+      "train_rows": 6505,
+      "test_rows": 1253,
+      "inner_rows": 6505,
+      "augmented_rows": 6505,
+      "fit_seconds": 1.2980057091917843,
+      "uniform_multiplier": 0.75
+    },
+    {
+      "fold": 6,
+      "train_rows": 7237,
+      "test_rows": 521,
+      "inner_rows": 7237,
+      "augmented_rows": 7237,
+      "fit_seconds": 1.458002083003521,
+      "uniform_multiplier": 0.75
+    },
+    {
+      "fold": 7,
+      "train_rows": 6862,
+      "test_rows": 896,
+      "inner_rows": 6862,
+      "augmented_rows": 6862,
+      "fit_seconds": 1.3596346660051495,
+      "uniform_multiplier": 0.5
+    },
+    {
+      "fold": 8,
+      "train_rows": 7082,
+      "test_rows": 676,
+      "inner_rows": 7082,
+      "augmented_rows": 7082,
+      "fit_seconds": 1.4016477498225868,
+      "uniform_multiplier": 0.75
+    },
+    {
+      "fold": 9,
+      "train_rows": 7291,
+      "test_rows": 467,
+      "inner_rows": 7291,
+      "augmented_rows": 7291,
+      "fit_seconds": 1.4514733329415321,
+      "uniform_multiplier": 0.5
+    }
+  ],
+  "original_protocol_sha256": "87eeb4127ea51c4948f5b44d0cde6e959b540c96944be839e7d288d57fb97123",
+  "original_runner_sha256": "e0b73487f6848545a5e1780c6349bcc15aded757d23b6aac60209281ebaa6b33",
+  "correction_runner_sha256": "f9a4f74ffab6ff41036549e054434ec6424ed1b06c4b54b1d6a72ea62a12268a",
+  "dependency_sha256": {
+    "ml_tier1_selective.py": "e0b73487f6848545a5e1780c6349bcc15aded757d23b6aac60209281ebaa6b33",
+    "ml_selective_residual.py": "77a9ed9a505ceb7196eca91b812460eb6c57cf142af0398cb5338ba3e15db137"
+  },
+  "correction": "Recomputed correction, spread, and support distance for each transformed inner-validation input."
+}

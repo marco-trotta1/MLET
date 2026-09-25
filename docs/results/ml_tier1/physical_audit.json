@@ -1,0 +1,33 @@
+{
+  "protocol_sha256": "87eeb4127ea51c4948f5b44d0cde6e959b540c96944be839e7d288d57fb97123",
+  "build_script_sha256": "f2592ee62c4f87b199f70341509a03cac052a6679b6eec9d20a8fbc31f4e2ede",
+  "source_cohort_sha256": "8037f3038ad49fe5af5fbce47dc56ad9a6299a9d5122332b2aff800b12b93cc7",
+  "humidity_audit_sha256": "322b8f2e06b63f5ea042ecd89cc6397b81903d6fd185364c45e5011ba3a7d09f",
+  "labeled_rows": 16447,
+  "labeled_stations": 152,
+  "rows_with_complete_model_weather": 7923,
+  "stations_with_complete_model_weather": 85,
+  "complete_weather_failures": {
+    "actual_vapor_pressure": 50,
+    "vpd_physical": 165,
+    "wind_plausible": 0,
+    "temperature_plausible": 0
+  },
+  "complete_weather_retained_rows": 7758,
+  "complete_weather_retained_stations": 84,
+  "all_labeled_rule_failures": {
+    "actual_vapor_pressure": 8127,
+    "vpd_physical": 8466,
+    "wind_plausible": 1892,
+    "temperature_plausible": 1890
+  },
+  "all_labeled_rows_retained_by_rule": 7760,
+  "all_labeled_stations_retained_by_rule": 84,
+  "unknown_required_measurements": {
+    "vp_kpa": 8073,
+    "vpd_kpa": 8045,
+    "es_kpa": 7889,
+    "ws": 1892,
+    "t_avg": 1890
+  }
+}

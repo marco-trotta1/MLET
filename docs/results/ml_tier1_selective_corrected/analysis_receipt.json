@@ -1,0 +1,15 @@
+{
+  "builder_sha256": "177000649469a2dd8198a8d38b81b2f83cb78a0005cfafb9de4cbc0e2182053d",
+  "model_receipt_sha256": "703955fc6803ad3bd0a58036b650e9d75f350c4865f3272a37f03f038d8d3ee9",
+  "figures4papers_reference": "scientific-figure-making design theory and API, accessed 2026-09-24",
+  "methods": "Paired outer predictions, station-macro loss, 2,000 group bootstrap intervals, and Holm-adjusted one-sided group sign-flip tests.",
+  "correction_builder_sha256": "12db1ee64891e15a5cec20c0aecd643b69b80b191b64bbf2be5d7fe17fb8bf5d",
+  "figures": {
+    "figure_10_tier1_fault_types.pdf": "8cba18841912c2c828d03c09050cad1b6618ddc4bf262a615587bed2cff86258",
+    "figure_10_tier1_fault_types.png": "0cb9e02802421ff5a073b0be2378bee654f8b80feb44d3b44e352301fa8a9661",
+    "figure_11_tier1_gain_mechanism.pdf": "e2b6102c2afb12f2e0a589d80f7ed48aaeabb2d46ce0d6c043e91d368bf2ac2d",
+    "figure_11_tier1_gain_mechanism.png": "05d43255f48a271c2a5734af17bb6948d61c21384421691ed2b17190ecb8f8f9",
+    "figure_9_tier1_dose_response.pdf": "ef91299dbe45d91d3bb7005c0cd9ca915bb432adc942897ce676541a8a05289c",
+    "figure_9_tier1_dose_response.png": "e84bb604c9a934719b6ed74d19aa596d07cd8d33811fc7bd8cc72b6900744c82"
+  }
+}

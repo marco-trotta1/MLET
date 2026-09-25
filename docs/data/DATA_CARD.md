@@ -99,6 +99,38 @@ The raw gridMET NetCDF collection covers only 2016–2021, roughly 28% of the
 OpenET rows. It is therefore unsuitable as the sole historical reference-ET
 source and is not used that way here.
 
+The all-station Tier 1 weather expansion uses the gridMET point-subset service
+for daily wind speed (`vs`), minimum and maximum temperature (`tmmn`, `tmmx`),
+and vapor pressure deficit (`vpd`). It covers benchmark station-years from
+2001 through 2021. The extractor decodes the packed source values, computes
+minimum, maximum, and mean temperature in Celsius, and records the station
+coordinates and request hash.
+It uses one worker because concurrent requests to this endpoint can return a
+different point or year. The saved input table and receipt are
+[`gridmet_weather.csv`](../results/ml_tier1_selective/gridmet_weather.csv) and
+[`gridmet_weather.receipt.json`](../results/ml_tier1_selective/gridmet_weather.receipt.json).
+Rebuild them with `python3 scripts/acquire_gridmet_weather.py`. These fields
+are a separate ML input arm. They do not replace measured weather in the
+completed clean-cohort results above.
+
+The [ten-member temporal result](../results/ml_tier1_gridmet_10member/README.md)
+uses test years from 2012 through 2020. The same stations can appear in
+training and test years. This study tests temporal transfer, not transfer to
+unseen stations.
+
+The [Tier 3 selector result](../results/ml_tier3_gridmet/README.md) reuses the
+ten-member outer predictions. It reports tuned Gain and two deferral baselines.
+
+The [risk-coverage analysis](../results/ml_tier3_gridmet_risk_coverage/README.md)
+uses those saved predictions and reports selective risk with fixed-model
+group-bootstrap intervals.
+
+The [split sensitivity result](../results/ml_tier1_gridmet_sensitivity/README.md)
+keeps the same cohort and varies spatial groups and inner fold seeds.
+
+The [cropland training result](../results/ml_tier1_cropland/README.md)
+compares crop-only and all-station SupportGain on identical cropland test rows.
+
 The land-cover distribution across the 152 joined stations is: Croplands 59,
 Grasslands 27, Shrublands 26, Evergreen Forests 17, Mixed Forests 14, and
 Wetland/Riparian 9.
@@ -111,7 +143,7 @@ The common-complete-case comparison used by WeatherRidge and OpenETRidge has
 
 Phase 2 deliberately adds `numpy` for fixed models/inference, `xarray` and
 `netCDF4` for gridMET extraction, and `openpyxl` for source metadata workbooks.
-No pandas or scikit-learn model is used in the evaluation pipeline.
+Tier 1 and Tier 3 gridMET runs also use `pandas` and `scikit-learn`.
 
 Please attribute the OpenET and flux datasets to Volk et al. under CC-BY-4.0,
 and cite Abatzoglou (2013) for gridMET. Raw and interim files are reproducible

@@ -39,24 +39,16 @@ def test_verifier_accepts_exact_scope_language() -> None:
 
 
 def test_manuscript_defines_required_terms_and_exact_scope() -> None:
-    """The manuscript must define technical terms and state corrected scope."""
+    """The manuscript must state the current result and its limits."""
     text = " ".join(MANUSCRIPT_TEX.read_text(encoding="utf-8").split())
     required = (
-        "Machine Learning Evapotranspiration (MLET)",
-        "Global Ensemble Forecast System version 12 (GEFSv12)",
-        "National Oceanic and Atmospheric Administration (NOAA)",
-        "U.S. Bureau of Reclamation (USBR)",
-        "grass-reference evapotranspiration (ETos)",
-        "reference evapotranspiration (ETo)",
-        "mean absolute error (MAE)", "root mean square error (RMSE)",
-        "SHA-256 (a 256-bit secure hash)", "00Z (00:00 UTC)",
-        "H2 (the preregistered OpenET comparison)",
-        "BOII (the Boise, Idaho AgriMet weather-station identifier)",
-        "station-held-out 10-fold evaluation", "gridMET ETo",
-        "uncalibrated ensemble quantile band", "published station-derived target",
-        "retrospective reforecast diagnostic", "selective residual regression",
-        "spatial transfer and input corruption", "relative-loss", "matched", "post hoc",
-        "We withdraw the earlier H2-strat claim", "src/mlet/outlook/eto.py",
+        "mean absolute error (MAE)",
+        "3,234 rows from 49 stations and 24 groups",
+        "That ranking used the same archive and included the cropland test records.",
+        "The interval uses 2,000 draws and conditions on the fitted models, selectors, and thresholds.",
+        "Under wind multiplied by 3.6, SupportGain lowers MAE",
+        "None has a Holm-adjusted one-sided $p$-value below 0.05; the smallest is 0.126.",
+        "These are retrospective prediction results; they do not identify irrigation status or measure irrigation response.",
     )
     missing = [phrase for phrase in required if phrase not in text]
     assert not missing, f"missing technical definitions or scope: {missing}"

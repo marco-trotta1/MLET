@@ -1,0 +1,11 @@
+{
+  "analysis_receipt_sha256": "2a7cf8f09993227fa7b3cd6e7a2f29ea83d069053b33516a1f2d539d30128bf6",
+  "figure_script_sha256": "772d35f222900a3c2ee5324c0673c0ddbf2e00f8fc03d24a1a93567d4468be41",
+  "performance_summary_sha256": "12b6c791f1a5ad39d1b73303e6a8aabe18a1d208a3102f18868af6b2f88449de",
+  "primary_comparison_sha256": "aa99a7c9a33b08c518a909629a7b1fc2c1e6c7fd3f65371681dce55feb6f83b3",
+  "figures": {
+    "figure_18_tier1_cropland_training.pdf": "a656203b750c5d2c057970a5609845f8525d37bc70938f6ab618ce2334590837",
+    "figure_18_tier1_cropland_training.png": "087f5a7aa8156c32fbce4c04f662440826f37c15970a098b9cdae2da9a6b1cf5"
+  },
+  "png_dpi": 300
+}

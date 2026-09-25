@@ -1,0 +1,12 @@
+{
+  "protocol_sha256": "f68d2adc5dbbbbd6bd033d366c0fd4857fe00fa0363b64d0fddeda5d7e053c2f",
+  "analysis_receipt_sha256": "ea2d8f78659adbcb9a2cf9cf45b668a93e705d3d24b593fce4a34a7cf72893f1",
+  "analysis_script_sha256": "097722d48f56ce431c1a9eb19f5d8569be2a15f08ce94bae6d7ff64cb877f9ad",
+  "figure_script_sha256": "4d6e3e05dbe8c52eaa2be3e3bbe86af39f00577bafea3eb69f776c342ffd6941",
+  "contrast_sha256": "4e1366e9dc86c6bce44dee9f1189b08065abe96cba0e06033b4b6381356e7b24",
+  "figures": {
+    "figure_16_tier1_split_proximity_sensitivity.pdf": "607d22c8d2dba86f86b7cfc1451cad9cf7a5ee64a7a1a979ac45728fe3ff8ade",
+    "figure_16_tier1_split_proximity_sensitivity.png": "d087eb791fce5a866ad34d1c6656be0b1ccf24287b0178609f069ee774789b61"
+  },
+  "png_dpi": 300
+}

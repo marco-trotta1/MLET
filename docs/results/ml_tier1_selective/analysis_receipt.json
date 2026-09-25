@@ -1,0 +1,6 @@
+{
+  "builder_sha256": "177000649469a2dd8198a8d38b81b2f83cb78a0005cfafb9de4cbc0e2182053d",
+  "model_receipt_sha256": "29e83275a2e7236a0617516241db54947612814bf788614bc08f0945f1c430b8",
+  "figures4papers_reference": "scientific-figure-making design theory and API, accessed 2026-09-24",
+  "methods": "Paired outer predictions, station-macro loss, 2,000 group bootstrap intervals, and Holm-adjusted one-sided group sign-flip tests."
+}

@@ -1,0 +1,44 @@
+{
+  "protocol_sha256": "4e8544e452bcdb814f1b0d357555a8b9a069ade2894eb6ca25ea56fd3d930c84",
+  "analysis_script_sha256": "df3b41f43775d9ed54126c8cc3d84782398ed888068425c876271baafc8812c1",
+  "run_receipt_sha256": "cd9ca00e11816677228560fd83c7461bb28e71f6373aeb973974ae111aa51605",
+  "predictions_sha256": "f2ab1b88559360e3780f32dd75ec1813e3c4deac3267df2ab4bbe718e02c0703",
+  "primary_comparison_sha256": "aa99a7c9a33b08c518a909629a7b1fc2c1e6c7fd3f65371681dce55feb6f83b3",
+  "full_audit_protocol_sha256": "4c0b949c5118c5a7475b4339f1a8556d7cac69a9422233a039820e4217d53d64",
+  "full_exploratory_comparison_sha256": "946ede6318052ef77ddc21863f3d9cf1b1acf7c4a799eba805f36af3da7fcafd",
+  "performance_summary_sha256": "12b6c791f1a5ad39d1b73303e6a8aabe18a1d208a3102f18868af6b2f88449de",
+  "primary_bootstrap_draws": 2000,
+  "primary_bootstrap_seed": 20261005,
+  "primary_comparison": {
+    "outcome": "all-station SupportGain MAE minus cropland-only SupportGain MAE",
+    "positive_favors": "cropland-only training",
+    "difference_mm_day": 0.04137370492892633,
+    "ci95_mm_day": [
+      0.008466865388668329,
+      0.07879916388383584
+    ],
+    "bootstrap_draws": 2000,
+    "bootstrap_seed": 20261005,
+    "rows": 3234,
+    "stations": 49,
+    "groups": 24
+  },
+  "full_exploratory_comparison": {
+    "status": "exploratory_post_hoc",
+    "outcome": "all-station Full MAE minus cropland-only Full MAE",
+    "positive_favors": "cropland-only training",
+    "difference_mm_day": 0.10802417888964369,
+    "ci95_mm_day": [
+      0.03883141231689136,
+      0.20600224328346542
+    ],
+    "bootstrap_draws": 2000,
+    "bootstrap_seed": 20261006,
+    "rows": 3234,
+    "stations": 49,
+    "groups": 24,
+    "p_value": null,
+    "limitation": "Point estimates were reviewed before this interval was defined. It conditions on fitted models and is not independent confirmation."
+  },
+  "secondary_comparisons": "Descriptive. No p-values."
+}

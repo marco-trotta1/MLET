@@ -1,14 +1,14 @@
-Title: MLET: Selective Neural Residual Correction for Spatial Evapotranspiration
+Title: When Should a Satellite Estimate Be Changed? Stress-Testing Neural Corrections for Evapotranspiration
 Author: Marco Trotta
 Affiliation: Irrigant, Idaho, USA
 Contact: m@irrigant.xyz
 Suggested primary category: cs.LG (Machine Learning)
-Comments: 18 pages; code and saved predictions in ancillary files.
+Comments: 11 pages.
 Main source file: mlet_preprint.tex
 Locally verified engine: Tectonic/XeTeX
 
 Abstract:
-A neural correction of a satellite estimate must decide both what to predict and when its correction is useful. We study this decision as selective residual regression under spatial transfer and input corruption. Using 7,923 OpenET station-days from 85 stations, we compare ensemble disagreement, input-support distance, and learned relative benefit. Selectors use spatially cross-fitted neural predictions; a separate evaluation withholds both locations and later years. The experiment retains a fixed satellite fallback and scores every test observation. A natural humidity anomaly motivates a separate feature-omission arm and controlled test-input faults. After VPD omission, a tenfold wind-input fault raises residual-network station MAE from 0.829 to 1.415 mm/day on 7,873 matched observations. Support screening yields 0.857, but largely through fallback: it accepts only 1.74% of the station-weighted population. At matched 50% acceptance, its advantage over disagreement is inconclusive. However, the learned benefit ranking is worse than the support ranking by 0.243 mm/day, with paired interval [0.110, 0.412], under that same fault. The later-year evaluation does not confirm this ordering, and natural-test gains do not transfer uniformly to croplands. We derive the baseline-relative risk objective, preserve all negative controls, and distinguish screening from ranking improvements. The result isolates a failure of cross-fitted benefit selection under a specified input fault and separates correction ranking from fallback frequency.
+Neural residuals can improve satellite evapotranspiration (ET) estimates, but selectors must predict when a correction helps and reject unsupported inputs. We evaluate ten-member models on 16,366 flux-tower observations from 151 stations paired with OpenET, across nine rolling years and five spatial folds. At one held-out station, Gain accepted corrections on all 32 physically invalid records: it predicted a mean benefit of 0.83 mm/day, but the corrections increased mean absolute error by 21.6 mm/day versus OpenET. On spatially held-out unit errors, SupportGain reduced station-macro MAE versus Gain by 0.148 mm/day under wind x3.6 (simultaneous 95% interval, 0.070 to 0.226), with 9.3% acceptance versus Gain's 51.8%; on clean inputs, its 0.006 mm/day advantage had an interval that includes zero. These fault analyses are exploratory; none of 40 preplanned temporal comparisons passed Holm correction, while a separate predeclared cropland contrast found 0.041 mm/day lower station-macro MAE with crop-only training (95% interval, 0.009 to 0.079).
 
 Submission status: Not submitted.
 The suggested category remains subject to arXiv moderation.

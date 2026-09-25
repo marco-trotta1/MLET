@@ -1,0 +1,23 @@
+{
+  "protocol_sha256": "f44e09970c315a3df315c58b77d121897fd7733cd6050854415294edc22e8aae",
+  "script_sha256": "fae9dbf54ad52b7b0d2d62c043aa9da51018033739ca2e87e4fae2da96db7c70",
+  "cohort_sha256": "f6489781e8400982cde097bf29893a993f869060399640344fd5738c70b42088",
+  "run_receipt_sha256": "603e2567ed46d4592093f347481bf4775e2a60747a29635ef5dd7d9950bea1a1",
+  "results_sha256": "77acc877b777fcedc56aeae22f28205e4fecdabbe920e8723f272093d50130dc",
+  "group_deltas_sha256": "9cc4ac18808d5f3b0288c8be37c1aed6ecda9c68ed9ccf817839d2f12d8b6353",
+  "prediction_sha256": {
+    "clean": "073591d0764c91b3611561a69259a3d1c1d91c3b902a519824cd6e4fc55f8335",
+    "wind_x2.237": "150d83c3afc597b9255f1844548f9eec732c079c705a4f8527e48c0139116665",
+    "wind_x3.6": "d604f2d48f52b7c3fd6fc48412ed8b4e5db1048e1b3dcdfba5ab30f7504e39a2",
+    "temperature_fahrenheit_as_celsius": "4483e1b63afd816b6aa4c47bc92f2b8513c2b58bcf2606e6894b762547719a66",
+    "vpd_x10": "7edf5c66abe65f0f957941b9737e1be6f653ba2f2e6030ec2bdc40526b632734"
+  },
+  "figure": {
+    "reference": "https://github.com/ChenLiu-1996/figures4papers/blob/main/scientific-figure-making/SKILL.md",
+    "design": "Uses the repository palette, sans-serif fallback, minimal spines, short labels, direct estimates, and vector PDF export.",
+    "pdf_sha256": "176437d37e967e2ac3715a958edcb28147c30f74b1d10a32572f08a08ba8a8d4",
+    "png_sha256": "4f6dede9db408e9cc4e5a8fe9c8ea00c2bdef52376fe39e2b03216680338d83c",
+    "builder_sha256": "4d2e66d82639aaa94607f7c47bd682c35863e4cd6d20f4447c96af026e63fbef"
+  },
+  "figure_builder_sha256": "4d2e66d82639aaa94607f7c47bd682c35863e4cd6d20f4447c96af026e63fbef"
+}

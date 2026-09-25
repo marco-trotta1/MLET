@@ -1,0 +1,11 @@
+{
+  "analysis_receipt_sha256": "982870d4787a466ad6174c6120d61dee13d87c17281f8987441a02e8466d38bd",
+  "figure_script_sha256": "c0b5254b57fb3fc387f87695b70657eac3e18f55962d160d5382b1f86c2fb287",
+  "risk_coverage_curves_sha256": "d5ef76d677a2707d80ae80a9d7b5caddfd84c855080d8f591bddbb36ad0db371",
+  "aurc_summary_sha256": "ee539ea52d52d9cbb150967e33b02bfc2bd0c322769ee76ceb934f57ced30c65",
+  "figures": {
+    "figure_17_tier3_risk_coverage.pdf": "63d682ead12ffc3989319b192abd86b6146114f91198e3f6f2211de31c736225",
+    "figure_17_tier3_risk_coverage.png": "a00d5fcea2c5ad1d3cb9c98330dd1fd8eed452f4790d12f8191c5ab60cce942a"
+  },
+  "png_dpi": 300
+}

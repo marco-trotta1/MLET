@@ -1,0 +1,14 @@
+{
+  "protocol_sha256": "f68d2adc5dbbbbd6bd033d366c0fd4857fe00fa0363b64d0fddeda5d7e053c2f",
+  "analysis_script_sha256": "097722d48f56ce431c1a9eb19f5d8569be2a15f08ce94bae6d7ff64cb877f9ad",
+  "runner_sha256": "1b64d4a2e7b3591e7df45bdf1d243edeccd9ab7e2dc75a7a1f4e5f2d4803c3a4",
+  "run_manifest_sha256": "b25b4b8c3d9b839e9646bae395f1b62bc3458c825af00e16f7798af4f578dbb0",
+  "run_count": 30,
+  "condition_count": 13,
+  "contrast_count": 390,
+  "bootstrap_draws": 2000,
+  "bootstrap_seed_base": 20260924,
+  "contrast_sha256": "4e1366e9dc86c6bce44dee9f1189b08065abe96cba0e06033b4b6381356e7b24",
+  "summary_sha256": "9897980517863da4f30cf5212445580c7cd510ba91c7e6f9134b8342b18831d1",
+  "interpretation": "seed summaries are descriptive and have no p-values"
+}

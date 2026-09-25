@@ -1,0 +1,34 @@
+{
+  "protocol_sha256": "f38abceb0e683106b8b0c7ffe85f3c00a5bb4d1b3b8d9ba92a034b7ad6f645a9",
+  "analysis_script_sha256": "0ef4bf500d2c63daa175e08381bf2cd740ebd09018120bab9c89f8a6ddb216ac",
+  "source_run_receipt_sha256": "57618d7d931a35522b07aaf60069f84ec6b7630a00c981e3479e218e5c8a8f54",
+  "source_analysis_receipt_sha256": "bee91225db5ed3edeb196850e9676cb30513a6957b271261d064ee7a6af0b019",
+  "source_prediction_sha256": {
+    "predictions_clean.csv": "8a188fc2566c4a29b101a88bd538718ef1255b53ac6df2a18e613086a27bba85",
+    "predictions_wind_x0.csv": "2022f1c0b3c9b323c9e4b0d55774e12e0bc81d3dd23b9bda07d8216b3efb08d9",
+    "predictions_wind_x0.447.csv": "f745255bee7b5fb274e8845a7c96e6d5b8b613bafa00d47bd8584d1470e15f0a",
+    "predictions_wind_x2.237.csv": "44284ef105bc7801e0d00ee4052bb1b4bca0eeca945499b8fc35f99c68b5ed35",
+    "predictions_wind_x3.6.csv": "8d88d6ffc519d6ed2b02e220aaaeed928f082e60b328cea27782ccbf72533024",
+    "predictions_wind_x5.csv": "b1aaa3ccb7c31f1f69b627c78dfb8ae9d9133484ac8163521384f2012f8c904a",
+    "predictions_wind_x10.csv": "70b9318e9f03b6940d08f3e46b70a2c5b9ae7527bc4efd432fd2fd6425db0b54",
+    "predictions_temperature_plus5.csv": "2980007650eaadc5ae41c8cc952dfe57fdcd5e15f747a7f09f4fa7d166337582",
+    "predictions_temperature_plus10.csv": "bcb492ebe2ea74cdffe36c72255ed6fb29dbab702d7438e1d3c15f5cf6b0e7f6",
+    "predictions_temperature_plus20.csv": "ebd7812b2cb9d13b64056f7e274b9d6d1fcbf49da24c60328cea717ae38d4e89",
+    "predictions_temperature_plus32.csv": "3bd5f016dad7139ebc4cbcf7783f4700accacdb65b86ef3e75f0326821123379",
+    "predictions_temperature_fahrenheit_as_celsius.csv": "f6d5741a686780ce3d425266a69e332ac8037bd3b8aeab5f10c9941f863184e6",
+    "predictions_vpd_x10.csv": "c334b3d0150cb0567bdc60fe344f17c6ff3f60614c75f5ca4a545f7f15201ec2"
+  },
+  "comparisons_sha256": "5af5102d08787bc92e72b43acb6bd7209ee8b8ce07ed975311bbe9fa94359102",
+  "comparison_count": 39,
+  "holm_family": "all 39 SupportGain directional comparisons",
+  "bootstrap_draws": 2000,
+  "bootstrap_seed_base": 20260925,
+  "signflip_draws": 20000,
+  "signflip_seed_base": 20260925,
+  "versions": {
+    "numpy": "2.4.3",
+    "pandas": "2.3.3",
+    "scikit_learn": "1.8.0"
+  },
+  "status": "exploratory_reverse_direction_reanalysis"
+}

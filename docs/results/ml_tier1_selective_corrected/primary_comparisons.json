@@ -1,0 +1,167 @@
+[
+  {
+    "condition": "clean",
+    "method": "LocalShrinkage",
+    "baseline": "SupportGain",
+    "delta_macro_mae_favoring_method": 0.018344810286972095,
+    "ci95": [
+      0.0009140865865446839,
+      0.036778495370080454
+    ],
+    "groups": 62,
+    "one_sided_signflip_p": 0.02569871506424679,
+    "bootstrap_seed": 20260922,
+    "bootstrap_draws": 2000,
+    "holm_p": 0.15419229038548074
+  },
+  {
+    "condition": "clean",
+    "method": "LocalShrinkage",
+    "baseline": "Uniform",
+    "delta_macro_mae_favoring_method": 0.0034440173565090334,
+    "ci95": [
+      -0.008674899539453718,
+      0.018542403178259906
+    ],
+    "groups": 62,
+    "one_sided_signflip_p": 0.32893355332233387,
+    "bootstrap_seed": 20260922,
+    "bootstrap_draws": 2000,
+    "holm_p": 1.0
+  },
+  {
+    "condition": "wind_x3.6",
+    "method": "SupportGain",
+    "baseline": "Gain",
+    "delta_macro_mae_favoring_method": 0.06189876279366683,
+    "ci95": [
+      0.03079175832277315,
+      0.09924053151672363
+    ],
+    "groups": 62,
+    "one_sided_signflip_p": 4.999750012499375e-05,
+    "bootstrap_seed": 20260922,
+    "bootstrap_draws": 2000,
+    "holm_p": 0.0005499725013749313
+  },
+  {
+    "condition": "wind_x5",
+    "method": "SupportGain",
+    "baseline": "Gain",
+    "delta_macro_mae_favoring_method": 0.13724011458857704,
+    "ci95": [
+      0.08472517612272494,
+      0.199249420802127
+    ],
+    "groups": 62,
+    "one_sided_signflip_p": 4.999750012499375e-05,
+    "bootstrap_seed": 20260922,
+    "bootstrap_draws": 2000,
+    "holm_p": 0.0005499725013749313
+  },
+  {
+    "condition": "wind_x10",
+    "method": "SupportGain",
+    "baseline": "Gain",
+    "delta_macro_mae_favoring_method": 0.3890663174606092,
+    "ci95": [
+      0.24294782153815392,
+      0.5535382610254854
+    ],
+    "groups": 62,
+    "one_sided_signflip_p": 4.999750012499375e-05,
+    "bootstrap_seed": 20260922,
+    "bootstrap_draws": 2000,
+    "holm_p": 0.0005499725013749313
+  },
+  {
+    "condition": "temperature_fahrenheit_as_celsius",
+    "method": "SupportGain",
+    "baseline": "Gain",
+    "delta_macro_mae_favoring_method": 0.40762811920197817,
+    "ci95": [
+      0.2842976867053777,
+      0.5217857024774883
+    ],
+    "groups": 62,
+    "one_sided_signflip_p": 4.999750012499375e-05,
+    "bootstrap_seed": 20260922,
+    "bootstrap_draws": 2000,
+    "holm_p": 0.0005499725013749313
+  },
+  {
+    "condition": "vpd_x10",
+    "method": "SupportGain",
+    "baseline": "Gain",
+    "delta_macro_mae_favoring_method": 2.168570667795762,
+    "ci95": [
+      1.6165070663912864,
+      2.8338437401132395
+    ],
+    "groups": 62,
+    "one_sided_signflip_p": 4.999750012499375e-05,
+    "bootstrap_seed": 20260922,
+    "bootstrap_draws": 2000,
+    "holm_p": 0.0005499725013749313
+  },
+  {
+    "condition": "wind_x5",
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "delta_macro_mae_favoring_method": 0.018988118805331383,
+    "ci95": [
+      -0.004526079444606281,
+      0.05786827429928263
+    ],
+    "groups": 62,
+    "one_sided_signflip_p": 0.1144942752862357,
+    "bootstrap_seed": 20260922,
+    "bootstrap_draws": 2000,
+    "holm_p": 0.5724713764311785
+  },
+  {
+    "condition": "wind_x10",
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "delta_macro_mae_favoring_method": -0.009106744499497672,
+    "ci95": [
+      -0.023086862166726986,
+      0.003729161083016561
+    ],
+    "groups": 62,
+    "one_sided_signflip_p": 0.864606769661517,
+    "bootstrap_seed": 20260922,
+    "bootstrap_draws": 2000,
+    "holm_p": 1.0
+  },
+  {
+    "condition": "temperature_fahrenheit_as_celsius",
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "delta_macro_mae_favoring_method": 0.0019557960873081946,
+    "ci95": [
+      -0.003673193811367892,
+      0.009025466156683737
+    ],
+    "groups": 62,
+    "one_sided_signflip_p": 0.2874356282185891,
+    "bootstrap_seed": 20260922,
+    "bootstrap_draws": 2000,
+    "holm_p": 1.0
+  },
+  {
+    "condition": "vpd_x10",
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "delta_macro_mae_favoring_method": -0.004784282462708384,
+    "ci95": [
+      -0.01671649161862218,
+      0.006338763447945657
+    ],
+    "groups": 62,
+    "one_sided_signflip_p": 0.7882605869706515,
+    "bootstrap_seed": 20260922,
+    "bootstrap_draws": 2000,
+    "holm_p": 1.0
+  }
+]

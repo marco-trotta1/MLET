@@ -352,20 +352,50 @@ def _verify_source_text() -> None:
     manuscript = MANUSCRIPT_TEX.read_text(encoding="utf-8")
     validate_retired_phrases(manuscript)
     normalized_manuscript = " ".join(manuscript.split())
+    abstract_match = re.search(
+        r"\\begin\{quote\}\\small(.*?)\\end\{quote\}",
+        manuscript,
+        flags=re.DOTALL,
+    )
+    if abstract_match is None:
+        raise ValueError("The manuscript abstract is missing")
+    abstract_sentences = [
+        sentence
+        for sentence in re.split(r"(?<=[.!?])\s+", " ".join(abstract_match.group(1).split()))
+        if sentence
+    ]
+    if len(abstract_sentences) != 5:
+        raise ValueError("The manuscript abstract must have five sentences")
+    if r"\section{Cropland and other land covers}" in manuscript:
+        raise ValueError("The manuscript retains the removed land-cover appendix")
+    appendix_source = manuscript.split(r"\appendix", 1)[1]
+    if len(re.findall(r"\\section\{", appendix_source)) > 1:
+        raise ValueError("The manuscript must keep one concise appendix")
     required = (
-        "Machine Learning Evapotranspiration (MLET)",
-        "selective residual regression", "spatial transfer and input corruption",
-        "mean absolute error (MAE)", "root mean square error (RMSE)",
-        "reference evapotranspiration (ETo)", "gridMET ETo",
-        "Global Ensemble Forecast System version 12 (GEFSv12)",
-        "National Oceanic and Atmospheric Administration (NOAA)",
-        "U.S. Bureau of Reclamation (USBR)",
-        "grass-reference evapotranspiration (ETos)",
-        "retrospective reforecast diagnostic", "baseline-minus-forecast MAE difference",
-        "later retrieval timestamp", "does not prove operational availability at",
-        "strictly prior calendar years", "uncalibrated ensemble quantile band",
-        "We withdraw the earlier H2-strat claim",
-        "post hoc", "matched", "Meetpal S. Kukal", "mailto:m@irrigant.xyz",
+        "When Should a Satellite Estimate Be Changed?",
+        "Stress-Testing Neural Corrections for Evapotranspiration",
+        "mean absolute error (MAE)",
+        "16,366 observations from 151 stations",
+        "3,234 rows from 49 stations and 24 groups",
+        "The primary and extended selector families contain 40 and 52 preplanned comparisons, respectively.",
+        "None has a Holm-adjusted one-sided $p$-value below 0.05; the smallest is 0.126.",
+        "These tests do not directly compare SupportGain with Gain.",
+        "Gain accepts all 32 records with physically invalid weather at the held-out \\texttt{manilacotton} station.",
+        "the corrections raise station-macro MAE from OpenET's 1.095 to 22.681 $\\unit$",
+        "The predeclared difference is 0.0414 $\\unit$ (95\\% group-bootstrap interval [0.0085, 0.0788]).",
+        "That ranking used the same archive and included the cropland test records.",
+        "The interval uses 2,000 draws and conditions on the fitted models, selectors, and thresholds.",
+        "Under wind multiplied by 3.6, SupportGain lowers MAE by 0.1478 $\\unit$",
+        "It accepts 9.3\\% of records, compared with 51.8\\% for Gain.",
+        "Across 102 groups, the clean Gain-minus-SupportGain difference is 0.0059 $\\unit$",
+        "133 other rule-violating records from 21 stations in 17 groups",
+        "Only two groups show a difference; 15 show none.",
+        "All 360 neural fits in the cropland run reach the 120-iteration limit and report convergence warnings.",
+        "The Holm-adjusted p-value is 0.154 across eleven post hoc comparisons.",
+        "they do not test unseen-site transfer.",
+        "These are retrospective prediction results; they do not identify irrigation status or measure irrigation response.",
+        "this study does not test irrigation interventions or forecast skill.",
+        "Meetpal S. Kukal", "mailto:m@irrigant.xyz",
         "pdfauthor={Marco Trotta}", "irrigant_logo.png",
     )
     for phrase in required:
@@ -392,7 +422,7 @@ def _verify_pdf(pdf_path: Path) -> None:
         raise ValueError("The compiled manuscript has fewer than eight pages")
     if "Page size:       612 x 792 pts (letter)" not in info:
         raise ValueError("The compiled manuscript is not US Letter size")
-    title = "MLET: Selective Neural Residual Correction for Spatial Evapotranspiration"
+    title = "When Should a Satellite Estimate Be Changed? Stress-Testing Neural Corrections for Evapotranspiration"
     title_match = re.search(r"^Title:\s+(.+)$", info, flags=re.MULTILINE)
     if title_match is None or title_match.group(1).strip() != title:
         raise ValueError("The compiled manuscript has the wrong PDF title")
@@ -456,28 +486,29 @@ def _pdf_signature(pdf_path: Path) -> tuple[int, str, str, tuple[str, ...]]:
 
 
 def _source_manifest() -> dict[str, Path]:
-    """Return the tracked clean source files and their canonical inputs."""
+    """Return only the files that the manuscript compiler needs."""
     manuscript_root = MANUSCRIPT_TEX.parent
-    manifest = {
-        "ARXIV_SUBMISSION.md": manuscript_root / "ARXIV_SUBMISSION.md",
-        "assets/irrigant_logo.png": REPO_ROOT / "manuscript/assets/irrigant_logo.png",
-    }
-    for pattern in ("*.tex", "*.bib"):
-        for path in manuscript_root.glob(pattern):
-            manifest[path.name] = path
-    submission_metadata = REPO_ROOT / "output/arxiv/arxiv_metadata.txt"
-    if submission_metadata.exists():
-        manifest["arxiv_metadata.txt"] = submission_metadata
-    bibliography = REPO_ROOT / "output/pdf/mlet_preprint.bbl"
-    if bibliography.exists():
-        manifest["mlet_preprint.bbl"] = bibliography
-    for path in FIGURE_ROOT.glob("*.pdf"):
-        manifest[f"figures/{path.name}"] = path
-    reproducibility = REPO_ROOT / "output/reproducibility"
-    if reproducibility.exists():
-        for path in reproducibility.rglob("*"):
-            if path.is_file():
-                manifest["anc/reproducibility/" + str(path.relative_to(reproducibility))] = path
+    manuscript_text = MANUSCRIPT_TEX.read_text(encoding="utf-8")
+    manifest = {MANUSCRIPT_TEX.name: MANUSCRIPT_TEX}
+    included_tex = set(re.findall(r"\\input\{([^}]+)\}", manuscript_text))
+    included_tex.update(re.findall(r"\\tableinput\{([^}]+)\}", manuscript_text))
+    for name in included_tex:
+        path = manuscript_root / name
+        if not path.is_file():
+            raise ValueError(f"The manuscript input is missing: {name}")
+        manifest[name] = path
+    bibliography = manuscript_root / "references.bib"
+    manifest[bibliography.name] = bibliography
+    for name in set(re.findall(r"\\includegraphics(?:\[[^]]*\])?\{([^}]+)\}", manuscript_text)):
+        if name.endswith(".pdf"):
+            path = FIGURE_ROOT / name
+            relative = f"figures/{name}"
+        else:
+            path = REPO_ROOT / "manuscript" / "assets" / name
+            relative = f"assets/{name}"
+        if not path.is_file():
+            raise ValueError(f"The manuscript figure is missing: {name}")
+        manifest[relative] = path
     return manifest
 
 

@@ -1,0 +1,7 @@
+{
+  "reference": "https://github.com/ChenLiu-1996/figures4papers/blob/main/scientific-figure-making/SKILL.md",
+  "design": "Uses the repository palette, sans-serif fallback, minimal spines, short labels, direct estimates, and vector PDF export.",
+  "pdf_sha256": "176437d37e967e2ac3715a958edcb28147c30f74b1d10a32572f08a08ba8a8d4",
+  "png_sha256": "4f6dede9db408e9cc4e5a8fe9c8ea00c2bdef52376fe39e2b03216680338d83c",
+  "builder_sha256": "4d2e66d82639aaa94607f7c47bd682c35863e4cd6d20f4447c96af026e63fbef"
+}

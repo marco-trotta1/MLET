@@ -1,0 +1,13 @@
+{
+  "protocol_sha256": "0dc02300f4edc4b24a6f3fa7550ffecd18da2c9e6d2edfa2219f623d342a6866",
+  "analysis_script_sha256": "11671f49b5c3455a801666b0dd7883cccf6983653b5b5c55fc19f9688f1270bc",
+  "results_sha256": "773834f5dfefb16763c79a82a446c3a31814bf232d865955ee87d201c7069be3",
+  "run_receipt_sha256": "d61e3755e67d89b55f621ff659666b015d5a92adfb238b1aab275939e83fd518",
+  "primary_comparisons_sha256": "1b2285d9154b332aebd6d993a0186956103ba38c05343b3bd2c2197f33b953c3",
+  "comparison_count": 40,
+  "bootstrap_draws": 2000,
+  "bootstrap_seed": 20260924,
+  "signflip_draws": 20000,
+  "signflip_seed_base": 20260924,
+  "holm_family": "all comparisons in primary_comparisons.json"
+}

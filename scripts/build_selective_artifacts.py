@@ -80,22 +80,23 @@ def save(fig, stem):
 
 def design():
     fig, ax = plt.subplots(figsize=(10, 3.1)); ax.set_xlim(0, 10); ax.set_ylim(0, 3); ax.axis('off')
-    boxes = [(0, 1.7, 2.05, .95, 'Outer training groups', 'Inner group splits\ntrain neural ensemble', '#EEF3F6'),
-             (2.6, 1.7, 2.05, .95, 'Held-out inner rows', 'Residual + spread\nsupport + realized gain', '#EEF3F6'),
-             (5.2, 1.7, 2.05, .95, 'Fit the selector', 'Fix thresholds or\nlearn relative benefit', '#EEF3F6'),
-             (7.8, 1.7, 2.05, .95, 'Unseen outer group', 'Refit neural ensemble\napply fixed selector', '#EEF3F6'),
-             (5.2, .05, 2.05, 1.05, 'Accept correction', r'$\hat y=o+\bar g$', '#EDF4F3'),
-             (7.8, .05, 2.05, 1.05, 'Reject correction', r'$\hat y=o$', '#F7EFED')]
+    boxes = [(.2, 1.7, 2.05, .95, 'Outer training groups', 'Inner group splits\ntrain neural ensemble', '#EEF3F6'),
+             (2.65, 1.7, 2.05, .95, 'Held-out inner rows', 'Residual + spread\nsupport + realized gain', '#EEF3F6'),
+             (5.1, 1.7, 2.05, .95, 'Fit the selector', 'Fix thresholds or\nlearn relative benefit', '#EEF3F6'),
+             (7.55, 1.7, 2.05, .95, 'Unseen outer group', 'Refit neural ensemble\napply fixed selector', '#EEF3F6'),
+             (5.1, .05, 2.05, 1.05, 'Accept correction', r'$\hat y=o+\bar g$', '#EDF4F3'),
+             (7.55, .05, 2.05, 1.05, 'Reject correction', r'$\hat y=o$', '#F7EFED')]
     for x,y,w,h,title,body,color in boxes:
         ax.add_patch(FancyBboxPatch((x,y),w,h,boxstyle='round,pad=0.025',facecolor=color,edgecolor='#A0A0A0',lw=.6))
         ax.text(x+w/2,y+h-.20,title,ha='center',weight='bold',fontsize=9)
-        ax.text(x+w/2,y+.33,body,ha='center',va='center',fontsize=9)
-    for a,b in [(2.08,2.54),(4.68,5.14),(7.28,7.74)]:
+        ax.text(x+w/2,y+.33,body,ha='center',va='center',fontsize=12 if '$' in body else 9,
+                math_fontfamily='stix')
+    for a,b in [(2.30,2.60),(4.75,5.05),(7.20,7.50)]:
         ax.annotate('',xy=(b,2.18),xytext=(a,2.18),arrowprops={'arrowstyle':'->','color':'#777777'})
-    ax.annotate('',xy=(8.82,1.12),xytext=(8.82,1.67),arrowprops={'arrowstyle':'->','color':'#777777'})
-    ax.annotate('',xy=(6.23,1.12),xytext=(8.45,1.67),arrowprops={'arrowstyle':'->','color':'#777777'})
-    ax.text(.05,.73,'Decision target',weight='bold',fontsize=10)
-    ax.text(.05,.36,r'$D=|y-o|-|y-o-\bar g|$',fontsize=14)
+    ax.annotate('',xy=(8.575,1.12),xytext=(8.575,1.67),arrowprops={'arrowstyle':'->','color':'#777777'})
+    ax.annotate('',xy=(6.125,1.12),xytext=(8.2,1.67),arrowprops={'arrowstyle':'->','color':'#777777'})
+    ax.text(.3,.73,'Selection target',weight='bold',fontsize=10)
+    ax.text(.3,.36,r'$D=|y-o|-|y-o-\bar g|$',fontsize=14,math_fontfamily='stix')
     save(fig,'figure_6_selective_design')
 
 

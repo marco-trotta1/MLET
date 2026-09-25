@@ -1,0 +1,14 @@
+condition,score_gate_mismatches,allowed_zero_margin_ties
+clean,0,0
+wind_x0,0,0
+wind_x0.447,0,0
+wind_x2.237,0,0
+wind_x3.6,0,0
+wind_x5,0,0
+wind_x10,0,0
+temperature_plus5,0,0
+temperature_plus10,0,0
+temperature_plus20,0,0
+temperature_plus32,0,0
+temperature_fahrenheit_as_celsius,0,0
+vpd_x10,0,0

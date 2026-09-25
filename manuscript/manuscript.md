@@ -1,28 +1,13 @@
-# MLET: Selective Neural Residual Correction for Spatial Evapotranspiration
+# When Should a Satellite Estimate Be Changed? Stress-Testing Neural Corrections for Evapotranspiration
 
 Marco Trotta · Irrigant · m@irrigant.xyz
 
-The canonical manuscript is [the LaTeX source](arxiv/mlet_preprint.tex).
-Its compiled PDF is `output/pdf/mlet_preprint.pdf`.
-Meetpal S. Kukal receives acknowledgement for mentorship and earlier feedback.
+The canonical paper is [the LaTeX source](arxiv/mlet_preprint.tex). The compiled PDF is [available here](../output/pdf/mlet_preprint.pdf).
 
-The paper asks when a neural correction should change an existing satellite ET estimate at an unseen location.
-It compares ensemble disagreement, input support, predicted relative benefit, uniform shrinkage, and clipped inputs.
-Spatial cross-fitting supplies the selector targets without outer-label leakage.
-A second evaluation also excludes later years from training.
+The study evaluates selective corrections to OpenET estimates on 16,366 flux-tower observations from 151 stations. Its main predeclared comparison finds 0.0414 mm/day lower station-macro MAE when SupportGain is trained on cropland stations, with a 95% spatial-group interval from 0.0085 to 0.0788. The interval conditions on the fitted models. SupportGain was selected using earlier outcomes from this archive, including the cropland test rows. The interval does not account for this selection.
 
-The study keeps the original Irrigant branding and all five original graphics.
-The main results include the cropland transfer comparisons.
-The original evidence architecture appears in the appendix, and references appear at the end.
-The reference-ETo outlook remains separate from the actual-ET neural task.
-Its original diagnostic, spatial map, and support tensor remain in the appendix.
-The retrospective actual-ET target does not establish forecast or irrigation skill.
+None of 40 preplanned temporal comparisons passes Holm correction. That test family does not test whether SupportGain is better than Gain. In a post hoc five-fold spatial holdout, the clean-input difference is inconclusive. Under a wind input multiplied by 3.6, SupportGain lowers station-macro MAE by 0.148 mm/day, with a simultaneous 95% interval from 0.070 to 0.226. It accepts 9.3% of corrections, compared with 51.8% for Gain. The transformation is controlled and does not estimate natural fault prevalence.
 
-The key ML finding concerns selector transfer under a controlled wind-input fault.
-At equal 50% acceptance after VPD omission, the learned benefit ranking has higher error than the support ranking.
-The paired difference is 0.243 mm/day, with interval [0.110, 0.412].
-The comparison uses 7,873 matched observations, 84 stations, 62 proximity groups, and 2,000 paired bootstrap draws.
-The later-year comparison does not confirm that ordering.
-The paper retains that limit and the other negative results.
+At one held-out station, Gain accepts all 32 records with physically invalid weather. It predicts a mean benefit of 0.83 mm/day, but its corrections raise mean absolute error by 21.6 mm/day versus OpenET. This single station does not establish a general fault rate or device failure.
 
-Read [the reproduction instructions](REPRODUCIBILITY.md), [limitations](LIMITATIONS.md), and [literature positioning](../docs/evaluation/ML_LITERATURE_POSITIONING.md).
+The preprint does not establish unseen-site transfer, forecast skill, irrigation status, or irrigation response. It has not been submitted or peer reviewed. See the [reproduction instructions](REPRODUCIBILITY.md), [limitations](LIMITATIONS.md), and [literature positioning](../docs/evaluation/ML_LITERATURE_POSITIONING.md).

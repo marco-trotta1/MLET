@@ -1,0 +1,8 @@
+{
+  "figure_script_sha256": "2c2134cfc1523d49beaf9aa4174a7e52e8fcac9b750f89311babf2f0d7fbfada",
+  "analysis_receipt_sha256": "700f09c20cc03dde72b84d90bc859ecef218b1e2a324aa17d8c5b2cdb8034a67",
+  "comparisons_sha256": "6a02114a6a266a7d77196823921405ae71fd527f945a6ecc650ab02729dfe6b4",
+  "pdf_sha256": "e2f668cf36f1ef504bbabb411251ec5141252901e4c83fbaa29026c52fa51298",
+  "png_sha256": "21b10f99108397856d5d31b9b2bd7a838d229c0090c5bafb9db0dac8e7a93983",
+  "source_workflow": "figures4papers scientific-figure-making"
+}

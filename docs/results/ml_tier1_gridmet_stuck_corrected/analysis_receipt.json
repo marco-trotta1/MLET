@@ -1,0 +1,12 @@
+{
+  "protocol_sha256": "77929f1e33d5b0bfcd5b84208b783e600316eb99de619ffc266f27799140350f",
+  "analysis_script_sha256": "c37d2e82e88f8e981db5366599514480ffbb3ed090285f449665c14624beedf0",
+  "run_receipt_sha256": "ff2a7bb297fc990f4bfe2871e010a06f194a16a87a254e652c248eb8511ea0d4",
+  "results_sha256": "4ff8b4a0b984e4fc2339f27b4170fe35dcb8ce85822c9f0d8da216f18494cf9e",
+  "original_receipt_sha256": "57618d7d931a35522b07aaf60069f84ec6b7630a00c981e3479e218e5c8a8f54",
+  "analysis_sha256": "db33f0082572557153e6b4b61bd3457518b47554a36fbb48268496feb6aebff7",
+  "bootstrap_draws": 2000,
+  "bootstrap_seed": 20260925,
+  "one_sided_tests": false,
+  "exploratory": true
+}

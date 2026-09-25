@@ -1,0 +1,38 @@
+{
+  "protocol_sha256": "f68d2adc5dbbbbd6bd033d366c0fd4857fe00fa0363b64d0fddeda5d7e053c2f",
+  "runner_sha256": "1b64d4a2e7b3591e7df45bdf1d243edeccd9ab7e2dc75a7a1f4e5f2d4803c3a4",
+  "tier1_script_sha256": "de58b86700be7cb3f8e646cc1beab91cba9931abeb50cb2da67cbb0a5b60ceb0",
+  "cohort_sha256": "bb21af40366fb0e713942cfc7d5ce7c55e682825e8da144f6452f8e3c6baf6d4",
+  "run_receipt_sha256": "f72ed4f06132bc9718557e014950f0f9b5840587bd0a80b35f99e6ef6b14c402",
+  "results_sha256": "4820e110e4e83141427caedcca10cda7812f2e2dfa62a033e220d6e3b8b4467f",
+  "splits_sha256": "5f42b390906959a8d58848e46e27a5730de540204a4108890d79d665053e36c9",
+  "split_seed": 20260933,
+  "threshold_km": 25,
+  "prediction_columns": [
+    "row_id",
+    "test_year",
+    "station",
+    "group",
+    "y",
+    "openet",
+    "Gain",
+    "SupportGain",
+    "accept_Gain",
+    "accept_SupportGain"
+  ],
+  "compressed_predictions": {
+    "clean": "0fb33a5cbc12e965800df16bdb809371e137068ca2f58a9d2183e53e73fb0f11",
+    "wind_x0": "f2bd4198b6f263f8bde1db17cee6619fd3330e4673d14369c2566052040be9ca",
+    "wind_x0.447": "cdba902ff4fc913e37b1d82cce92c4c4f6fe37a42d2c8fa92ab24a9188601fa3",
+    "wind_x2.237": "e87d0b9b3b2584814ddb02dd433a80bc161aa9c7b0c768727765568c5a205c6d",
+    "wind_x3.6": "540f24335d72bcaf6a02eefd0effd7f27d4eec7214daeb62d7d6f4cbc551c799",
+    "wind_x5": "a189d1ffea4538a12859fa36c58daf3920b78812d42ae14c1b02825d488522ab",
+    "wind_x10": "b539bb5aab038ca91788e5260310cd08abf336d1b701f6f1969127e516f31912",
+    "temperature_plus5": "697b6f84a0ce363b189b654686742974c8fce604e50786f2e5c27ba4294ed589",
+    "temperature_plus10": "c49dbe6b3bbc847ed3773d83ce31b13b5f115e33151bdba9cf16c247a80fa0e4",
+    "temperature_plus20": "5dfef710fe903297f104454fc8ec433f94168bfa4fce516e96734aec37a1da8d",
+    "temperature_plus32": "9cf1e13377d7c9d00cfb3bf1e4b37d461ce7450166a1be07c9b3976b1f8a2652",
+    "temperature_fahrenheit_as_celsius": "ef47deb4e11c5f0b2382cfbebe6be75bbc779234c1450b2306924ecc385d9c03",
+    "vpd_x10": "9681c21ee3d792e635389f896931720f7f5776e436e32a8ce24b7ce502c0efd3"
+  }
+}

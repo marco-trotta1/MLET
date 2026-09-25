@@ -1,0 +1,14 @@
+{
+  "outcome": "all-station SupportGain MAE minus cropland-only SupportGain MAE",
+  "positive_favors": "cropland-only training",
+  "difference_mm_day": 0.04137370492892633,
+  "ci95_mm_day": [
+    0.008466865388668329,
+    0.07879916388383584
+  ],
+  "bootstrap_draws": 2000,
+  "bootstrap_seed": 20261005,
+  "rows": 3234,
+  "stations": 49,
+  "groups": 24
+}

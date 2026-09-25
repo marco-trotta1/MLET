@@ -1,0 +1,8 @@
+{
+  "figure_script_sha256": "4d13762ee6f691530582b0ab8f2a7c97571bb23527466121f57d2df4123a768e",
+  "analysis_summary_sha256": "b1299422a240a6c982165a06c4df20913195683dd16e390e2b7e7717286ed953",
+  "group_effects_sha256": "cfe7be9bd8d8efe11275379d08307b5760f13c30d4298ffdd71f3f5d5fd69222",
+  "pdf_sha256": "f1089848b4c6ff4bd3d7115540ea05ae6bd302fba9b52eed06886e5b84ee814a",
+  "png_sha256": "e518f631ef847b547051e9b9bd73fad1b04f7a8fdb7f4da138d2a08bef5884fd",
+  "source_workflow": "figures4papers scientific-figure-making"
+}

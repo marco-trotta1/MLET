@@ -1,4 +1,6 @@
 """Prevent regression of author identity and the retained visual evidence."""
+import hashlib
+import json
 from pathlib import Path
 import re
 
@@ -14,9 +16,9 @@ def test_current_manuscript_keeps_brand_email_and_original_figures():
     assert 'Meetpal' not in first_page
     assert 'pdfauthor={Marco Trotta}' in text
     assert 'Meetpal S. Kukal' in text
-    for stem in ['figure_1_evidence_paths', 'figure_2_phase2_models', 'figure_3_boii_feasibility',
-                 'figure_4_native_grid', 'figure_5_support_tensor']:
-        assert stem + '.pdf' in text
+    saved = ROOT / 'docs/results/ml_selective/original_visuals.json'
+    for name, digest in json.loads(saved.read_text()).items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
 
 
 def test_published_pdf_matches_the_current_manuscript():
@@ -29,4 +31,6 @@ def test_references_follow_all_manuscript_sections():
     text = (ROOT / "manuscript/arxiv/mlet_preprint.tex").read_text()
     bibliography = text.index(r"\bibliography{references}")
     assert bibliography > text.rindex(r"\section{")
-    assert bibliography > text.rindex(r"\end{figure}")
+    floats = list(re.finditer(r"\\end\{(?:figure|table)\*?\}", text))
+    assert floats
+    assert bibliography > floats[-1].start()

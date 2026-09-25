@@ -1,0 +1,21 @@
+{
+  "protocol_sha256": "99c2fd5efd8c391e40b8828cacc8ed4740dc8e2d213f255c5909c3d9b06d669b",
+  "script_sha256": "1b5954954bb68ba2b4ef81ca24e71f2646055b50da5e55c038dea0cc9ea3b646",
+  "cohort_sha256": "f6489781e8400982cde097bf29893a993f869060399640344fd5738c70b42088",
+  "run_receipt_sha256": "2e9a09083add22f7d40f93e9a854b3272463f99d9439e71a8d5ad37ea695298f",
+  "results_sha256": "fdd69d8a6ca70b9efea036cb7b00a537f02cf79bb401ff0024e3f72699afbb6b",
+  "group_deltas_sha256": "6828b8b90b3f042f083241f9d2cb248ec0aecd2f031e30197c7c519e5abe992f",
+  "prediction_sha256": {
+    "clean": "79ac2db857bbad6f560df62cc1d352ee42e0d8f913ddbe48e429c61196862961",
+    "wind_x2.237": "911b3f5495f4b023998d925abf232c2d87a0294e8f05a2612104eb52ad845dda",
+    "wind_x3.6": "ad72096f8d7bcb4f7f16a918ba43fe12d80979ef8304c08537c35a3397659c79",
+    "temperature_fahrenheit_as_celsius": "ace34b511a49cedcf7ef17d2f4173c42242a45fb631e95f43cbcc150c93f870f",
+    "vpd_x10": "67fa8b3025b5371c57ff05a394128e3f5d29ca2b66f0c523440f8d8cb7647fc6"
+  },
+  "figure": {
+    "reference": "https://github.com/ChenLiu-1996/figures4papers/blob/main/scientific-figure-making/SKILL.md",
+    "design": "Adapted Helvetica fallback, blue and red method roles, minimal spines, grouped interval panel, and vector PDF export.",
+    "pdf_sha256": "e5d2f150b984ed63e8eae3f55f3df611b07aeefb7e89eca5768c0f5a4af54eb5",
+    "png_sha256": "36fc867ac4909e09353965b926d2580a690bebb83e65bb86f9aad506d1f250f8"
+  }
+}

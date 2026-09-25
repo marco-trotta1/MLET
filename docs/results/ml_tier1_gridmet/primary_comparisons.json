@@ -1,0 +1,602 @@
+[
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "clean",
+    "delta_macro_mae_favoring_method": -0.0039147930546577685,
+    "ci95": [
+      -0.00976941070891169,
+      0.0015676586298277197
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.8921053947302635,
+    "holm_p": 1.0
+  },
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "wind_x0",
+    "delta_macro_mae_favoring_method": -0.1948518948283486,
+    "ci95": [
+      -0.31373384831291407,
+      -0.08788058483540899
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.9998000099995,
+    "holm_p": 1.0
+  },
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "wind_x0.447",
+    "delta_macro_mae_favoring_method": -0.027679530767239433,
+    "ci95": [
+      -0.04392255289761581,
+      -0.012497233438325333
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.999550022498875,
+    "holm_p": 1.0
+  },
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "wind_x2.237",
+    "delta_macro_mae_favoring_method": -0.08324528424234699,
+    "ci95": [
+      -0.12303914797245476,
+      -0.040558549739562896
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.999850007499625,
+    "holm_p": 1.0
+  },
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "wind_x3.6",
+    "delta_macro_mae_favoring_method": -0.27604226582897107,
+    "ci95": [
+      -0.35908275668660417,
+      -0.19743930263670187
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "wind_x5",
+    "delta_macro_mae_favoring_method": -0.48312689181673873,
+    "ci95": [
+      -0.6049616680003612,
+      -0.3761206003805921
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "wind_x10",
+    "delta_macro_mae_favoring_method": -1.4633272701684856,
+    "ci95": [
+      -1.7458305551037798,
+      -1.185207496814245
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "temperature_plus5",
+    "delta_macro_mae_favoring_method": -0.006821690245990541,
+    "ci95": [
+      -0.01958018935262751,
+      0.006268777168623701
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.8221088945552723,
+    "holm_p": 1.0
+  },
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "temperature_plus10",
+    "delta_macro_mae_favoring_method": -0.06051475928141458,
+    "ci95": [
+      -0.08913620142762262,
+      -0.03125517144019046
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.99990000499975,
+    "holm_p": 1.0
+  },
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "temperature_plus20",
+    "delta_macro_mae_favoring_method": -0.22126512302595824,
+    "ci95": [
+      -0.2869080891078188,
+      -0.1506325387290069
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "temperature_plus32",
+    "delta_macro_mae_favoring_method": -0.29915985811407564,
+    "ci95": [
+      -0.3770802085880142,
+      -0.22249925610828322
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "temperature_fahrenheit_as_celsius",
+    "delta_macro_mae_favoring_method": -0.3749282395268268,
+    "ci95": [
+      -0.46610556516501467,
+      -0.2883412458446294
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "Gain",
+    "baseline": "SupportGain",
+    "condition": "vpd_x10",
+    "delta_macro_mae_favoring_method": -3.655634732420072,
+    "ci95": [
+      -4.838878603559346,
+      -2.649181536737042
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "clean",
+    "delta_macro_mae_favoring_method": -0.001996286806912513,
+    "ci95": [
+      -0.01168461255898521,
+      0.006796566408461006
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.663566821658917,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "wind_x0",
+    "delta_macro_mae_favoring_method": -0.1723537788716376,
+    "ci95": [
+      -0.2889151939739418,
+      -0.06742031846808978
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.9992000399980001,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "wind_x0.447",
+    "delta_macro_mae_favoring_method": -0.022878152158956513,
+    "ci95": [
+      -0.03960713815017618,
+      -0.0062416393957489425
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.9926503674816259,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "wind_x2.237",
+    "delta_macro_mae_favoring_method": -0.07255099149480365,
+    "ci95": [
+      -0.10533956047069808,
+      -0.03655252235005733
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.99970001499925,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "wind_x3.6",
+    "delta_macro_mae_favoring_method": -0.23131988843394513,
+    "ci95": [
+      -0.3113992273888427,
+      -0.15823950661033317
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "wind_x5",
+    "delta_macro_mae_favoring_method": -0.41407798301798104,
+    "ci95": [
+      -0.5342066255021938,
+      -0.30791567704211464
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "wind_x10",
+    "delta_macro_mae_favoring_method": -1.3502059990884467,
+    "ci95": [
+      -1.642524351181471,
+      -1.065814167960625
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "temperature_plus5",
+    "delta_macro_mae_favoring_method": 0.001038668708491339,
+    "ci95": [
+      -0.011774126860880831,
+      0.016810249230048382
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.45007749612519377,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "temperature_plus10",
+    "delta_macro_mae_favoring_method": -0.04773151675562749,
+    "ci95": [
+      -0.06993274458427877,
+      -0.024797273242479632
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.99970001499925,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "temperature_plus20",
+    "delta_macro_mae_favoring_method": -0.17823595734585826,
+    "ci95": [
+      -0.23786782640370113,
+      -0.11792184138454749
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "temperature_plus32",
+    "delta_macro_mae_favoring_method": -0.24679533551870675,
+    "ci95": [
+      -0.31316272270241924,
+      -0.18134185434719582
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "temperature_fahrenheit_as_celsius",
+    "delta_macro_mae_favoring_method": -0.2970423206189199,
+    "ci95": [
+      -0.3862941787429641,
+      -0.21267588430458126
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "MonoGain",
+    "baseline": "SupportGain",
+    "condition": "vpd_x10",
+    "delta_macro_mae_favoring_method": -2.6714056162895083,
+    "ci95": [
+      -3.5849337134160244,
+      -1.9203300686575917
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 1.0,
+    "holm_p": 1.0
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "clean",
+    "delta_macro_mae_favoring_method": -0.04930954630539707,
+    "ci95": [
+      -0.0898530973868104,
+      -0.01727050315553444
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.9994000299985001,
+    "holm_p": 1.0
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "wind_x0",
+    "delta_macro_mae_favoring_method": 0.004189792027189335,
+    "ci95": [
+      -0.0011227183145863825,
+      0.012059996714144402
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.1031948402579871,
+    "holm_p": 1.0
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "wind_x0.447",
+    "delta_macro_mae_favoring_method": 0.05344600391559948,
+    "ci95": [
+      -0.005038418837705906,
+      0.10615817158027026
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.039798010099495025,
+    "holm_p": 1.0
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "wind_x2.237",
+    "delta_macro_mae_favoring_method": 0.026361753604976428,
+    "ci95": [
+      0.006399741913802191,
+      0.049308837370191545
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.0050997450127493625,
+    "holm_p": 0.2039898005099745
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "wind_x3.6",
+    "delta_macro_mae_favoring_method": 0.014928285209669177,
+    "ci95": [
+      0.002283806978426859,
+      0.027400009843827695
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.00999950002499875,
+    "holm_p": 0.38998050097495124
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "wind_x5",
+    "delta_macro_mae_favoring_method": 0.007993910120020459,
+    "ci95": [
+      0.0009904245164130488,
+      0.017604196546916622
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.015799210039498024,
+    "holm_p": 0.6003699815009249
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "wind_x10",
+    "delta_macro_mae_favoring_method": 8.916634819760406e-05,
+    "ci95": [
+      -0.0004091879570164517,
+      0.0005133448635430124
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.3619319034048298,
+    "holm_p": 1.0
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "temperature_plus5",
+    "delta_macro_mae_favoring_method": 0.00484482185858986,
+    "ci95": [
+      -0.02016207904774616,
+      0.027797558048592172
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.3466326683665817,
+    "holm_p": 1.0
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "temperature_plus10",
+    "delta_macro_mae_favoring_method": 0.015295138040104763,
+    "ci95": [
+      -0.015826641817951306,
+      0.044875649222120104
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.17139143042847857,
+    "holm_p": 1.0
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "temperature_plus20",
+    "delta_macro_mae_favoring_method": -0.0014231797597935804,
+    "ci95": [
+      -0.011081228562621268,
+      0.007444747210217275
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.5941202939853008,
+    "holm_p": 1.0
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "temperature_plus32",
+    "delta_macro_mae_favoring_method": -0.005362635226855086,
+    "ci95": [
+      -0.013670295124891698,
+      0.0010378340466750712
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.896355182240888,
+    "holm_p": 1.0
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "temperature_fahrenheit_as_celsius",
+    "delta_macro_mae_favoring_method": -0.00030140424525167695,
+    "ci95": [
+      -0.0019543280222953296,
+      0.00127764043378769
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.6354182290885456,
+    "holm_p": 1.0
+  },
+  {
+    "method": "AugmentedGain",
+    "baseline": "SupportGain",
+    "condition": "vpd_x10",
+    "delta_macro_mae_favoring_method": 0.0002076136279209567,
+    "ci95": [
+      -0.00013554308139008254,
+      0.0005522981652106671
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.1247937603119844,
+    "holm_p": 1.0
+  },
+  {
+    "method": "LocalShrinkage",
+    "baseline": "Uniform",
+    "condition": "clean",
+    "delta_macro_mae_favoring_method": -0.0027055124868837206,
+    "ci95": [
+      -0.016164701163874057,
+      0.009598133035623443
+    ],
+    "groups": 64,
+    "stations": 101,
+    "rows": 7842,
+    "one_sided_signflip_p": 0.6628168591570421,
+    "holm_p": 1.0
+  }
+]

@@ -12,7 +12,7 @@
 \usepackage{array}
 \usepackage{enumitem}
 \usepackage[font=small,labelfont=bf,labelsep=period]{caption}
-\usepackage[round,authoryear]{natbib}
+\usepackage[numbers,sort&compress]{natbib}
 \usepackage{fancyhdr}
 \usepackage{titlesec}
 \usepackage{balance}
@@ -36,7 +36,7 @@
   linkcolor=MLETInk,
   citecolor=MLETBlue,
   urlcolor=MLETBlue,
-  pdftitle={MLET: Selective Neural Residual Correction for Spatial Evapotranspiration},
+  pdftitle={When Should a Satellite Estimate Be Changed? Stress-Testing Neural Corrections for Evapotranspiration},
   pdfauthor={Marco Trotta}
 }
 \urlstyle{same}
@@ -53,7 +53,6 @@
 \newcommand{\mmday}{\mathrm{mm\,day^{-1}}}
 \newcommand{\km}{\mathrm{km}}
 \newcommand{\code}[1]{\texttt{#1}}
-\newcommand{\claimpending}{\textcolor{MLETRed}{\textbf{evaluation pending}}}
 \newcommand{\sourcepath}[1]{\path{#1}}
 
 \setlength{\parindent}{1em}
@@ -79,10 +78,14 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\sffamily\scriptsize\color{MLETMuted}\mlet{} $\mid$ manuscript preprint}
-\fancyhead[R]{\sffamily\scriptsize\color{MLETMuted}selective neural correction}
+\fancyhead[R]{\sffamily\scriptsize\color{MLETMuted}Neural Corrections for Satellite ET}
 \fancyfoot[C]{\sffamily\small\thepage}
 \renewcommand{\headrulewidth}{0.35pt}
 \renewcommand{\headrule}{\hbox to\headwidth{\color{MLETRule}\leaders\hrule height \headrulewidth\hfill}}
+\makeatletter
+\setlength{\@dblfptop}{18pt}
+\setlength{\@dblfpbot}{0pt plus 1fil}
+\makeatother
 \fancypagestyle{firstpage}{
   \fancyhf{}
   \fancyfoot[C]{\sffamily\small\thepage}
@@ -91,7 +94,7 @@
 \fancypagestyle{plain}{
   \fancyhf{}
   \fancyhead[L]{\sffamily\scriptsize\color{MLETMuted}\mlet{} $\mid$ manuscript preprint}
-  \fancyhead[R]{\sffamily\scriptsize\color{MLETMuted}selective neural correction}
+  \fancyhead[R]{\sffamily\scriptsize\color{MLETMuted}Neural Corrections for Satellite ET}
   \fancyfoot[C]{\sffamily\small\thepage}
   \renewcommand{\headrulewidth}{0.35pt}
   \renewcommand{\headrule}{\hbox to\headwidth{\color{MLETRule}\leaders\hrule height \headrulewidth\hfill}}
@@ -106,547 +109,367 @@
 \newcommand{\unit}{\mathrm{mm\,day^{-1}}}
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\R}{\mathbb{R}}
-\newtheorem{proposition}{Proposition}
 \begin{document}
 \onecolumn\thispagestyle{firstpage}
 \noindent\color{MLETInk}\rule{\textwidth}{0.8pt}
 \vspace{0.26em}
 \begin{center}
 {\fontsize{19}{22}\selectfont\bfseries
-MLET: Selective Neural Residual Correction\\[-0.1em]
-for Spatial Evapotranspiration\par}
+When Should a Satellite Estimate Be Changed?\\[-0.1em]
+Stress-Testing Neural Corrections for Evapotranspiration\par}
 \vspace{0.42em}\rule{\textwidth}{0.55pt}\vspace{0.58em}
 
 {\large Marco Trotta}\\[0.46em]
 \includegraphics[height=0.32in]{irrigant_logo.png}\\[0.26em]
 {\small Irrigant, Idaho, USA}\\[0.12em]
 {\small\href{mailto:m@irrigant.xyz}{m@irrigant.xyz}}\\[0.35em]
-{\small September 22, 2026}
+{\small September 25, 2026}
 \end{center}
 \vspace{0.35em}
 \begin{center}{\large\bfseries Abstract}\end{center}
 \begin{quote}\small
-A neural correction of a satellite estimate must decide both what to predict and when its correction is useful.
-We study this decision as selective residual regression under spatial transfer and input corruption.
-Using 7,923 OpenET station-days from 85 stations, we compare ensemble disagreement, input-support distance, and learned relative benefit.
-Selectors use spatially cross-fitted neural predictions; a separate evaluation withholds both locations and later years.
-The experiment retains a fixed satellite fallback and scores every test observation.
-A natural humidity anomaly motivates a separate feature-omission arm and controlled test-input faults.
-After VPD omission, a tenfold wind-input fault raises residual-network station MAE from 0.829 to 1.415 $\unit$ on 7,873 matched observations.
-Support screening yields 0.857, but largely through fallback: it accepts only 1.74\% of the station-weighted population.
-At matched 50\% acceptance, its advantage over disagreement is inconclusive.
-However, the learned benefit ranking is worse than the support ranking by 0.243 $\unit$, with paired interval [0.110, 0.412], under that same fault.
-The later-year evaluation does not confirm this ordering, and natural-test gains do not transfer uniformly to croplands.
-We derive the baseline-relative risk objective, preserve all negative controls, and distinguish screening from ranking improvements.
-The result isolates a failure of cross-fitted benefit selection under a specified input fault and separates correction ranking from fallback frequency.
+Neural residuals can improve satellite evapotranspiration (ET) estimates, but selectors must predict when a correction helps and reject unsupported inputs.
+We evaluate ten-member models on 16,366 flux-tower observations from 151 stations paired with OpenET, across nine rolling years and five spatial folds.
+At one held-out station, Gain accepted corrections on all 32 physically invalid records: it predicted a mean benefit of 0.83 $\unit$, but the corrections increased mean absolute error by 21.6 $\unit$ versus OpenET.
+On spatially held-out unit errors, SupportGain reduced station-macro MAE versus Gain by 0.148 $\unit$ under wind x3.6 (simultaneous 95\% interval, 0.070 to 0.226), with 9.3\% acceptance versus Gain's 51.8\%; on clean inputs, its 0.006 $\unit$ advantage had an interval that includes zero.
+These fault analyses are exploratory; none of 40 preplanned temporal comparisons passed Holm correction, while a separate predeclared cropland contrast found 0.041 $\unit$ lower station-macro MAE with crop-only training (95\% interval, 0.009 to 0.079).
 \end{quote}
-\noindent\textbf{Keywords:} selective regression; neural residual learning; model deferral; input corruption; evapotranspiration
+\noindent\textbf{Keywords:} selective regression; satellite evapotranspiration; input faults; spatial validation; cropland training
 
 \section{Introduction}
-Machine Learning Evapotranspiration (MLET) combines satellite estimates, meteorological covariates, and auditable environmental prediction.
-A satellite model already provides an actual-ET estimate where direct flux measurements are unavailable.
-A neural residual model can correct its error, but that correction can also damage a useful estimate.
-The technical question is therefore conditional: \emph{when should the system apply the learned correction at an unseen location?}
+OpenET already estimates actual evapotranspiration (ET).
+A neural correction can move that estimate closer to a flux-tower measurement, or farther away.
+The selector must answer a sharper question than whether its neural model is uncertain: will this correction improve the estimate already available?
 
-This question connects environmental modeling to regression with deferral.
-An uncertainty score estimates reliability of a model, whereas the correction decision compares that model with an available fallback.
-Low neural error does not necessarily mean improvement over the satellite estimate.
-Moreover, a learned selector faces its own distribution shift when local weather inputs or their support change.
+That decision becomes harder when weather inputs fall outside the conditions represented in training.
+A selector may predict benefit from familiar patterns while missing an unsupported input.
+This paper tests whether a simple support rule can catch such cases, and whether any apparent advantage holds on clean observations.
 
-We investigate this narrow problem using matched neural predictions and a fixed OpenET fallback.
-We compare a disagreement threshold, a training-support threshold, and a learned absolute-loss benefit selector.
-A crossed experiment separates geographic withholding, later years, and omission of a previously identified anomalous covariate.
-Paired input faults then isolate selection behavior while holding labels and neural parameters fixed.
-The contribution is a reproducible empirical study of selector transfer, supported by an explicit loss objective and matched-acceptance diagnostics.
+We evaluate a ten-network residual model on 16,366 screened records from 151 stations.
+Rolling tests cover 2012 through 2020, but reuse stations across years; they do not test unseen-site transfer.
+Every rejected correction returns the original OpenET estimate, and the score includes every test record.
+This prevents rejection from appearing accurate by hiding difficult cases.
 
-Agricultural use requires a separate population check: success across mixed land covers need not imply success on croplands.
-We therefore report cropland transfer alongside the full archive and retain the satellite estimate as a deployable fallback concept.
-The evaluation is retrospective; it does not test operational availability or irrigation interventions.
+The evidence gives a mixed answer.
+Clean data do not establish a reliable advantage for support screening over learned benefit prediction.
+An exploratory station-level failure shows how far a confident correction can miss, while controlled weather changes reveal when support screening can reduce error by rejecting many corrections.
+A predeclared cropland comparison also favors training on cropland records, subject to method-selection uncertainty.
 
-The study makes three connected empirical contributions.
-First, it evaluates selection by improvement over the fallback, with spatially cross-fitted targets and complete-system loss.
-Second, paired input faults separate neural error, rejection frequency, and correction ranking while holding the fitted predictor fixed.
-Third, matched acceptance exposes an inconclusive uncertainty comparison and a specific benefit-selector failure that later-year data do not confirm.
-Appendices~\ref{app:architecture} and~\ref{app:outlook} retain the original MLET architecture and one reference-ETo feasibility case as historical context.
+The study makes three contributions.
+First, it evaluates a correction by how much error it removes from the existing satellite estimate, using spatially cross-fitted selector data.
+Second, it separates one observed input failure from controlled weather transformations and from the wider record of physical rule violations.
+Third, it compares all-station and crop-only training on the same held-out cropland records.
+These are retrospective prediction results; they do not identify irrigation status or measure irrigation response.
 \clearpage\twocolumn
 \section{Related work}
-\citet{mao2024} formulate regression with multi-expert deferral, including two-stage methods and consistency analysis.
-This is the closest formal setting: MLET chooses between a neural correction and a satellite predictor.
-We use a direct, cross-fitted loss-difference regressor as a fixed baseline.
-We do not reproduce their surrogate losses or claim their consistency bounds for this unbounded absolute-loss experiment.
+Selective regression asks when a model should defer to an available alternative.
+Prior work studies multi-expert deferral and conformalized selective prediction \citep{mao2024,sokol2026}.
+Here, the alternative is the existing OpenET estimate.
+The selector predicts improvement over that estimate, and evaluation counts the fallback on rejected records.
+The decision rule is established; our contribution is its environmental stress test, not a new deferral theory.
 
-\citet{sokol2024} study conformalized selective regression and connect uncertainty with coverage.
-Our objective includes the fallback's error on rejected observations, rather than report accuracy only on retained predictions.
-We claim no conformal coverage guarantee under geographic shift.
-We use seed disagreement following \citet{laksh2016}.
-Its behavior can be unreliable outside training support \citep{mathelin2023}.
+Environmental prediction methods use input distance and cross-fitting to assess whether a record resembles the training data \citep{meyer2021,nguyen2026}.
+Ensemble disagreement can also change outside the training distribution \citep{laksh2017,mathelin2023}, while neural networks may extrapolate along unsupported inputs \citep{xu2021}.
+We test a nearest-neighbor distance screen beside these learned scores.
+It is a simple check, not a calibrated guarantee of reliable predictions.
 
-Applicability-domain methods relate environmental prediction reliability to covariate support \citep{meyer2020}.
-GeoQ uses geometry, cross-fitting, and conditional quantile increments to estimate scientific-surrogate errors \citep{nguyen2026}.
-Our distance control is simpler; it tests whether support screening changes the interpretation of a learned selector.
-Work on ReLU extrapolation further motivates separating interpolation from unsupported input directions \citep{xu2020}.
-Graph neural processes demonstrate environmental prediction at sparse sensor locations \citep{hu2023}.
-Their graph and temporal context differs from the sparse satellite-date regression studied here.
+Machine-learning methods already estimate and correct ET using water-balance supervision, physical covariates, and geographic transfer \citep{hascoet2022,rozanov2025,shi2025,residual2026,wei2026}.
+OpenET and the associated flux archive supply the satellite estimates and measurements used here \citep{volk2024,openetdata,fluxdata}.
+Because the same archive supports this evaluation, our results do not independently validate OpenET development.
+Land-cover-specific OpenET biases also motivate testing a cropland training population \citep{openetissues}.
 
+Environmental records are spatially dependent, so random row splits can overstate transfer \citep{roberts2017}.
+We group nearby stations for inner selection and report a separate spatial holdout.
+The rolling-year analysis tests later dates at observed stations, not new locations.
 
-\citet{volk2024} evaluate OpenET against a public collection of measured ET.
-The associated model and measurement archives provide the observations used here \citep{openetdata,fluxdata}.
-Our reuse of that archive does not constitute an independent evaluation of upstream OpenET model development.
-The held-out partitions apply to the additional correction models trained in this study.
-
-Machine learning correction of ET is already an established research direction.
-\citet{hascoet2022} learn corrections using water-cycle closure supervision.
-\citet{rozanov2025} combine physical features, tree models, and neural models to estimate ET across the U.S. Midwest.
-\citet{shi2024} study domain-adversarial learning for geographical ET transfer.
-Recent work also studies residual correction of physical ET estimates and physically constrained learning \citep{residual2026,wei2026}.
-These studies motivate strong correction baselines; they do not establish that a particular correction transfers in the present archive.
-OpenET also documents land-cover-specific biases, including forest overprediction \citep{openetissues}.
-
-Structured validation must reflect the dependence present in environmental data \citep{roberts2017}.
-Nearby towers can share weather, management, and landscape conditions despite having different station identifiers.
-We therefore complement station withholding with proximity groups.
-We also distinguish site-year grouping from simultaneously excluding a station and all later test years.
-The latter prevents training on earlier observations of a test station or on later observations from other stations.
-
-Reference ET is a separate quantity defined for a standardized surface.
-\citet{kukal2026} question replacing its specified calculation with a learned approximation.
-Our target is measured actual ET; reference ET is only an input.
-We do not infer crop water need, irrigation response, or reference-ET forecast skill from these results.
-
-JEPA-Anything studies factorized predictive representations across domains \citep{cui2026}.
-Dreamer studies learned dynamics for control \citep{hafner2025}.
-They motivate explicit predictive structure and tests that isolate a proposed mechanism.
-They do not justify labeling a same-date scalar regression as an action-conditioned world model.
-The current archive lacks a matched irrigation-action sequence and a corresponding evaluation of intervention outcomes.
-Our decomposition concerns correction error, not identified causal factors.
+Reference ET describes a standardized surface; the target here is measured actual ET.
+We use reference ET only as an input and make no claim about crop water need, irrigation response, or reference-ET forecasting \citep{kukal2026}.
 
 \section{Data and evaluation}
-\subsection{A fixed retrospective cohort}
+\subsection{Observations and inputs}
 We use the OpenET model archive, Zenodo record 10119477, and the processed flux archive, record 7636781.
-Both downloaded archives match the checksums in the existing MLET manifest.
-The exact station-date join produces 16,447 rows from 152 stations.
-Of these, 16,444 contain a measured, non-gap-filled corrected ET label.
-Requiring finite reference ET, temperature, vapor-pressure deficit (VPD), and wind leaves 7,923 observations from 85 stations.
-This reproduces the earlier complete-weather cohort exactly.
+The station-date join contains 16,447 labeled observations from 152 stations.
+A physical screen retains 16,366 observations from 151 stations.
+It removes 24 temperature violations, eight gridMET vapor-pressure-deficit (VPD) violations, 54 invalid weather values from the station archive, and three missing ET labels.
+These counts overlap.
+A rule violation does not diagnose an instrument fault.
+The retained stations form 102 proximity groups at 10 km.
 
-The selected rows span 415 station-years from 2001 through 2020.
-They are satellite validation dates, not complete daily sequences.
-The target is the archive's \texttt{ET\_corr}, which incorporates its energy-balance correction procedure.
+The target is energy-balance-corrected measured ET from the archive's \texttt{ET\_corr} field.
+The observations are sparse satellite validation dates, not a daily time series.
 We retain negative target values and do not clip predictions.
-The complete-weather subset contains 32 cropland stations and 2,670 observations.
-The other stations represent grasslands, shrublands, forests, and wetland or riparian settings.
-Cropland classification does not establish irrigation status.
+The Croplands subset contains 5,203 observations from 58 stations and 30 groups.
+Land-cover labels do not identify irrigation status.
 
-Let $y_{st}$ denote corrected measured ET and $o_{st}$ the OpenET ensemble at station $s$ and date $t$.
-The input vector is
+Let $y_{st}$ denote measured ET and $o_{st}$ the OpenET estimate at station $s$ and date $t$.
+The model uses that estimate, reference ET, seasonal position, temperature, VPD, and wind:
 \begin{equation}
 \begin{aligned}
 x_{st}&=[o_{st},ETo_{st},h_t,T_{st},VPD_{st},u_{st}],\\
 h_t&=[\sin(2\pi d_t/365),\cos(2\pi d_t/365)].
 \end{aligned}
 \end{equation}
-Here $d_t$ is day of year, $T$ is average air temperature, and $u$ is wind speed.
-The reference-ET covariate is gridMET ETo from the original joined table.
-We retain the earlier 365-day season encoding for reproducibility.
-The meteorological measurements and satellite estimates refer to the target date.
-Their operational release times are not reconstructed.
-Accordingly, this is retrospective estimation, not forecasting.
+Here $d_t$ is day of year, $T$ is gridMET average temperature, $u$ is gridMET wind speed, and ETo is reference ET.
+The seasonal encoding repeats every 365 days.
+The inputs and satellite estimate refer to the target date, but we do not reconstruct their release times.
+This is retrospective estimation, not forecasting.
 
-\subsection{Three outer evaluations}
-All split assignments use seed 20260713.
-The first evaluation reproduces the original station-held-out 10-fold evaluation.
-No station contributes rows to both training and testing in one fold.
+\subsection{Rolling temporal evaluation}
+For each test year from 2012 through 2020, train on rows from earlier years and test on that year.
+The pooled test set has 7,842 rows from 101 stations and 64 groups.
+Stations can occur in both training and test years.
+This design tests temporal transfer, not transfer to unseen stations.
+The cropland test subset has 3,234 rows from 49 stations and 24 groups.
 
-The primary evaluation constructs an undirected graph over the 85 stations.
-An edge connects stations whose great-circle distance is at most 10 km.
-Connected components define 63 proximity groups, including transitive connections.
-We allocate these groups to ten folds, keeping each component intact.
-All 7,923 observations receive exactly one held-out prediction per model.
-The 10 km threshold is fixed before this model comparison.
-It is a local-dependence check, not a test of transfer to an unseen climate region.
+Each training period uses three inner folds that withhold 10 km proximity groups.
+The same saved row assignments support the all-station and crop-only training arms.
+The crop-only arm filters each saved partition to Croplands rows.
+Outer test labels never determine model fits, selector scores, or thresholds.
+We save row identifiers for every fit, validation, and test partition.
 
-The joint evaluation uses the same proximity folds.
-Training additionally excludes dates from 2019 onward.
-Testing includes only dates from 2019 onward in held-out groups.
-This yields 649 observations from 27 stations and 24 groups.
-Only nine test stations are croplands, contributing 403 observations in seven groups.
-Comparisons within this evaluation use identical rows.
-Comparisons with the primary evaluation also reflect a changed test cohort.
-
-\subsection{Nested selection and inference}
-Inner selection uses three disjoint proximity-group folds drawn solely from the outer training set.
-In the joint evaluation, inner training ends before 2016 and validation starts in 2016.
-Outer test observations never determine scaling, stopping, regularization, or correction strength.
-We save the row identifiers for every inner and outer partition.
-
-Our primary mean absolute error (MAE) gives equal weight to each test station:
+\subsection{Scoring and uncertainty}
+The primary score calculates mean absolute error (MAE) within each test station, then averages stations:
 \begin{equation}
 \operatorname{MAE}_{\mathrm{station}}(f)=
 \frac{1}{S}\sum_{s=1}^{S}\frac{1}{n_s}\sum_{t=1}^{n_s}|y_{st}-f(x_{st})|.
 \label{eq:macro}
 \end{equation}
-We also report pooled MAE, pooled root mean square error (RMSE), and signed bias.
-Pooled MAE instead weights station $s$ by $n_s/N$.
-These scores answer different questions when sampling density varies.
-Neither estimates an area-weighted agricultural error.
+This gives each station equal weight, regardless of its number of observations.
+It does not estimate area-weighted agricultural error.
+Coverage is the station-weighted share of observations that receive a correction.
+The complete-system score uses OpenET wherever the selector rejects a correction.
 
 We report paired differences as baseline error minus candidate error.
 Positive differences favor the candidate.
-Intervals use 2,000 bootstrap samples of proximity components, with seed 20260922.
-Each sampled component contributes all its stations; repeated components retain their multiplicity.
-This preserves local clusters and avoids treating thousands of dates as independent replicates.
-The percentile intervals condition on the fitted cross-validation models.
-They omit retraining uncertainty and dependence between different proximity components.
-The exploratory comparisons have no multiplicity adjustment.
+The primary and extended selector families contain 40 and 52 preplanned comparisons, respectively.
+Both use Holm's multiple-test correction.
+The cropland analysis has one predeclared contrast and a paired group bootstrap with 2,000 draws and seed 20261005.
+Intervals resample proximity groups but keep fitted models and selectors fixed.
+They omit retraining uncertainty.
+Repeated split settings are stability checks, not independent trials.
 
 \section{Neural correction models}\label{sec:models}
-\subsection{Matched comparisons}
-We include the training median and the earlier crop-coefficient baseline in the accompanying results.
-Weather ridge uses reference ET, season, temperature, VPD, and wind.
-Combined ridge adds OpenET.
-Both standardize inputs using training means and standard deviations, then use ridge penalty $\alpha=1$.
-Tuned ridge chooses $\alpha\in\{1,10,100,1000\}$ by inner station-macro MAE.
-Affine calibration fits an intercept and slope to OpenET alone.
-Unchanged OpenET learns no parameters from this cohort.
+\subsection{Ten-network residual model}
+The main gridMET and cropland experiments use an ensemble of ten residual networks.
+Each network has two 32-unit ReLU layers and one scalar output.
+Each model has 1,345 trainable parameters and seven input features.
+Training uses Adam with learning rate 0.001, batch size 256, L2 parameter 0.001, and 120 iterations.
+Each fit standardizes its inputs and training residuals.
+The ten fixed seeds run from 20260713 through 20260722.
+The model predicts the residual from OpenET to measured ET.
+The selector uses the ensemble mean correction and its between-network spread.
+\emph{Full} applies every correction; OpenET applies none.
+Training does not use test-based stopping or architecture search.
+We retain every fit warning in the run records.
 
-Histogram gradient boosting supplies a nonlinear weather-only baseline.
-We also fit matched direct and residual boosting models with the complete input vector.
-Both use 150 iterations, learning rate 0.05, seven leaves, a 30-row minimum leaf size, and L2 regularization 10.
-Internal random-row early stopping is disabled.
-
-The neural comparisons use two 32-unit ReLU layers and a scalar output.
-They have 1,345 trainable parameters with seven inputs.
-Direct and residual networks use identical architectures, optimizers, epoch counts, and seeds.
-We use Adam, learning rate 0.001, batch size 256, and 120 epochs.
-The scikit-learn L2 penalty parameter is 0.001.
-Inputs and training targets are standardized separately within each fit.
-No test-based stopping or architecture search occurs.
-We retain results for seeds 20260713, 20260714, and 20260715.
-The main neural predictions average the three seeds.
-Single-seed scores appear in Appendix~\ref{app:seeds}.
-
-\subsection{Residual prediction is a testable prior}
-A direct model predicts $y$.
-A residual model predicts $r=y-o$ and returns $o+g(x)$.
-The unchanged satellite estimate supplies an explicit fallback:
-\begin{equation}
-\widehat y_\lambda=o+\lambda g(x),\qquad 0\leq\lambda\leq1.
-\label{eq:correction}
-\end{equation}
-This construction does not make the residual predictable or transferable.
-For expressive model classes, direct and residual formulations can represent the same functions.
-Their practical differences arise from optimization, regularization, and inductive bias.
-They must therefore be compared with matched capacity and information.
-
-\begin{proposition}[Correction risk]
-For a fixed correction $g$ and any target distribution with finite second moments,
-\begin{equation}
-\mathcal R(\lambda)-\mathcal R(0)=\lambda^2 B-2\lambda A,
-\qquad A=\E[rg],\quad B=\E[g^2],
-\label{eq:risk}
-\end{equation}
-where $\mathcal R(\lambda)=\E[(y-o-\lambda g)^2]$.
-If $B>0$, the minimizing weight on $[0,1]$ is $\lambda^*=\operatorname{clip}(A/B,0,1)$.
-If $B=0$, the correction has no effect almost surely.
-\end{proposition}
-\begin{proof}
-Expand $(r-\lambda g)^2-r^2$ and take expectations.
-The resulting convex quadratic has unconstrained minimizer $A/B$ when $B>0$.
-Projection onto $[0,1]$ gives the constrained minimizer.
-\end{proof}
-
-The identity distinguishes useful residual alignment, $A$, from correction energy, $B$.
-A full update helps squared error only if $2A>B$.
-A large correction without corresponding residual alignment damages the estimate.
-These moments also depend on the target population.
-Alignment measured across mixed land covers need not persist within croplands or later years.
-
-The gated boosting model estimates $A$ and $B$ from inner out-of-group predictions, using equal station weights.
-It fixes $\widehat\lambda$ before fitting the residual model on all outer training data.
-This is a familiar scalar shrinkage calculation.
-It has no distribution-free guarantee under station or temporal shift.
-It also optimizes squared loss, while the primary reporting metric is MAE.
-That mismatch is deliberate and must remain visible in the interpretation.
-
-\subsection{Why architecture and input support interact}
-Training standardization does not bound an unseen input.
-For linear prediction, a test perturbation $\delta$ changes the estimate by $\beta^\top D^{-1}\delta$, where $D$ contains training scales.
-An extreme coordinate can therefore dominate the prediction even when all coefficients use ridge regularization.
-ReLU networks are piecewise affine and can also extrapolate along unsupported directions.
-A residual connection preserves the base estimate only when its learned update remains controlled.
-
-A finite tree ensemble behaves differently for an input perturbation.
-Each tree returns a value from its finite set of leaves.
-For fixed trees $h_j$ and positive learning rate $\eta$, its output satisfies
-\begin{equation}
-b+\eta\sum_j\min_\ell h_{j\ell}
-\ \leq\ b+\eta\sum_j h_j(x)
-\ \leq\ b+\eta\sum_j\max_\ell h_{j\ell}.
-\end{equation}
-An extreme weather value therefore cannot create unbounded tree output for that fixed fit.
-This bound does not guarantee accurate predictions or prevent harmful training influence.
-It explains why input validity can interact with model family without establishing that one family is generally superior.
-
-\section{Selective neural residual correction}\label{sec:selective}
+\section{When should the correction be applied?}\label{sec:selective}
 \subsection{Predicting benefit differs from predicting error}
 Let $o(x)$ denote the available satellite estimate and $g(x)$ a fitted neural residual.
-A selector $a(x)\in\{0,1\}$ returns
+A selector $a(x)\in\{0,1\}$ returns:
 \begin{equation}
  f_a(x)=o(x)+a(x)g(x).
 \end{equation}
-Every query receives a prediction, including rejected corrections.
-Define the realized absolute-loss improvement as
+Every observation receives a prediction: the corrected estimate if accepted, or OpenET if rejected.
+The correction's realized benefit is
 \begin{equation}\label{eq:gain}
  D(x,y)=|y-o(x)|-|y-o(x)-g(x)|.
 \end{equation}
-Positive $D$ means that the correction helps.
-For a fixed fitted model, the complete-system risk satisfies
+Positive $D$ means the correction lowers absolute error.
+For a fixed fitted model, the system's mean absolute error satisfies
 \begin{equation}\label{eq:selective-risk}
  R(a)=R(o)-\E[a(X)D(X,Y)].
 \end{equation}
-Thus, the conditional optimal decision applies the correction when $\mu(x)=\E[D(X,Y)\mid X=x]>0$.
-A selector that predicts small neural error need not predict positive improvement over $o$.
-This distinction is central to regression with deferral \citep{mao2024}; we do not claim it as a new decision rule.
+The selector's target is the expected benefit given its inputs, $\mu(x)=\E[D(X,Y)\mid X=x]$.
+It should apply the correction when $\mu(x)>0$.
+A selector that predicts low neural error need not predict positive improvement over $o$.
 
-Consider one query with $y=o=0$ and $g=0.1$.
-A second query has $(y,o,g)=(10,0,9)$.
-The neural absolute errors are 0.1 and 1, but their improvements are $-0.1$ and 9.
-Rejecting the larger neural error retains the harmful correction and discards the helpful correction.
-Ensemble spread is further removed from this decision: it measures disagreement between fitted networks, not either realized error.
+Consider two observations.
+For the first, OpenET and measured ET are both 0, while the correction is 0.1; the correction adds 0.1 error.
+For the second, measured ET is 10, OpenET is 0, and the correction is 9; it removes 9 error.
+The neural errors are 0.1 and 1, respectively.
+A rule that rejects the larger neural error would keep the harmful correction and discard the helpful one.
+Ensemble spread measures disagreement between fitted networks, not whether either correction improves on OpenET.
 
-The selector's target can be stated precisely.
-For $a^*(x)=\mathbf{1}\{\mu(x)>0\}$,
-\begin{equation}\label{eq:selector-regret}
- R(a)-R(a^*)=\E[|\mu(X)|\mathbf{1}\{a(X)\ne a^*(X)\}].
-\end{equation}
-Conditioning Equation~\ref{eq:selective-risk} on $X$ proves the identity.
-Selection errors matter in proportion to the lost improvement, not their count alone.
-The triangle inequality also gives $|D|\le |g|$.
-Consequently, an accepted correction can worsen absolute loss by no more than its magnitude.
-This bound does not establish non-inferiority, and a support threshold does not change that limitation.
-These standard loss identities specify the experiment's estimand rather than provide new consistency theory.
+\subsection{Learning and checking the selectors}
+The main experiment fixes the ten-network residual ensemble from Section~\ref{sec:models}.
+Each outer training set produces three sets of neural predictions on held-out proximity groups.
+These predictions train the selectors and set their thresholds.
+The neural ensemble is then refitted on the full outer training set.
+Outer test targets do not set model parameters, selector scores, thresholds, or input scales.
+Figure~\ref{fig:selector-design} shows the flow.
 
-\subsection{Spatial cross-fitting of the selector}
-The experiment fixes the three-seed residual ensemble from Section~\ref{sec:models}.
-Each outer training set produces three inner, geographically separated neural prediction sets.
-The joint evaluation also preserves its inner time cutoff.
-Only these inner predictions supply selector targets and thresholds.
-After selection, the neural ensemble is refitted on the complete outer training set.
-No outer target enters a fit, threshold, input scaler, or stopping decision.
-Figure~\ref{fig:selector-design} shows this separation.
-
-For residual predictions $g_1,g_2,g_3$, we use their mean $\bar g$ and sample spread
+For residual predictions $g_1,\ldots,g_{10}$, we use their mean $\bar g$ and sample spread:
 \begin{equation}
- s_g(x)=\left[\frac{1}{2}\sum_{j=1}^{3}(g_j(x)-\bar g(x))^2\right]^{1/2}.
+ s_g(x)=\left[\frac{1}{9}\sum_{j=1}^{10}(g_j(x)-\bar g(x))^2\right]^{1/2}.
 \end{equation}
-This is a small mean-only ensemble inspired by \citet{laksh2016}; it is not their heteroscedastic likelihood model.
-A second score measures input support:
+This is a mean-only ensemble inspired by \citet{laksh2017}.
+The input-support score is the average distance to the five nearest training observations:
 \begin{equation}
  d_5(x)=\frac{1}{5}\sum_{z\in N_5(x)}\|S(x)-S(z)\|_2,
 \end{equation}
-where $S$ is the training-only standardizer and $N_5$ contains five training neighbors.
-The neighbor index is rebuilt inside every inner and outer training partition.
-Threshold calibration uses held-out inner distances, never distances from training examples to themselves.
-This simple control follows applicability-domain reasoning \citep{meyer2020}; it does not reproduce weighted AOA or GeoQ.
+where $S$ standardizes inputs using the training set and $N_5$ contains the five nearest training observations.
+We rebuild the neighbor index within each training partition and set thresholds from held-out inner distances.
+This simple screen follows prior work on training support \citep{meyer2021}, but it does not guarantee reliable predictions under shift.
 
-The \emph{Spread95} and \emph{Support95} selectors accept scores below their station-weighted inner 95th percentiles.
-The \emph{Gain} selector predicts Equation~\ref{eq:gain} with a fixed boosted-tree regressor.
+\emph{Spread95} accepts observations below the station-weighted 95th percentile of inner ensemble spread.
+\emph{Support95} applies the same rule to input-support distance.
+\emph{Gain} predicts the benefit in Equation~\ref{eq:gain} with a fixed boosted-tree regressor.
 Its six inputs are $(\bar g,|\bar g|,s_g,\log(1+d_5),o,\mathrm{ETo})$.
 It uses 80 iterations, learning rate 0.05, seven leaves, minimum leaf size 50, L2 parameter 10, and no early stopping.
 Training weights give equal total weight to each station and are normalized to mean one.
-Gain accepts a correction only when its predicted improvement is positive.
-\emph{SupportGain} requires both Gain and Support95 acceptance.
-The neural estimator remains identical across these selectors.
+Gain accepts a correction only when predicted benefit is positive.
+\emph{SupportGain} also requires Support95 to accept.
+The neural estimator is the same for every selector.
 
-We include two controls.
-\emph{Uniform} chooses one multiplier from $\{0,0.25,0.5,0.75,1\}$ using inner station MAE.
-\emph{Clip} uses the unmodified fitted neural model but clips weather inputs to outer-training first and 99th percentiles at inference.
-Unchanged OpenET and the full residual ensemble define the endpoints.
-No selector hyperparameters are adjusted after viewing the outer results.
+MonoGain requires predicted benefit to decrease as ensemble spread and support distance increase.
+AugmentedGain adds randomized weather faults to benefit-model training.
+The extended comparison adds TunedGain, LogisticSign, and ConformalCSR under a frozen protocol.
+Uniform, LocalShrinkage, and Clip appear in the earlier exploratory analysis in Appendix~\ref{app:measured-weather}.
+No selector hyperparameters change after the outer results are viewed.
 
-\subsection{Natural transfer and controlled input faults}
-The selective experiment crosses two input specifications with two evaluations: proximity withholding and joint proximity-and-time withholding.
-The specifications contain seven archived inputs or six inputs without VPD.
-Each natural comparison retains every outer target.
-We score the complete system, including fallback rows, and report croplands separately.
-The 95\% inner thresholds do not impose 95\% outer acceptance under distribution shift.
+\subsection{Earlier measured-weather probes}
+An earlier analysis compares the seven archived inputs with a six-input version that omits VPD.
+It uses both proximity withholding and joint proximity-and-time withholding.
+Each natural comparison scores every test observation, including OpenET fallbacks, and reports cropland results separately.
+The 95\% inner threshold does not guarantee 95\% acceptance on test observations.
 
-Three additional probes change test inputs separately: VPD multiplied by 10, wind multiplied by 10, and temperature increased by $20\,{}^\circ\mathrm{C}$.
-Their labels, satellite estimates, neural parameters, and selector parameters remain fixed.
-Only probe rows with nonnegative exported actual vapor pressure are eligible.
-Each fault is compared with its identical unmodified probe rows.
-The VPD probe is an exact negative control when VPD is omitted.
-These are synthetic input faults, not interventions on weather and not estimates of fault prevalence.
-The protocol specifies their magnitudes before the new run.
+Additional probes multiply VPD or wind by 10, or add $20\,{}^\circ\mathrm{C}$ to temperature.
+They change the test inputs while holding labels and fitted parameters fixed.
+Only rows with nonnegative exported actual vapor pressure are eligible.
+The VPD probe is a negative control when the model omits VPD.
+These transformations are not weather interventions and do not estimate fault prevalence.
+The protocol sets each magnitude before the new run.
 
 \begin{figure*}[t]
 \captionsetup{width=.96\textwidth}
 \centering
 \includegraphics[width=.98\textwidth]{figure_6_selective_design.pdf}
-\caption{The selective residual experiment. Inner spatial cross-fitting supplies the selection data. Outer targets are used only for evaluation. Every rejected correction returns unchanged OpenET.}
+\caption{The selectors use predictions from inner groups that the neural networks did not train on. Outer test targets measure performance only. A rejected correction returns the original OpenET estimate.}
 \label{fig:selector-design}
 \end{figure*}
-\section{Selective transfer results}\label{sec:selection-results}
-\subsection{Screening and learning benefit behave differently}
-Table~\ref{tab:selective-natural} reports every fixed selector on the natural test rows.
-Under proximity withholding with archived inputs, the full residual ensemble scores 1.099 station MAE.
-Spread95 and Support95 score 0.817 and 0.818 $\unit$, respectively.
-They screen the known large neural failure, but neither improvement interval excludes zero against unchanged OpenET at 0.856.
-The learned Gain selector instead scores 1.126.
-Predicting relative benefit does not itself make that predictor reliable outside its calibration support.
+\section{Results}\label{sec:primary-results}
+\subsection{One station shows how a correction can fail}
+In one exploratory three-network run, Gain accepts all 32 records with physically invalid weather at the held-out \texttt{manilacotton} station.
+It predicts a mean benefit of 0.83 $\unit$.
+Instead, the corrections raise station-macro MAE from OpenET's 1.095 to 22.681 $\unit$, a 21.586 $\unit$ increase.
+SupportGain rejects all 32 corrections and returns OpenET.
+The mean correction magnitude is 21.98 $\unit$, far above the inner 95th percentile of 1.17 $\unit$.
+Ensemble spread is also above its inner 95th percentile: 39.42 versus 0.37 $\unit$.
+This is one station and one group, with no multi-group interval.
 
-After VPD omission, the full ensemble scores 0.835, Spread95 scores 0.832, and Support95 scores 0.838.
-Their improvement intervals remain inconclusive against OpenET.
-The simple Uniform control scores 0.816, with an exploratory improvement interval of [0.002, 0.093].
-Its cropland error remains higher than the baseline.
-Thus, complexity in the selector is not necessary for the best observed point score in this comparison.
-Figure~\ref{fig:selective-transfer} retains all four evaluation settings.
-
-The joint evaluation changes the interpretation again.
-For archived inputs, Uniform selects zero in every outer fold and exactly returns OpenET.
-The full ensemble nevertheless has lower observed station MAE on the later outer years, 0.766 versus 0.870.
-An earlier validation interval can reject corrections that later help on average.
-After VPD omission, the joint Gain, SupportGain, and full-model intervals all include zero.
-These results give no general guarantee for the learned selector or the fallback rule.
-
-\begin{table*}[t]
-\captionsetup{width=.96\textwidth}
-\centering\footnotesize
-\caption{Natural-test selective correction. Each cell reports station MAE followed by the paired 95\% improvement interval against OpenET, in $\unit$. Proximity uses 7,923 rows, 85 stations, and 63 groups; joint uses 649 rows, 27 stations, and 24 groups. Every method retains fallback rows. Intervals are exploratory and unadjusted.}
-\label{tab:selective-natural}
-\begin{tabular}{lrrrr}\toprule
-Method & Proximity / archived & Proximity / no VPD & Joint / archived & Joint / no VPD\\\midrule
-\tableinput{table_selective_natural.tex}
-\bottomrule\end{tabular}
-\end{table*}
+We then exclude that station and compare 133 other rule-violating records from 21 stations in 17 groups.
+SupportGain has 0.015 $\unit$ lower MAE than Gain (95\% group-bootstrap interval [0.000, 0.034]).
+Only two groups show a difference; 15 show none.
+OpenET has lower MAE than either selector: 0.755 $\unit$, compared with 0.791 for Gain and 0.776 for SupportGain.
+These records do not establish a device fault or a broad selector advantage.
 
 \begin{figure*}[t]
 \captionsetup{width=.96\textwidth}
-\centering\includegraphics[width=.98\textwidth]{figure_7_selective_transfer.pdf}
-\caption{Paired improvement intervals for the selective methods. Positive values favor correction over unchanged OpenET. Horizontal scales differ across panels. The broad archived-input spatial interval reflects the concentrated neural failure.}
-\label{fig:selective-transfer}
+\centering\includegraphics[width=.96\textwidth]{tier1_selective_corrected/figure_11_tier1_gain_mechanism.pdf}
+\caption{Each point is one of 32 records from the held-out station. Gain predicts benefit even though correction size and ensemble spread exceed their inner-training 95th percentiles.}
+\label{fig:gain-mechanism}
 \end{figure*}
-
-\subsection{Input support controls a specific neural fault}
-The unmodified probe subset contains 7,873 observations at 84 stations in 62 proximity groups.
-After VPD omission, its full-ensemble station MAE is 0.829.
-Multiplying wind inputs by ten raises that error to 1.415 $\unit$.
-Spread95 scores 0.914 and Support95 scores 0.857, against 0.853 for unchanged OpenET.
-These are errors on identical probe rows, with identical fitted models and unchanged targets.
-The fault changes only the supplied wind coordinate.
-
-The two thresholds spend different correction budgets.
-Spread95 accepts 19.96\% of the station-weighted wind-fault population, whereas Support95 accepts 1.74\%.
-On the natural no-VPD population, their acceptance rates are 95.74\% and 96.84\%.
-The small Support95 fault error therefore depends substantially on returning to the baseline.
-It is not evidence that its accepted neural predictions have uniformly superior accuracy.
-
-The learned Gain selector accepts 56.95\% under the wind fault and scores 1.261 station MAE.
-Adding the support condition reduces acceptance to 1.40\% and yields 0.856.
-A selector trained on relative loss can itself extrapolate into a poorly represented score configuration.
-A separate support condition changes that behavior without retraining the neural predictor.
-
-The temperature fault supplies a negative control on generality.
-Support95 scores 0.904 under the $20\,{}^\circ\mathrm{C}$ offset, still worse than OpenET at 0.853.
-Figure~\ref{fig:input-faults} and Table~\ref{tab:selective-faults} report this failure alongside the wind result.
-VPD corruption changes no predictions in the no-VPD arm, as required by the implementation's exact negative control.
 
 \begin{figure*}[t]
 \captionsetup{width=.96\textwidth}
-\centering\includegraphics[width=.98\textwidth]{figure_8_input_faults.pdf}
-\caption{Paired input faults on 7,873 eligible proximity-test observations after VPD omission. The dashed line is unchanged OpenET. Each complete system includes its fallback predictions. Different acceptance rates contribute to these differences. Table~\ref{tab:selective-faults} reports the other evaluation and the exact negative control.}
-\label{fig:input-faults}
+\centering\includegraphics[width=.96\textwidth]{figure_19_tier1_natural_violations.pdf}
+\caption{Among 133 rule-violating records outside the known station, only two of 17 groups show a difference between Gain and SupportGain. OpenET has the lowest station-macro MAE. Rejected corrections return OpenET.}
+\label{fig:natural-violations}
 \end{figure*}
 
-\subsection{Matched budgets limit the stronger interpretation}
-The fixed-threshold results motivate a post hoc ranking diagnostic with equal station-weighted acceptance budgets.
-Spread and support scores are divided by their respective inner 95th-percentile thresholds before pooling folds.
-Predicted gain is ranked from largest to smallest.
-The outer score distribution supplies the ranks without labels.
-A randomized boundary observation gives an exact acceptance budget.
-We score its expected loss, rather than interpolate its two predictions.
-This is a transductive ranking diagnostic; it is not the deployment rule evaluated above.
+\subsection{Support screening helps under altered inputs, but accepts fewer records}
+The all-station protocol defines 40 comparisons before fitting.
+None has a Holm-adjusted one-sided $p$-value below 0.05; the smallest is 0.126.
+These tests do not directly compare SupportGain with Gain.
 
-At 50\% acceptance on the no-VPD wind probe, Support ranks yield 1.000 expected station MAE, versus 1.023 for Spread.
-Their difference is 0.023 $\unit$, with paired interval $[-0.022,0.066]$.
-Thus, the apparent fixed-threshold support advantage does not establish a superior uncertainty ranking at equal coverage.
-This negative result is essential to the interpretation.
+Across 30 shared split-seed and proximity settings, SupportGain lowers clean MAE over Gain by a mean of 0.00438 $\unit$ (standard deviation 0.00289).
+Only one of 30 nominal group-bootstrap intervals excludes zero.
+The settings reuse observations, so they do not show a stable clean advantage.
 
-The Gain ranking fails more clearly in this specific probe.
-At the same 50\% budget it scores 1.243, versus 1.000 for Support.
-The paired difference is 0.243 $\unit$, with interval [0.110, 0.412].
-On the identical unmodified rows, Gain scores 0.835 versus 0.867 for Support.
-That point advantage is 0.031, with interval $[-0.0003,0.0690]$; it is not decisive evidence of natural-data superiority.
-The reversal identifies a failure of the fitted benefit selector under a specified covariate fault, after removing the known VPD anomaly.
+SupportGain has lower point MAE than Gain in all 30 settings under each of twelve synthetic weather transforms.
+Across the 30 settings, temperature increased by 32 $^\circ$C yields a mean improvement of 0.55623 $\unit$ (SD 0.04753; range 0.44878 to 0.62684).
+These comparisons reuse observations and keep labels and fitted models fixed.
+They describe sensitivity to the chosen transforms, not natural fault prevalence.
+Figure~\ref{fig:gridmet-weather-faults} shows the wind, temperature, and VPD probes.
+The VPD panel tests a kPa-to-hPa unit error at one magnitude.
 
-The joint wind comparison does not confirm the same advantage: Gain minus Support is 0.032, with interval $[-0.105,0.194]$.
-Temperature-fault comparisons are also inconclusive.
-Figure~\ref{fig:matched-acceptance} gives the complete curves, and the saved records include every input specification and fault.
-No curve or acceptance budget is used to refit a model.
+A separate post hoc five-fold spatial holdout excludes each test station from its fold's fit.
+Across 102 groups, the clean Gain-minus-SupportGain difference is 0.0059 $\unit$ (simultaneous 95\% interval [-0.0069, 0.0186]).
+Under wind multiplied by 3.6, SupportGain lowers MAE by 0.1478 $\unit$ (simultaneous 95\% interval [0.0697, 0.2260]).
+It accepts 9.3\% of records, compared with 51.8\% for Gain.
+Coverage falls below 0.3\% under Fahrenheit-as-Celsius and VPD multiplied by 10.
+This exploratory analysis uses the same archive and conditions on fitted models; Appendix~\ref{app:spatial-holdout} reports the full estimates.
 
 \begin{figure*}[t]
 \captionsetup{width=.96\textwidth}
-\centering\includegraphics[width=.98\textwidth]{figure_9_matched_acceptance.pdf}
-\caption{Expected station MAE at matched station-weighted acceptance budgets, with VPD omitted. The boundary decision is randomized to match each budget exactly. Every other rejected correction returns OpenET. These post hoc curves use label-free outer ranks; they do not establish deployable thresholds. The paired 50\% comparisons appear in the text.}
-\label{fig:matched-acceptance}
+\centering\includegraphics[width=.98\textwidth]{figure_20_tier1_gridmet_10member_weather_fault_response.pdf}
+\caption{Ten-network results under fixed weather changes. The top row shows MAE reduction over OpenET; the bottom row shows station-weighted acceptance. Descriptive 95\% intervals condition on fitted models. Wind labels give multipliers; temperature labels give Celsius offsets. ``F as C'' reads Fahrenheit values as Celsius. The VPD panel shows one kPa-to-hPa error.}
+\label{fig:gridmet-weather-faults}
 \end{figure*}
-\subsection{Cropland transfer is a separate ML target}
-The natural cropland subset contains 2,670 observations from 32 stations in 18 proximity groups.
-After VPD omission, OpenET scores 0.931 station MAE, while the full residual ensemble scores 0.997 $\unit$.
-All selective alternatives have higher cropland point error than OpenET; uniform shrinkage is closest at 0.961 $\unit$.
-Its paired improvement interval is $[-0.074,0.017]$, so this comparison does not establish a cropland benefit.
-The later-year cropland subset contains 403 observations from nine stations in seven groups.
-There, no-VPD SupportGain scores 0.790 against 0.785 for OpenET, with improvement interval $[-0.035,0.017]$.
-Appendix~\ref{app:selective-tables} reports every method and both input specifications.
-These results limit the agricultural interpretation: identifying a correction failure is useful evidence, but it does not validate a better cropland estimator.
-We withdraw the earlier H2-strat claim: the Phase 2 result is pooled and does not establish an OpenET benefit for croplands or irrigated croplands.
 
+\begin{figure*}[t]
+\captionsetup{width=.96\textwidth}
+\centering\includegraphics[width=.96\textwidth]{figure_16_tier1_split_proximity_sensitivity.pdf}
+\caption{Clean SupportGain improvement over Gain for ten inner split seeds and three proximity thresholds. Whiskers show 95\% group-bootstrap intervals; shading shows the mean plus or minus one standard deviation across split seeds.}
+\label{fig:gridmet-split-sensitivity}
+\end{figure*}
+
+\subsection{Crop-only training lowers error on the tested cohort}
+SupportGain had the lowest clean all-station error among seven selectors in the extended comparison, at 0.801 $\unit$.
+That ranking used the same archive and included the cropland test records.
+The paired comparison therefore does not include uncertainty from selecting SupportGain.
+
+On the same 3,234 cropland test records from 49 stations and 24 groups, all-station SupportGain scores 0.829 $\unit$ MAE.
+Cropland-only SupportGain scores 0.788 $\unit$.
+The predeclared difference is 0.0414 $\unit$ (95\% group-bootstrap interval [0.0085, 0.0788]).
+The interval uses 2,000 draws and conditions on the fitted models, selectors, and thresholds.
+Figure~\ref{fig:cropland-training} shows the annual estimates.
+
+OpenET scores 0.837 $\unit$ on these records.
+The post hoc Full comparison also favors crop-only training: 0.777 versus 0.885 $\unit$ MAE.
+Its difference is 0.1080 $\unit$ (95\% interval [0.0388, 0.2060]).
+The interval uses 2,000 group-bootstrap draws (seed 20261006) across the same 24 groups and conditions on the fitted models.
+We reviewed point estimates before this comparison, so it is not independent confirmation or part of the primary family.
+Crop-only SupportGain accepts 57.4\% of records; all-station SupportGain accepts 64.1\%.
+This result supports population-matched training within this archive, not a general crop or irrigation claim.
+
+\begin{figure*}[t]
+\captionsetup{width=.96\textwidth}
+\centering\includegraphics[trim=120pt 62pt 105pt 0pt,clip,width=.96\textwidth]{figure_18_tier1_cropland_training.pdf}
+\par\medskip
+\noindent\begin{minipage}{.96\textwidth}
+\small\textbf{How to read the result.} Eight of nine yearly estimates favor crop-only training. The years reuse stations and groups, so they show a pattern within this cohort, not independent replications.
+\end{minipage}
+\caption{Yearly and pooled all-station minus crop-only SupportGain error. Positive values favor crop-only training. The pooled difference is 0.0414 $\unit$ (95\% group-bootstrap interval [0.0085, 0.0788]).}
+\label{fig:cropland-training}
+\end{figure*}
+
+Additional risk-coverage curves and exploratory audits remain in the reproducibility package.
 \section{Discussion and limits}
-\subsection{What the narrow result establishes}
-The fitted benefit selector can transfer differently from the neural predictor it controls.
-In the no-VPD wind probe, a correct relative-loss training objective does not prevent the selector from accepting damaging corrections.
-Support screening suppresses that specific failure, but much of its fixed-threshold advantage comes from greater fallback.
-Matching acceptance separates two questions: whether the selector rejects unfamiliar inputs and whether it ranks useful corrections better.
-The support-versus-disagreement ranking difference is inconclusive at the specified 50\% budget.
-The larger Gain-versus-Support difference applies to one spatial probe and does not confirm in the smaller later-year cohort.
+The study does not establish a reliable clean-input advantage for support screening.
+The 40-test family does not compare SupportGain directly with Gain, and the direct clean differences are small and uncertain.
+The fixed weather transformations show how selectors respond to chosen input changes; they do not estimate natural fault rates.
 
-For agricultural deployment, selection must improve the error of the relevant crop population.
-The cropland results show why an aggregate mixed-land-cover score cannot supply that evidence.
-The present result supports diagnostics for correction behavior; it does not establish an agricultural deployment gain.
+One station shows a severe failure: Gain accepts large corrections on physically invalid weather, while SupportGain falls back to OpenET.
+The other 17 groups do not show a broad benefit, and OpenET has the lowest error on those records.
+An exploratory audit finds adjusted SupportGain advantages over Gain in 10 of 13 conditions and over MonoGain in nine, but none over AugmentedGain.
+The outcomes were visible before that audit, so independent sites with documented faults must test the pattern.
+Physical rule violations alone do not prove sensor faults.
 
-\subsection{Scope of inference}
-All new analyses extend an inspected benchmark.
-The selective protocol is fixed before its run, but follows knowledge of the covariate anomaly and prior outcomes.
-The matched-budget analysis is specified after the fixed-threshold results and is explicitly post hoc.
-The bootstrap conditions on fitted models and selector ranks, omits retraining uncertainty, and has no multiplicity correction.
-The 62 probe groups, rather than 7,873 days, supply its main independent resampling units.
+Training only on cropland records lowers error on the tested cropland cohort.
+However, SupportGain was selected from outcomes on the same archive, including those test records.
+The reported interval omits that selection and model refitting.
+The result supports a population-matching hypothesis within this archive, not general crop performance.
 
-The three-seed ensemble measures initialization variation, not calibrated posterior uncertainty.
-The neural architecture and selectors have fixed budgets rather than exhaustive tuning.
-No matched implementation of a leading deferral surrogate, neural process, or GeoQ model is evaluated.
-The result cannot establish superiority over those methods.
-An independent archive and additional natural shifts are necessary to test whether the identified failure generalizes.
-
-The controlled faults preserve labels and the satellite fallback by construction.
-They isolate corrupted predictor inputs; they do not simulate the physical consequences of changing wind or temperature.
-They do not estimate real fault frequencies.
-These probes do not demonstrate pure covariate shift with an unchanged conditional target law.
-Corrupting a measured input can change that law.
-Omitting VPD also does not certify the remaining sensors, energy-balance corrections, or target measurements.
-The instrument-level origin of the negative vapor-pressure exports remains unresolved.
-
-The cohort selects 85 of 152 joined stations with complete covariates.
-This selection can favor particular sensors, climates, and land covers.
-The archive does not establish irrigated status for every cropland station.
-Available measurements at flux towers do not establish covariate availability at uninstrumented fields.
-The upstream satellite products may incorporate development knowledge from this archive; withholding applies to the additional MLET models.
-
+The rolling-year tests reuse stations and do not measure unseen-site transfer.
+Land-cover labels do not identify irrigated fields, and this study does not test irrigation interventions or forecast skill.
+All 360 neural fits in the cropland run reach the 120-iteration limit and report convergence warnings.
+This limit may affect the fitted predictor and selector.
+The measured-weather analysis is exploratory, and the available gridMET data do not provide a device-accuracy scale.
 \section{Conclusion}
-Selective neural correction requires a comparison with the fallback's error.
-In this ET archive, a cross-fitted benefit selector fails under a controlled wind-input shift even after the anomalous VPD feature is removed.
-Support screening reduces that failure mainly by rejecting more corrections.
-At equal acceptance, support does not decisively outrank ensemble disagreement, while its advantage over the fitted benefit ranking is specific to the spatial wind probe.
-These results identify a testable weakness in selective residual modeling and preserve the cases that do not confirm it.
+The study does not identify a generally reliable rule for when a neural correction should change a clean satellite estimate.
+It exposes one severe selector failure and finds lower error after crop-only training on the tested cropland cohort, with method-selection uncertainty.
+Independent sites and documented input faults must confirm these findings before they support a broader claim.
 \section*{Acknowledgements}
 I thank Meetpal S. Kukal for research mentorship and critical feedback on an earlier manuscript.
 I thank the OpenET and flux-data contributors for making the source datasets available.
@@ -664,403 +487,99 @@ All reported experimental values come from executed scripts and saved prediction
 
 
 \clearpage
+\onecolumn
+\pagestyle{fancy}
 \appendix
-\section{Original benchmark and covariate mechanisms}\label{app:benchmark}
-\begin{figure*}[t]
-\captionsetup{width=.96\textwidth}
-\centering\includegraphics[width=.97\textwidth]{figure_2_phase2_models.pdf}
-\caption{The original station-held-out model visual, retained unchanged. H2 (the preregistered OpenET comparison) concerns B2 weather ridge and M3 combined ridge. Its matched sample has 7,923 rows. The previous-label persistence diagnostic uses 1,555 pairs and is not a matched correction baseline.}
-\label{fig:original-models}
-\end{figure*}
-\subsection{The earlier headline reproduces, but it compares information sets}
-The station split reproduces all five earlier fitted-model MAEs to numerical precision.
-Weather ridge scores 1.514 $\unit$ and combined ridge scores 0.856 $\unit$.
-Their pooled difference remains 0.658 $\unit$.
-The original station-bootstrap interval is $[0.399,0.911]$ $\unit$.
-Unchanged OpenET scores 0.784 $\unit$, while affine calibration scores 0.781 $\unit$.
-Thus, the 43.4\% reduction demonstrates the value of the satellite input relative to that weather baseline.
-It does not demonstrate a useful learned correction of OpenET.
+\section{Exploratory measured-weather fault and repair analyses}\label{app:measured-weather}
+This appendix reports a corrected three-member analysis on an earlier measured-weather cohort.
+It uses seeds 20260713 through 20260715 and recomputes the correction, spread, and support distance for transformed inputs.
+We had inspected the original results before correction, so these analyses remain exploratory.
+The cohort has 7,758 rows from 84 stations and 62 proximity groups.
 
-The nonlinear weather baseline reduces station-split pooled MAE to 1.332 $\unit$.
-It still trails unchanged OpenET on the same 7,923 observations.
-The proximity results in Table~\ref{tab:main} likewise show the importance of the satellite baseline.
-No original-input learned correction has a strictly positive primary 95\% interval against unchanged OpenET.
+\subsection{Weather fault types}
+The dose tests multiply wind by 0, 0.447, 1, 2.237, 3.6, 5, or 10.
+They add temperature offsets of 0, 5, 10, 20, or 32 degrees Celsius.
+Other tests read Fahrenheit values as Celsius and multiply VPD by ten.
+Additional wind faults set values to zero, replace missing values with the training median, hold values for seven days, or use a training-derived day-of-year climatology.
+The tests keep labels and fitted model parameters fixed.
+The source workbook has no instrument accuracy specification, so these runs add no sensor-specification noise.
+The ten-member gridMET dose responses appear in Figure~\ref{fig:gridmet-weather-faults}.
+Figure~\ref{fig:measured-fault-types} shows the additional measured-weather fault types.
 
-\begin{table*}[t]
-\captionsetup{width=.96\textwidth}
-\centering\small
-\caption{Primary proximity-group evaluation on 7,923 observations, 85 stations, and 63 groups.
-All errors and MAE differences use $\unit$.
-Positive $\Delta$ favors the candidate over unchanged OpenET.
-Intervals use paired component resampling. Neural rows average three seeds.}
-\label{tab:main}
-\begin{tabular}{lrrrrl}\toprule
-Model & Pooled MAE & RMSE & Station MAE & $\Delta$ & 95\% interval\\\midrule
-\tableinput{table_main.tex}
-\bottomrule\end{tabular}
-\end{table*}
+\begin{center}
+\includegraphics[width=.88\textwidth]{tier1_selective_corrected/figure_10_tier1_fault_types.pdf}
+\captionof{figure}{Exploratory fault-type results from the corrected three-member run. Each transformation keeps fitted model parameters and labels fixed.}
+\label{fig:measured-fault-types}
+\end{center}
 
-\subsection{One physically inconsistent station dominates several errors}
-The source workbook specifies kPa for both actual vapor pressure and VPD.
-Among selected observations, 50 rows at six stations have negative actual vapor pressure.
-All 32 selected records at \texttt{manilacotton} are in this set.
-Its actual vapor pressure ranges from $-170.744$ to $-20.847$ kPa.
-Its VPD ranges from 23.811 to 174.231 kPa.
-The largest VPD at the other 84 stations is 4.720 kPa.
-Negative actual vapor pressure is physically invalid.
-We cannot identify the upstream processing cause from these exported files.
-We therefore do not assert a unit-conversion error or invent a correction factor.
+\subsection{Selector repairs}
+Three controls test alternative correction choices.
+\emph{Uniform} selects a single multiplier from $\{0,0.25,0.5,0.75,1\}$ by inner station MAE.
+\emph{LocalShrinkage} estimates the conditional moments $\E[(y-o)g\mid x]$ and $\E[g^2\mid x]$ with two gradient-boosted regressors.
+It multiplies $g(x)$ by $\lambda(x)=\operatorname{clip}(\widehat{\E}[(y-o)g\mid x]/\widehat{\E}[g^2\mid x],0,1)$, or sets $\lambda(x)=0$ when the denominator is zero.
+The ratio targets squared error, not the primary absolute-error score.
+The regressors use inner out-of-group predictions, equal station weights, and the Gain feature set.
+\emph{Clip} limits weather inputs to the outer-training 1st and 99th percentiles at inference.
 
-These 32 records constitute 0.404\% of the selected observations.
-In the primary split, they contribute 79.1\% of weather-ridge squared error and 26.9\% of combined-ridge squared error.
-For the direct and residual neural ensembles, the corresponding shares are 36.9\% and 74.4\%.
-These are exact descriptive shares in the evaluated cohort, not estimates of a population prevalence.
-Figure~\ref{fig:validity} relates the source inconsistency to the error concentration.
+LocalShrinkage has clean station-macro MAE 0.806 mm/day; SupportGain has 0.825.
+The paired interval for its improvement is [0.001, 0.037] across 62 groups.
+The Holm-adjusted p-value is 0.154 across eleven post hoc comparisons.
+LocalShrinkage and Uniform differ by 0.003 mm/day, with an interval of [-0.009, 0.019].
 
-\begin{figure*}[t]
-\captionsetup{width=.96\textwidth}
-\centering\includegraphics[width=\textwidth]{figure_1_validity.pdf}
-\caption{Input validity and error concentration in the primary split.
-Left: archived actual vapor pressure and VPD on selected dates.
-Right: squared-error shares from 32 observations at the suspect station.
-The source values support a physical-inconsistency diagnosis, not an identified conversion factor.}
-\label{fig:validity}
-\end{figure*}
+Under tenfold wind, MonoGain has station-macro MAE 1.230 mm/day and Gain has 1.242.
+SupportGain has 0.853 on these same probe rows.
+Corrected AugmentedGain has MAE 0.860 on clean rows, against 0.825 for SupportGain.
+Under tenfold wind, AugmentedGain has 0.862 and SupportGain has 0.853.
+The 95\% interval for the AugmentedGain improvement is [-0.0231, 0.0037] mm/day.
+None of its four comparisons with SupportGain passes Holm correction.
+These results do not identify a confirmed selector repair.
 
-At this station, the residual neural ensemble has MAE 25.321 $\unit$.
-Its MAE on the other 7,891 records is 0.741 $\unit$.
-That contrast concerns the already fitted predictions.
-Excluding the station from scoring does not establish how a model trained on a corrected archive would behave.
-We therefore perform explicit refits that omit VPD everywhere while retaining every target observation.
+\subsection{Spatial holdout sensitivity}\label{app:spatial-holdout}
+This post hoc analysis pools five spatial folds on the clean gridMET cohort.
+It uses 16,366 rows from 151 stations and 102 spatial groups.
+Each fold's fit excludes every row from its test groups.
+Each row receives one prediction from a model that excludes its station.
+Training uses all dates from other groups, so this does not test forecasting.
+The selector and condition choices were visible before this analysis.
 
-\subsection{Covariate ablation removes the large neural failure}
-Omitting VPD reduces primary residual-network station MAE from 1.099 to 0.835 $\unit$.
-Pooled MAE falls from 0.841 to 0.769 $\unit$.
-At the suspect station, MAE falls from 25.321 to 1.420 $\unit$.
-The direct neural model shows the same broad pattern.
-These refits use six inputs and 1,313 parameters, with all other neural settings unchanged.
-
-The ablation removes valid VPD information as well as invalid values.
-It also changes the input dimension and corresponding neural initialization.
-Consequently, it is a controlled feature ablation, not a pointwise reconstruction of the true meteorology.
-Its value is to test whether the original conclusion survives without reliance on that input.
-
-Combined ridge also improves when VPD is omitted, from 0.961 to 0.864 station MAE.
-Its remaining difference from OpenET is inconclusive.
-A separate input-support control clips weather features at their training 1st and 99th percentiles.
-Combined ridge then scores 0.866 station MAE, similar to the no-VPD result.
-This control retains VPD but does not reconstruct physical measurements.
-
-\begin{table*}[t]
-\captionsetup{width=.96\textwidth}
-\centering\small
-\caption{Post hoc covariate sensitivity on the same primary test rows.
-Intervals concern station-MAE improvement over unchanged OpenET, not the difference between each pair of refits.
-All values use $\unit$.}
-\label{tab:sensitivity}
-\begin{tabular}{llrrl}\toprule
-Model & Inputs & Pooled MAE & Station MAE & 95\% improvement interval\\\midrule
-\tableinput{table_sensitivity.tex}
-\bottomrule\end{tabular}
-\end{table*}
-
-Figure~\ref{fig:ablation} shows the paired intervals after the failure is removed.
-Both no-VPD neural models remain statistically inconclusive against unchanged OpenET under proximity grouping.
-For the residual network, the difference is 0.021 $\unit$, with interval $[-0.028,0.082]$.
-Using station identifiers alone gives a larger difference of 0.052 $\unit$, with interval $[0.008,0.109]$.
-Thus, even after covariate ablation, the evidence for improvement depends on the treatment of nearby stations.
-We cannot isolate proximity dependence from the accompanying change in fold composition using one fold allocation.
-
-\begin{figure*}[t]
-\captionsetup{width=.96\textwidth}
-\centering\includegraphics[width=\textwidth]{figure_2_ablation.pdf}
-\caption{Paired 95\% intervals for station-MAE reductions against unchanged OpenET.
-The primary proximity split evaluates identical target rows in both panels.
-Left: archived weather inputs. Right: refits without VPD.
-The horizontal scales differ to display the large original uncertainty and the smaller remaining effects.}
-\label{fig:ablation}
-\end{figure*}
-
-\subsection{Correction alignment and agricultural transfer differ}
-Original-input gated boosting scores 0.836 station MAE, compared with 0.856 for OpenET.
-Its improvement interval is $[-0.001,0.047]$ $\unit$.
-The no-VPD gate scores 0.831, with an exploratory improvement interval of $[0.004,0.054]$.
-This small all-land-cover result should not be described as a general agricultural gain.
-
-Across 32 cropland stations, unchanged OpenET scores 0.931 station MAE.
-The no-VPD gate scores 0.954, giving a difference of $-0.023$ with interval $[-0.044,0.003]$.
-The no-VPD residual network scores 0.997 on this stratum.
-The all-land-cover improvement therefore does not transfer to the agricultural point estimate.
-Table~\ref{tab:strata} reports both populations explicitly.
-
-An additional post hoc control fits a separate OpenET intercept and slope within each training land-cover class.
-It uses the global affine fit when fewer than three training observations represent a class.
-Test land-cover metadata selects the applicable equation; test target values never fit it.
-This simple control scores 0.820 station MAE in the primary split, compared with 0.856 for unchanged OpenET.
-Its paired improvement interval is $[-0.018,0.087]$ $\unit$.
-The joint result is 0.830, with improvement interval $[-0.079,0.169]$ on 649 observations.
-These intervals remain inconclusive, but the point estimates reinforce the need for simple calibration controls.
-This control has extra static information, so it does not isolate an architecture effect against the seven-input models.
-
-Figure~\ref{fig:alignment} diagnoses full residual boosting through Equation~\ref{eq:risk}.
-Each point uses one station's empirical residual alignment and correction energy.
-Points above the diagonal gain squared-error accuracy from a full update.
-Points below it lose accuracy.
-These test moments explain realized performance; they cannot select a deployable weight without test-label leakage.
-Land-cover differences in these moments describe statistical error structure, not irrigation mechanisms.
-
-\begin{figure*}[t]
-\captionsetup{width=.96\textwidth}
-\centering\includegraphics[width=\textwidth]{figure_3_alignment.pdf}
-\caption{Exact squared-error diagnostics for original-input residual boosting.
-Both axes have units $(\unit)^2$.
-Each point is one test station; color identifies croplands versus other land covers.
-A full correction improves station MSE only above the diagonal.
-Test moments are explanatory and never select the reported gate.}
-\label{fig:alignment}
-\end{figure*}
-
-\subsection{Later years expose both weighting and selection limits}
-Table~\ref{tab:joint} reports the joint station-and-time evaluation.
-Residual boosting improves station MAE from 0.870 to 0.780 $\unit$.
-Its paired interval, $[-0.009,0.223]$, includes zero.
-The same model worsens pooled MAE from 0.795 to 0.823 $\unit$.
-These observations are compatible: stations with more records receive more influence in the pooled score.
-Figure~\ref{fig:estimands} shows the resulting difference in model rankings.
-
-For the original-input residual network, the unadjusted improvement interval is $[0.002,0.238]$ $\unit$.
-The no-VPD version gives interval $[-0.035,0.220]$.
-We retain both outcomes and do not select the favorable specification after evaluation.
-The small test population and multiple exploratory comparisons limit either inference.
-
-The original-input gate selects zero correction in eight of ten outer folds.
-Its other weights are approximately 0.0995 and 0.0001.
-The inner earlier-to-later validation discourages correction, even though some outer test stations benefit from full updates.
-This is a negative result for the gate as a general transfer selector.
-An earlier validation distribution does not guarantee the correct decision under a subsequent shift.
-
-\begin{table*}[t]
-\captionsetup{width=.96\textwidth}
-\centering\small
-\caption{Joint transfer to withheld proximity groups in 2019--2020.
-All models use 649 matched observations from 27 stations in 24 groups.
-Training ends before 2019. Errors and differences use $\unit$.}
-\label{tab:joint}
-\begin{tabular}{lrrl}\toprule
-Model & Pooled MAE & Station MAE & 95\% station-improvement interval\\\midrule
-\tableinput{table_joint.tex}
-\bottomrule\end{tabular}
-\end{table*}
-
-\begin{figure*}[t]
-\captionsetup{width=.96\textwidth}
-\centering\includegraphics[width=\textwidth]{figure_4_estimands.pdf}
-\caption{The weighting rule changes the joint-transfer conclusion on identical observations.
-The dashed line marks unchanged OpenET.
-Residual boosting worsens pooled MAE but improves the station-weighted point estimate.
-Table~\ref{tab:joint} supplies paired uncertainty intervals.}
-\label{fig:estimands}
-\end{figure*}
-
-
-\section{The algebra does not create a new representation method}
-Suppose a linear model uses standardized input $x\in\R^p$ and isotropic ridge penalty.
-For an orthogonal matrix $Q$, set $z=Q^\top x$ and $\theta=Q^\top\beta$.
-Then $\theta^\top z=\beta^\top x$ and $\|\theta\|_2^2=\|\beta\|_2^2$.
-The prediction and ridge objective are unchanged under this rotation.
-A numerical test verifies held-out prediction equivalence within $10^{-11}$ relative and $10^{-12}$ absolute tolerance.
-Thus, simply rotating linear features into orthogonal components cannot supply an improvement here.
-Additional constraints, nonlinear predictors, or a changed training objective would require separate controlled experiments.
-This observation prevents an unsupported attribution of novelty to factorization terminology.
-
-For a mixture of station populations, the moments in Equation~\ref{eq:risk} also mix:
-\begin{equation}
-A=\sum_s w_s A_s,\qquad B=\sum_s w_s B_s.
-\end{equation}
-Changing $w_s$ can change both the optimal correction weight and the sign of a full correction's benefit.
-Pooled scoring uses $w_s=n_s/N$; station-macro scoring uses $w_s=1/S$.
-This provides a direct explanation for the weighting sensitivity without requiring a change in predictions.
-It is an algebraic identity, not a new theorem about distribution shift.
-
-\section{Cropland and other land covers}
-\begin{table*}[t]
-\captionsetup{width=.96\textwidth}
-\centering\small
-\caption{Explicit target populations after VPD omission.
-OpenET is unchanged; the other models omit VPD.
-The interval measures station-MAE improvement against OpenET, in $\unit$.
-Rounded endpoints near zero must not be interpreted as definitive significance.}
-\label{tab:strata}
-\begin{tabular}{lllrlrl}\toprule
-Split & Stratum & Sites & Rows & Model & Station MAE & 95\% interval\\\midrule
-\tableinput{table_strata.tex}
-\bottomrule\end{tabular}
-\end{table*}
-The proximity cropland subset contains 18 groups; its other-land-cover subset contains 45 groups.
-The joint cropland subset contains seven groups.
-Its small number of independent resampling units limits generalization.
-Models are trained across land covers; these are evaluation strata, not separate fitted crop models.
-
-\section{Optimization seeds}\label{app:seeds}
-\begin{table*}[t]
-\captionsetup{width=.96\textwidth}
-\centering\small
-\caption{Station-macro MAE for every neural seed, in $\unit$.
-The main tables use predictions averaged across seeds, not the average of these errors.
-No seed is selected for its test performance.}
-\begin{tabular}{llrrr}\toprule
-Split & Model & 20260713 & 20260714 & 20260715\\\midrule
-\tableinput{table_seeds.tex}
-\bottomrule\end{tabular}
-\end{table*}
-All networks complete the specified 120 epochs.
-Iteration-limit warnings are retained in the run records.
-They identify termination at the declared budget, not a demonstrated converged optimum.
-The results characterize these trained models under that budget.
-
-\section{Compute and reproducibility}
-\begin{table*}[t]
-\captionsetup{width=.96\textwidth}
-\centering\small
-\caption{Measured computation for the ten primary outer fits per model.
-Entries are median [25th, 75th percentile], in milliseconds.
-Neural rows sum all three seed costs within each fold.
-Prediction times cover each entire fold batch; batch sizes vary.
-Times exclude downloads, inner selection, reporting, and figure rendering.}
-\begin{tabular}{lrr}\toprule
-Model & Fit time (ms) & Batch prediction (ms)\\\midrule
-\tableinput{table_cost.tex}
-\bottomrule\end{tabular}
-\end{table*}
-The original-input experiment takes 93.45 seconds end to end in the recorded local run.
-The tree/ridge sensitivity takes 5.46 seconds; the neural sensitivity takes 82.10 seconds.
-These are single-run wall times, not latency benchmarks with independent repetitions.
-The recorded platform is macOS 26.6.2 on ARM, with the numerical thread limit set to one.
-Paid training-compute expenditure is USD 0; electricity cost is not measured.
-Downloads and manuscript production are outside these timings.
-
-The original source snapshot is MLET revision \texttt{9b922ad}.
-New scripts and protocols have separate SHA-256 receipts.
-The receipts retain the full revision and both source-archive MD5 values.
-The reproducibility package also records SHA-256 values for both archives and the rebuilt cohort.
-
-To reproduce the experiments, acquire the two archives and verify their recorded hashes.
-Run the main audit, the covariate sensitivity, and the neural sensitivity in that order.
-Run the land-cover control with the saved outer partitions.
-Completed result files are protected against silent overwrite.
-The figure builder reads saved predictions and does not refit the models.
-All source humidity flags remain in the exported audit table.
-No repaired humidity values are substituted into the archive.
-
-The selective experiment adds 480 neural fits: three seeds in three inner folds and one outer fit, across 40 outer configurations.
-Its recorded single-run wall time is 161.98 seconds on the same platform, with one numerical thread.
-This includes selector fitting, prediction, output writing, and reporting; it excludes literature work and manuscript production.
-All 40 outer neural ensembles reproduce the earlier saved predictions within relative and absolute tolerance $10^{-10}$.
-No ensemble is rerun to select a favorable seed.
-\clearpage\onecolumn
-\section{Selective results by population and fault}\label{app:selective-tables}
-\begin{table}[!ht]
-\captionsetup{width=.96\textwidth}
-\centering\footnotesize
-\caption{Cropland station MAE and paired 95\% improvement intervals against OpenET, in $\unit$. Proximity includes 2,670 rows, 32 stations, and 18 groups. Joint includes 403 rows, nine stations, and seven groups. Models train across land covers; this table reports evaluation strata.}
-\begin{tabular}{lrrrr}\toprule
-Method & Proximity / archived & Proximity / no VPD & Joint / archived & Joint / no VPD\\\midrule
-\tableinput{table_selective_crop.tex}
-\bottomrule\end{tabular}
-\end{table}
-
-\begin{table}[!ht]
-\captionsetup{width=.96\textwidth}
-\centering\footnotesize
-\caption{Complete-system station MAE after VPD omission, in $\unit$. All fault columns use the same eligible rows as their clean column: 7,873 rows at 84 stations for proximity, and 646 rows at 27 stations for joint. The VPD fault is an exact negative control. These paired probes do not estimate fault prevalence.}
-\label{tab:selective-faults}
-\begin{tabular}{lrrrrrrrr}\toprule
-& \multicolumn{4}{c}{Proximity groups} & \multicolumn{4}{c}{Groups and later years}\\
-Method & Clean & VPD $\times10$ & Wind $\times10$ & $T+20$ & Clean & VPD $\times10$ & Wind $\times10$ & $T+20$\\\midrule
-\tableinput{table_selective_faults.tex}
-\bottomrule\end{tabular}
-\end{table}
-All archived-input fault results, per-seed predictions, selector acceptance rates, and ranking diagnostics appear in the saved numerical package.
-The paired 95\% intervals use proximity components and condition on the fitted predictions.
-The matched-budget curves keep their learned scores fixed during resampling.
-\clearpage
-\section{Original evidence architecture}\label{app:architecture}
-Actual evapotranspiration is the measured crop-and-soil flux used for this paper's ML target.
-The reference evapotranspiration (ETo) calculation describes a standardized surface and remains a separate physical calculation \citep{asce2005}.
-The selective models operate on the historical actual-ET branch below.
-The earlier reference-ETo branch retains its source and validation constraints.
-The earlier OpenET information-value result is reproduced in Appendix~\ref{app:benchmark}.
-Adding OpenET to weather ridge reduces pooled MAE from 1.514 to 0.856 $\unit$ on the original station split.
-Unchanged OpenET already scores 0.784 on those rows.
-This demands a stronger objective for the present study: determine whether, and when, a correction improves the existing satellite estimate.
-
-\begin{figure}[ht]
-\centering\includegraphics[width=.98\textwidth]{figure_1_evidence_paths.pdf}
-\caption{The original MLET evidence architecture, retained unchanged. The left branch supplies 7,923 station-days from 85 stations for retrospective actual-ET evaluation. The right branch contains a separate reference-ETo protocol and one diagnostic with 20 targets. The new selective neural experiments concern the left branch.}
-\label{fig:evidence-paths}
-\end{figure}
-
-\subsection{Physical target definitions}
-The original MLET quantities retain the following definitions and evidence requirements.
-\begin{table}[ht]
-
+\begin{center}
+\begin{minipage}{.96\textwidth}
 \centering
-\caption{Target ontology and claim boundary.}
-\label{tab:ontology}
 \small
-\begin{tabularx}{0.98\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth}
-  >{\raggedright\arraybackslash}p{0.23\textwidth}
-  >{\raggedright\arraybackslash}p{0.30\textwidth}
-  >{\raggedright\arraybackslash}X}
+\setlength{\tabcolsep}{3pt}
+\captionsetup{width=\linewidth}
+\captionof{table}{Gain-minus-SupportGain station-macro MAE (mm/day) across five spatial folds. Positive values favor SupportGain. Intervals are simultaneous across the five test conditions.}
+\label{tab:spatial-holdout}
+\begin{tabularx}{\linewidth}{@{}Xrr@{}}
 \toprule
-Layer or label & Quantity & Time and source & Allowed claim \\
+Test input & Difference & Simultaneous 95\% interval \\
 \midrule
-\code{ET\_corr} & Energy-balance-corrected actual ET & Historical flux label & Retrospective daily actual-ET prediction \\
-\code{eto\_mm} & Standardized short-reference $\eto$ & Future local date from issue-time GEFS & Regional reference-$\eto$ outlook after the frozen hindcast gate \\
-AgriMet \code{ETos} & Published grass-reference ET & Later station observation; converted from inches per day & Independent reference-$\eto$ evaluation target \\
-\code{potential\_et\_c\_mm} & $K_c\eto$ under ample-water assumptions & Conditional future projection & Conditional crop ET only \\
-\code{eta\_analysis\_mm} & Satellite actual-ET analysis & Delayed historical observation & Analysis comparison only \\
-Conditional $\etaactual$ scenarios & Named water and soil assumptions & Future scenario & Scenario evidence only \\
+Clean & 0.0059 & [-0.0069, 0.0186] \\
+Wind x2.237 & 0.0384 & [0.0015, 0.0752] \\
+Wind x3.6 & 0.1478 & [0.0697, 0.2260] \\
+Fahrenheit as Celsius & 0.4899 & [0.3454, 0.6344] \\
+VPD x10 & 1.3698 & [0.4886, 2.2511] \\
 \bottomrule
 \end{tabularx}
-\end{table}
+\end{minipage}
+\end{center}
 
-\clearpage
-\section{The retained reference-ETo outlook}\label{app:outlook}
-This separate branch predicts standardized reference ET, not the actual-ET target studied above.
-The American Society of Civil Engineers Environmental and Water Resources Institute (ASCE-EWRI) specifies the reference calculation \citep{asce2005}.
-The National Oceanic and Atmospheric Administration (NOAA) supplies weather forecasts from its Global Ensemble Forecast System version 12 (GEFSv12).
-The U.S. Bureau of Reclamation (USBR) AgriMet archive supplies published grass-reference evapotranspiration (ETos) observations.
-The BOII (the Boise, Idaho AgriMet weather-station identifier) case is a retrospective reforecast diagnostic for July 3, 2019 at 00Z (00:00 UTC).
-Its recorded archive retrieval at \path{2026-08-04T18:08:54.243122Z} is a later retrieval timestamp; it does not prove operational availability at issue time or original publication time.
-The case has one issue, one station, and $n=\FeasibilityN{}$ daily targets.
-Its source receipts use SHA-256 (a 256-bit secure hash).
-The frozen gate requires support across all lead-season-fold cells; this case does not meet that requirement or establish general forecast skill.
-The selective regression results do not change the outlook release gate.
-The displayed p10-to-p90 interval is an uncalibrated ensemble quantile band.
+The group bootstrap uses 2,000 draws with seed 20261060.
+No p-values were calculated.
+These intervals condition on fitted models and omit retraining uncertainty.
+The four unit-error conditions preserve labels and model parameters.
+They do not estimate natural fault prevalence.
 
-\begin{figure}[!ht]
-\captionsetup{width=.96\textwidth}
-  \centering
-  \includegraphics[width=0.97\textwidth]{figure_3_boii_feasibility.pdf}
-  \caption{One real BOII feasibility case. The GEFS member distribution gives
-  p10, p50, and p90 reference $\eto$ for leads 1 through 20. The independent
-  target is AgriMet ETos. The baseline uses the same station and target day of
-  year with observations from strictly prior calendar years. The scope is one
-  issue, one station, and
-  $n=\FeasibilityN{}$ targets. It is diagnostic only.}
-  \label{fig:boii}
-\end{figure}
+\begin{figure*}[t]
+\centering
+\includegraphics[width=.94\textwidth]{figure_23_tier1_spatial_holdout_sensitivity.pdf}
+\caption{Gain-minus-SupportGain MAE difference and acceptance on held-out spatial groups. Positive values favor SupportGain. The upper panel shows simultaneous 95\% group-bootstrap intervals.}
+\label{fig:spatial-holdout}
+\end{figure*}
 
-The prior-station, target-day climatology has MAE \FeasibilityBaselineMAE{} $\mmday$.
-The baseline-minus-forecast MAE difference is \FeasibilityImprovement{} $\mmday$, so forecast MAE is higher.
-Forecast p50 RMSE is \FeasibilityRMSE{} $\mmday$, with bias \FeasibilityBias{} $\mmday$.
-The p10-to-p90 band has empirical coverage \FeasibilityEmpiricalCoverage{} against nominal coverage \FeasibilityNominalCoverage{}.
-These values have no sampling interval and only \FeasibilityClusters{} bootstrap cluster.
-Each occupied lead-season-fold cell has one target, below the required minimum of \SupportMinimum{}.
-The result is a negative feasibility diagnostic, not general forecast skill.
-
+The full prediction tables, risk-coverage curves, matched-budget analyses, original benchmark, and earlier covariate ablations remain in the reproducibility package.
 \clearpage\twocolumn
+\pagestyle{fancy}
 \balance
 \begingroup\small
 \bibliographystyle{plainnat}

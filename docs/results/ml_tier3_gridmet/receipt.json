@@ -1,0 +1,53 @@
+{
+  "protocol_sha256": "52a6d12a9c25b8ef47cc628d344878f667707b20c82fe97432ddf0f478941539",
+  "script_sha256": "3666647272b163f5592024e978e399382a32a2b13a15585cf8326b3d6e1b4458",
+  "cohort_sha256": "f6489781e8400982cde097bf29893a993f869060399640344fd5738c70b42088",
+  "base_run_receipt_sha256": "57618d7d931a35522b07aaf60069f84ec6b7630a00c981e3479e218e5c8a8f54",
+  "base_outer_predictions": {
+    "clean": "8a188fc2566c4a29b101a88bd538718ef1255b53ac6df2a18e613086a27bba85",
+    "wind_x0": "2022f1c0b3c9b323c9e4b0d55774e12e0bc81d3dd23b9bda07d8216b3efb08d9",
+    "wind_x0.447": "f745255bee7b5fb274e8845a7c96e6d5b8b613bafa00d47bd8584d1470e15f0a",
+    "wind_x2.237": "44284ef105bc7801e0d00ee4052bb1b4bca0eeca945499b8fc35f99c68b5ed35",
+    "wind_x3.6": "8d88d6ffc519d6ed2b02e220aaaeed928f082e60b328cea27782ccbf72533024",
+    "wind_x5": "b1aaa3ccb7c31f1f69b627c78dfb8ae9d9133484ac8163521384f2012f8c904a",
+    "wind_x10": "70b9318e9f03b6940d08f3e46b70a2c5b9ae7527bc4efd432fd2fd6425db0b54",
+    "temperature_plus5": "2980007650eaadc5ae41c8cc952dfe57fdcd5e15f747a7f09f4fa7d166337582",
+    "temperature_plus10": "bcb492ebe2ea74cdffe36c72255ed6fb29dbab702d7438e1d3c15f5cf6b0e7f6",
+    "temperature_plus20": "ebd7812b2cb9d13b64056f7e274b9d6d1fcbf49da24c60328cea717ae38d4e89",
+    "temperature_plus32": "3bd5f016dad7139ebc4cbcf7783f4700accacdb65b86ef3e75f0326821123379",
+    "temperature_fahrenheit_as_celsius": "f6d5741a686780ce3d425266a69e332ac8037bd3b8aeab5f10c9941f863184e6",
+    "vpd_x10": "c334b3d0150cb0567bdc60fe344f17c6ff3f60614c75f5ca4a545f7f15201ec2"
+  },
+  "base_splits_sha256": "a09ea0fd56062aa302ec1da02ca9033eadc1470db2f4109cf5351d1211943ad4",
+  "seed": 20260924,
+  "test_years": [
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020
+  ],
+  "neural_seeds": [
+    20260713,
+    20260714,
+    20260715,
+    20260716,
+    20260717,
+    20260718,
+    20260719,
+    20260720,
+    20260721,
+    20260722
+  ],
+  "versions": {
+    "numpy": "2.4.3",
+    "pandas": "2.3.3",
+    "scikit_learn": "1.8.0"
+  },
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "seconds": 251.0235903749708
+}

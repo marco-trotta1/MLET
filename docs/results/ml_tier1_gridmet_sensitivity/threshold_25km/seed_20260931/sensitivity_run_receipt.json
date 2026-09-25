@@ -1,0 +1,38 @@
+{
+  "protocol_sha256": "f68d2adc5dbbbbd6bd033d366c0fd4857fe00fa0363b64d0fddeda5d7e053c2f",
+  "runner_sha256": "1b64d4a2e7b3591e7df45bdf1d243edeccd9ab7e2dc75a7a1f4e5f2d4803c3a4",
+  "tier1_script_sha256": "de58b86700be7cb3f8e646cc1beab91cba9931abeb50cb2da67cbb0a5b60ceb0",
+  "cohort_sha256": "bb21af40366fb0e713942cfc7d5ce7c55e682825e8da144f6452f8e3c6baf6d4",
+  "run_receipt_sha256": "7acb86cf4956a832e0d5872fe3c230d4bba53eb4137d972739a17be45a1c5a94",
+  "results_sha256": "4b2d55b3d573b0b0713f2b9cb6d9cb9e15f4f7ffced0f8fb609f82719cbb3ec5",
+  "splits_sha256": "a877fa4febba0a5f99fbb91dec6e478c8a94998b6b005363dc557b5cbc8458f6",
+  "split_seed": 20260931,
+  "threshold_km": 25,
+  "prediction_columns": [
+    "row_id",
+    "test_year",
+    "station",
+    "group",
+    "y",
+    "openet",
+    "Gain",
+    "SupportGain",
+    "accept_Gain",
+    "accept_SupportGain"
+  ],
+  "compressed_predictions": {
+    "clean": "0ec9e115abca51957917f88a4a10dbc53c410a97674b048d864d4b70b6c357dd",
+    "wind_x0": "f478a53c2ea2135d8b625e6ac14f2d6a94aeca0ac872b9b4bcccb6529c2a3c0c",
+    "wind_x0.447": "1a59861444ecc7b1364f8b6d809a561030b7428052bb120ae5e51feaf0fbfca4",
+    "wind_x2.237": "dc8d4d2f82b3f184d43aa6718b555fb7314426fb2cd5c5015a860dac7a885dab",
+    "wind_x3.6": "46706129ac11cdb52adbf2c6c9be993990ec32e5ed9d5e60bf05442b0888d179",
+    "wind_x5": "8b10bfaad7a4cd85a9cd53bbbc851c2d152d2c6a7a2ff04dee58500f026f11ec",
+    "wind_x10": "ce52db10d2d3e0680932ca3b25a24d36eff8a2fc3187b2aaafad85e8395cf33e",
+    "temperature_plus5": "03fb8a15e142b976dd7fd50658e80cdb17d61cb9acb0c02da47d813a1d266a5f",
+    "temperature_plus10": "337ddba6d8314b685da63ebd5049ac786ab15652ab1ce002b86930f447ce429d",
+    "temperature_plus20": "82e8c27ff7431c3426d873ed97db5615028cc4493e5e6277e5d26a2c45201fc5",
+    "temperature_plus32": "684421e9ce8316989b32888d19b68c4aff551bbe1ff60b0b9d65710d308032d7",
+    "temperature_fahrenheit_as_celsius": "a0a46ac91898b58a9aba6b175070d097f92cf8550300d492b602ae89fd24a0ab",
+    "vpd_x10": "3cd40eef9f9a7c52f652b8cb8fe28d24102d3760b820309f0e9d4c7277df5210"
+  }
+}
